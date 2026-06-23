@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Documentation BFF
+
+Les besoins de données du frontend E-learning pour le BFF sont documentés dans [README-BFF.md](README-BFF.md).
+
 ## Getting Started
 
 First, run the development server:
