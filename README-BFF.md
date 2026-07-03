@@ -1,8 +1,8 @@
 # BFF E-learning - besoins du frontend
 
-Ce document décrit les données dont le frontend E-learning a besoin pour remplacer les mocks présents dans `src/features/elearning/ElearningModule.tsx`.
+Ce document décrit les données dont le frontend E-learning a besoin pour remplacer les mocks présents dans `src/features/elearning/ElearningModule.tsx` et `src/features/elearning/ProfileModule.tsx`.
 
-Le frontend affiche aujourd'hui un catalogue de formations via `ElearningCatalog` de `@mairie360/lib-components`. Le BFF doit donc fournir une réponse déjà adaptée à cet écran: utilisateur connecté, compteur de notifications, filtres, statistiques et liste des formations avec leur détail.
+Le frontend affiche aujourd'hui un catalogue de formations via `ElearningCatalog` et une page profil via `UserProfilePage` de `@mairie360/lib-components`. Le BFF doit donc fournir des réponses déjà adaptées à ces écrans: utilisateur connecté, compteur de notifications, filtres, statistiques, liste des formations avec leur détail et informations de profil.
 
 ## Etat actuel du contrat
 
@@ -11,21 +11,23 @@ Le package `@mairie360/bff-elearning-openapi@0.2.1` est installé, mais le contr
 - `GET /health`
 - `GET /check_apis`
 
-Il manque donc les endpoints fonctionnels nécessaires au catalogue E-learning.
+Il manque donc les endpoints fonctionnels nécessaires au catalogue E-learning et au profil utilisateur.
 
 ## Vue à alimenter
 
 L'écran principal contient:
 
 - une barre supérieure avec recherche globale, compteur de notifications et identité utilisateur;
-- une sidebar avec l'item `training` actif et un affichage admin;
+- une sidebar avec l'item `training` actif sur le catalogue, l'item `profile` actif sur la page profil et un affichage admin;
+- un menu utilisateur dans le header dont l'entrée `Profil` redirige vers `/profile`;
 - un catalogue `Centre de Formation`;
 - des filtres par statut, et potentiellement par catégorie;
 - des cartes de formation;
 - une modale de détail de formation avec chapitres, contenus, progression et notation;
+- une page profil affichant les informations personnelles du compte connecté;
 - un footer affichant le nom produit, la version et des liens.
 
-## Endpoint de lecture recommandé
+## Endpoints de lecture recommandés
 
 ### `GET /elearning/catalog`
 
@@ -56,9 +58,15 @@ type CurrentUser = {
   name: string;
   initials: string;
   email?: string;
+  phone?: string;
+  service?: string;
+  position?: string;
   role?: string;
   isAdmin: boolean;
   avatarUrl?: string;
+  address?: string;
+  city?: string;
+  lastConnection?: string;
 };
 
 type NotificationSummary = {
@@ -92,8 +100,14 @@ Exemple:
     "name": "Admin Système",
     "initials": "AS",
     "email": "admin@mairie360.fr",
-    "role": "Administrateur",
-    "isAdmin": true
+    "phone": "+262 692 00 00 00",
+    "service": "Administration",
+    "position": "Administrateur système",
+    "role": "admin",
+    "isAdmin": true,
+    "address": "1 rue de la Mairie",
+    "city": "Saint-Denis",
+    "lastConnection": "3 juillet 2026 à 09:15"
   },
   "notifications": {
     "unreadCount": 3
@@ -160,6 +174,49 @@ Exemple:
         }
       }
     ]
+  },
+  "footer": {
+    "productName": "Mairie360",
+    "version": "2.1.0",
+    "links": [
+      { "label": "Support technique", "href": "/support" },
+      { "label": "Documentation", "href": "/documentation" },
+      { "label": "Conditions d'utilisation", "href": "/conditions" }
+    ]
+  }
+}
+```
+
+### `GET /elearning/profile`
+
+Retourne les informations nécessaires au rendu direct de `/profile`. Cet endpoint évite de dépendre du chargement préalable du catalogue lorsque l'utilisateur arrive directement depuis l'URL ou depuis le menu `Profil` du header.
+
+Réponse attendue:
+
+```ts
+type ElearningProfileResponse = {
+  user: CurrentUser;
+  footer?: FooterConfig;
+};
+```
+
+Exemple:
+
+```json
+{
+  "user": {
+    "id": "user-123",
+    "name": "Admin Système",
+    "initials": "AS",
+    "email": "admin@mairie360.fr",
+    "phone": "+262 692 00 00 00",
+    "service": "Administration",
+    "position": "Administrateur système",
+    "role": "admin",
+    "isAdmin": true,
+    "address": "1 rue de la Mairie",
+    "city": "Saint-Denis",
+    "lastConnection": "3 juillet 2026 à 09:15"
   },
   "footer": {
     "productName": "Mairie360",
@@ -307,7 +364,41 @@ type FooterLink = {
 };
 ```
 
+Notes utilisateur:
+
+- `role` doit de préférence être une valeur machine compatible avec la lib: `"admin"`, `"manager"`, `"user"` ou une valeur métier stable.
+- `isAdmin` pilote l'affichage des entrées admin de la sidebar.
+- `phone`, `address` et `city` sont éditables dans `UserProfilePage`.
+- `service`, `position` et `lastConnection` sont affichés dans la page profil.
+
 ## Données envoyées par le frontend
+
+### Mettre à jour le profil utilisateur
+
+Endpoint recommandé:
+
+`PATCH /elearning/profile`
+
+Body:
+
+```json
+{
+  "email": "admin@mairie360.fr",
+  "phone": "+262 692 00 00 00",
+  "address": "1 rue de la Mairie",
+  "city": "Saint-Denis"
+}
+```
+
+Réponse attendue:
+
+```ts
+type ProfileUpdateResponse = {
+  user: CurrentUser;
+};
+```
+
+Le BFF doit ignorer tout champ non éditable envoyé par le client, notamment `role`, `isAdmin`, `service`, `position` et `lastConnection`.
 
 ### Marquer un contenu comme terminé
 

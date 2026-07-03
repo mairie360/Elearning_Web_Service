@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mairie360 E-learning",
+  title: "Formation | Mairie360",
   description: "Module de formation en ligne Mairie360",
   icons: {
     icon: [

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../../node_modules/@mairie360/lib-components/dist/index.js";
 
 :root {
   --background: #f4f2ef;

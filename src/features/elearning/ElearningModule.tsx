@@ -2,144 +2,19 @@
 
 import {
   ElearningCatalog,
+  Footer,
+  Header,
   Sidebar,
 } from "@mairie360/lib-components";
+import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
-
-type IconProps = {
-  className?: string;
-};
-
-function SearchIcon({ className }: IconProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
-    >
-      <path d="m21 21-4.34-4.34" />
-      <circle cx="11" cy="11" r="8" />
-    </svg>
-  );
-}
-
-function BellIcon({ className }: IconProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.8"
-      viewBox="0 0 24 24"
-    >
-      <path d="M10.268 21a2 2 0 0 0 3.464 0" />
-      <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" />
-    </svg>
-  );
-}
-
-function ChevronDownIcon({ className }: IconProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.8"
-      viewBox="0 0 24 24"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
-function ElearningTopbar() {
-  return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#b9d6d5] bg-white px-6 text-[#172033] shadow-[0_2px_8px_rgba(0,0,0,0.13)]">
-      <div className="relative w-64">
-        <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#535d67]" />
-        <input
-          aria-label="Rechercher"
-          className="h-9 w-full rounded-md border border-[#b9d6d5] bg-[#fbfaf9] pl-10 pr-3 text-sm text-[#172033] outline-none placeholder:text-[#67717c] focus:border-[#4b908d] focus:ring-2 focus:ring-[#4b908d]/15"
-          placeholder="Rechercher..."
-          type="search"
-        />
-      </div>
-
-      <div className="flex items-center gap-5">
-        <button
-          aria-label="Notifications"
-          className="relative flex h-8 w-8 items-center justify-center text-[#172033] transition-colors hover:text-[#1256a6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4b908d]/30"
-          type="button"
-        >
-          <BellIcon className="h-[18px] w-[18px]" />
-          <span className="absolute -right-0.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-md border border-white bg-[#d8292f] px-1 text-[11px] font-semibold leading-none text-white">
-            3
-          </span>
-        </button>
-
-        <button
-          className="flex h-9 items-center gap-3 text-sm font-medium text-[#172033] transition-colors hover:text-[#1256a6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4b908d]/30"
-          type="button"
-        >
-          <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#4b908d] bg-[#1256a6] text-[11px] font-semibold leading-none text-white">
-            AS
-          </span>
-          <span className="whitespace-nowrap">Admin Système</span>
-          <ChevronDownIcon className="h-4 w-4 text-[#172033]" />
-        </button>
-      </div>
-    </header>
-  );
-}
-
-function ElearningFooter() {
-  const links = [
-    "Support technique",
-    "Documentation",
-    "Conditions d'utilisation",
-  ];
-
-  return (
-    <footer className="flex h-[54px] shrink-0 items-center justify-between border-t border-[#b9d6d5] bg-white px-6 text-sm text-[#4c5258] shadow-[0_-1px_5px_rgba(0,0,0,0.08)]">
-      <div className="flex items-center gap-4">
-        <span>© 2026 Mairie360</span>
-        <span className="text-[#4b908d]" aria-hidden="true">
-          •
-        </span>
-        <span>Version 2.1.0</span>
-      </div>
-
-      <nav aria-label="Liens du pied de page" className="flex items-center gap-4">
-        {links.map((link, index) => (
-          <span className="flex items-center gap-4" key={link}>
-            {index > 0 && (
-              <span className="text-[#4b908d]" aria-hidden="true">
-                •
-              </span>
-            )}
-            <button
-              className="font-medium transition-colors hover:text-[#1256a6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4b908d]/30"
-              type="button"
-            >
-              {link}
-            </button>
-          </span>
-        ))}
-      </nav>
-    </footer>
-  );
-}
+import { useState } from "react";
+import {
+  footerLinks,
+  getRouteForPage,
+  headerProfileProps,
+  sidebarItems,
+} from "./appData";
 
 const statusOptions = [
   { label: "Tous les statuts", value: "all" },
@@ -736,12 +611,60 @@ const courses = [
 ] satisfies ComponentProps<typeof ElearningCatalog>["courses"];
 
 export function ElearningModule() {
+  const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handlePageChange = (page: string) => {
+    const route = getRouteForPage(page);
+
+    if (route) {
+      router.push(route);
+    }
+
+    setSidebarOpen(false);
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#f4f2ef] text-[#2f3747]">
-      <Sidebar activeItem="training" isAdmin className="hidden shrink-0 lg:flex" />
+      <Sidebar
+        activeItem="training"
+        isAdmin
+        items={sidebarItems}
+        onItemSelect={(item) => handlePageChange(item.id)}
+        className="hidden shrink-0 lg:flex"
+      />
+
+      {sidebarOpen && (
+        <div
+          aria-label="Navigation mobile"
+          aria-modal="true"
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+        >
+          <button
+            aria-label="Fermer la navigation"
+            className="absolute inset-0 h-full w-full bg-black/35"
+            onClick={() => setSidebarOpen(false)}
+            type="button"
+          />
+          <div className="relative h-full w-[260px] max-w-[82vw] shadow-2xl">
+            <Sidebar
+              activeItem="training"
+              isAdmin
+              items={sidebarItems}
+              onItemSelect={(item) => handlePageChange(item.id)}
+              className="h-full"
+            />
+          </div>
+        </div>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <ElearningTopbar />
+        <Header
+          {...headerProfileProps}
+          setSidebarOpen={setSidebarOpen}
+          onPageChange={handlePageChange}
+        />
 
         <main className="min-h-0 flex-1 overflow-y-auto bg-[#f4f2ef]">
           <ElearningCatalog
@@ -755,7 +678,12 @@ export function ElearningModule() {
           />
         </main>
 
-        <ElearningFooter />
+        <Footer
+          productName="Mairie360"
+          version="2.1.0"
+          links={footerLinks}
+          className="shrink-0"
+        />
       </div>
     </div>
   );
