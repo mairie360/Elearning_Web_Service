@@ -191,6 +191,7 @@ services:
     environment:
       <<: *common-env
       PORT: 3000
+      BFF_ELEARNING_BASE_URL: http://bff-elearning:4006
       # Force React/Vite à surveiller les fichiers correctement dans Docker
       WATCHPACK_POLLING: "true" 
       CHOKIDAR_USEPOLLING: "true"
