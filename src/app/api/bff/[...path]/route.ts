@@ -12,6 +12,7 @@ function getBffBaseUrl() {
   return (
     process.env.BFF_ELEARNING_BASE_URL ??
     process.env.NEXT_PUBLIC_BFF_ELEARNING_BASE_URL ??
+    process.env.ELEARNING_BFF_URL ??
     DEFAULT_BFF_BASE_URL
   ).replace(/\/+$/, "");
 }
@@ -23,6 +24,14 @@ function createProxyHeaders(request: NextRequest) {
   headers.delete("connection");
   headers.delete("content-length");
   headers.delete("accept-encoding");
+
+  if (!headers.has("authorization")) {
+    const accessToken = request.cookies.get("accessToken")?.value;
+
+    if (accessToken) {
+      headers.set("authorization", `Bearer ${accessToken}`);
+    }
+  }
 
   return headers;
 }

@@ -1,5 +1,22 @@
 import { getStoredAuthorizationHeader } from "./auth-token";
 
+type BffErrorBody = {
+  message?: unknown;
+  error?: {
+    message?: unknown;
+  };
+};
+
+export class BffRequestError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "BffRequestError";
+  }
+}
+
 function createRequestHeaders(init: RequestInit) {
   const headers = new Headers(init.headers);
 
@@ -29,7 +46,20 @@ export async function requestBff<T>(path: string, init: RequestInit = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`Erreur BFF (${response.status})`);
+    let body: BffErrorBody | null = null;
+
+    try {
+      body = (await response.json()) as BffErrorBody;
+    } catch {
+      // La réponse peut ne pas contenir de JSON exploitable.
+    }
+
+    const message =
+      (typeof body?.message === "string" && body.message) ||
+      (typeof body?.error?.message === "string" && body.error.message) ||
+      `Le service e-learning a répondu avec le statut ${response.status}.`;
+
+    throw new BffRequestError(response.status, message);
   }
 
   if (response.status === 204) return undefined as T;
