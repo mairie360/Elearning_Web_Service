@@ -2,6 +2,7 @@
 
 import { UserProfilePage } from "@mairie360/lib-components";
 import { useRouter } from "next/navigation";
+import { logoutAndReload, useAuthSession } from "@/lib/auth-session";
 import {
   currentUser,
   footerLinks,
@@ -12,6 +13,7 @@ import {
 
 export function ProfileModule() {
   const router = useRouter();
+  const session = useAuthSession(currentUser);
 
   const handlePageChange = (page: string) => {
     navigateToPage(page, router.push);
@@ -20,10 +22,11 @@ export function ProfileModule() {
   return (
     <UserProfilePage
       activeItem="profile"
-      isAdmin
-      user={currentUser}
+      isAdmin={session.isAdmin}
+      user={session.user}
       headerProps={{
         onPageChange: handlePageChange,
+        onLogout: () => void logoutAndReload(),
         profileHref: profilePath,
       }}
       sidebarProps={{
