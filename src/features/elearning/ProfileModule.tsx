@@ -39,7 +39,10 @@ export function ProfileModule() {
       }}
       profileProps={{
         title: "Profil",
-        subtitle: "Informations de votre compte Mairie360",
+        subtitle: "Informations réelles du compte connecté",
+        editable: false,
+        loading: session.loading,
+        error: session.error,
       }}
     />
   );
