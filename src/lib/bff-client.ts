@@ -16,7 +16,6 @@ export class BffRequestError extends Error {
     this.name = "BffRequestError";
   }
 }
-
 function createRequestHeaders(init: RequestInit) {
   const headers = new Headers(init.headers);
 

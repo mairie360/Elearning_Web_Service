@@ -32,7 +32,6 @@ function createProxyHeaders(request: NextRequest) {
       headers.set("authorization", `Bearer ${accessToken}`);
     }
   }
-
   return headers;
 }
 
