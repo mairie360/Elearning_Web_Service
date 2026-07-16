@@ -2,32 +2,31 @@
 
 import { UserProfilePage } from "@mairie360/lib-components";
 import { useRouter } from "next/navigation";
+import { logoutAndReload, useAuthSession } from "@/lib/auth-session";
 import {
   currentUser,
   footerLinks,
-  getRouteForPage,
+  navigateToPage,
   profilePath,
   sidebarItems,
 } from "./appData";
 
 export function ProfileModule() {
   const router = useRouter();
+  const session = useAuthSession(currentUser);
 
   const handlePageChange = (page: string) => {
-    const route = getRouteForPage(page);
-
-    if (route) {
-      router.push(route);
-    }
+    navigateToPage(page, router.push);
   };
 
   return (
     <UserProfilePage
       activeItem="profile"
-      isAdmin
-      user={currentUser}
+      isAdmin={session.isAdmin}
+      user={session.user}
       headerProps={{
         onPageChange: handlePageChange,
+        onLogout: () => void logoutAndReload(),
         profileHref: profilePath,
       }}
       sidebarProps={{
@@ -40,7 +39,10 @@ export function ProfileModule() {
       }}
       profileProps={{
         title: "Profil",
-        subtitle: "Informations de votre compte Mairie360",
+        subtitle: "Informations réelles du compte connecté",
+        editable: false,
+        loading: session.loading,
+        error: session.error,
       }}
     />
   );

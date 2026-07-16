@@ -9,10 +9,11 @@ import {
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
 import { useState } from "react";
+import { logoutAndReload, useAuthSession } from "@/lib/auth-session";
 import {
   footerLinks,
-  getRouteForPage,
   headerProfileProps,
+  navigateToPage,
   sidebarItems,
 } from "./appData";
 
@@ -613,13 +614,10 @@ const courses = [
 export function ElearningModule() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const session = useAuthSession(headerProfileProps.user);
 
   const handlePageChange = (page: string) => {
-    const route = getRouteForPage(page);
-
-    if (route) {
-      router.push(route);
-    }
+    navigateToPage(page, router.push);
 
     setSidebarOpen(false);
   };
@@ -628,7 +626,7 @@ export function ElearningModule() {
     <div className="flex h-screen overflow-hidden bg-[#f4f2ef] text-[#2f3747]">
       <Sidebar
         activeItem="training"
-        isAdmin
+        isAdmin={session.isAdmin}
         items={sidebarItems}
         onItemSelect={(item) => handlePageChange(item.id)}
         className="hidden shrink-0 lg:flex"
@@ -650,7 +648,7 @@ export function ElearningModule() {
           <div className="relative h-full w-[260px] max-w-[82vw] shadow-2xl">
             <Sidebar
               activeItem="training"
-              isAdmin
+              isAdmin={session.isAdmin}
               items={sidebarItems}
               onItemSelect={(item) => handlePageChange(item.id)}
               className="h-full"
@@ -662,8 +660,11 @@ export function ElearningModule() {
       <div className="flex min-w-0 flex-1 flex-col">
         <Header
           {...headerProfileProps}
+          user={session.user}
+          isAdmin={session.isAdmin}
           setSidebarOpen={setSidebarOpen}
           onPageChange={handlePageChange}
+          onLogout={() => void logoutAndReload()}
         />
 
         <main className="min-h-0 flex-1 overflow-y-auto bg-[#f4f2ef]">
