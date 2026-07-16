@@ -89,7 +89,6 @@ export function navigateToPage(page: string, push: (href: string) => void) {
 
   window.location.assign(route);
 }
-
 export const headerProfileProps = {
   user: currentUser,
   isAdmin: true,
