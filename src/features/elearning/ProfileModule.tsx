@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   currentUser,
   footerLinks,
-  getRouteForPage,
+  navigateToPage,
   profilePath,
   sidebarItems,
 } from "./appData";
@@ -14,11 +14,7 @@ export function ProfileModule() {
   const router = useRouter();
 
   const handlePageChange = (page: string) => {
-    const route = getRouteForPage(page);
-
-    if (route) {
-      router.push(route);
-    }
+    navigateToPage(page, router.push);
   };
 
   return (

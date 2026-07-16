@@ -11,8 +11,8 @@ import type { ComponentProps } from "react";
 import { useState } from "react";
 import {
   footerLinks,
-  getRouteForPage,
   headerProfileProps,
+  navigateToPage,
   sidebarItems,
 } from "./appData";
 
@@ -615,11 +615,7 @@ export function ElearningModule() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handlePageChange = (page: string) => {
-    const route = getRouteForPage(page);
-
-    if (route) {
-      router.push(route);
-    }
+    navigateToPage(page, router.push);
 
     setSidebarOpen(false);
   };
