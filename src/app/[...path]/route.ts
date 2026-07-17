@@ -32,6 +32,8 @@ function createProxyHeaders(request: NextRequest) {
       headers.set("authorization", `Bearer ${accessToken}`);
     }
   }
+
+  headers.delete("cookie");
   return headers;
 }
 
