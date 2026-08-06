@@ -1,10 +1,5 @@
 import type { ComponentProps } from "react";
-import type {
-  Footer,
-  Header,
-  Sidebar,
-  UserProfilePage,
-} from "@mairie360/lib-components";
+import type { Sidebar } from "@mairie360/lib-components";
 import {
   Briefcase,
   Calendar,
@@ -19,24 +14,6 @@ import {
 } from "lucide-react";
 
 export const profilePath = "/profile";
-
-export const currentUser = {
-  name: "Admin Systeme",
-  email: "admin@mairie360.fr",
-  phone: "+262 692 00 00 00",
-  service: "Administration",
-  position: "Administrateur systeme",
-  role: "admin",
-  address: "1 rue de la Mairie",
-  city: "Saint-Denis",
-  lastConnection: "3 juillet 2026 a 09:15",
-} satisfies NonNullable<ComponentProps<typeof UserProfilePage>["user"]>;
-
-export const footerLinks = [
-  { label: "Support technique", href: "/support" },
-  { label: "Documentation", href: "/documentation" },
-  { label: "Conditions d'utilisation", href: "/conditions" },
-] satisfies NonNullable<ComponentProps<typeof Footer>["links"]>;
 
 type SidebarItem = NonNullable<ComponentProps<typeof Sidebar>["items"]>[number];
 
@@ -89,11 +66,3 @@ export function navigateToPage(page: string, push: (href: string) => void) {
 
   window.location.assign(route);
 }
-export const headerProfileProps = {
-  user: currentUser,
-  isAdmin: true,
-  profileHref: profilePath,
-} satisfies Pick<
-  ComponentProps<typeof Header>,
-  "user" | "isAdmin" | "profileHref"
->;

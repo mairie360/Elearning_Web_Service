@@ -9,22 +9,24 @@ import {
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { logoutAndReload, useAuthSession } from "@/lib/auth-session";
+import { logoutAndReload } from "@/lib/auth-session";
 import { BffRequestError, requestBff } from "@/lib/bff-client";
-import {
-  footerLinks,
-  headerProfileProps,
-  navigateToPage,
-  sidebarItems,
-} from "./appData";
+import { navigateToPage, profilePath, sidebarItems } from "./appData";
 
 type CatalogProps = ComponentProps<typeof ElearningCatalog>;
 type CatalogCourse = CatalogProps["courses"][number];
 type ContentCompletePayload = Parameters<
   NonNullable<CatalogProps["onCourseContentComplete"]>
 >[1];
+type CatalogUser = NonNullable<ComponentProps<typeof Header>["user"]> & {
+  isAdmin: boolean;
+};
 
 type CatalogResponse = {
+  user: CatalogUser;
+  notifications: {
+    unreadCount: number;
+  };
   catalog: {
     title: string;
     subtitle?: string;
@@ -60,7 +62,6 @@ export function ElearningModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const session = useAuthSession(headerProfileProps.user);
 
   const loadCatalog = useCallback(async () => {
     setLoading(true);
@@ -208,12 +209,13 @@ export function ElearningModule() {
 
   const catalog = catalogResponse?.catalog;
   const footer = catalogResponse?.footer;
+  const user = catalogResponse?.user;
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f4f2ef] text-[#2f3747]">
       <Sidebar
         activeItem="training"
-        isAdmin={session.isAdmin}
+        isAdmin={user?.isAdmin ?? false}
         items={sidebarItems}
         onItemSelect={(item) => handlePageChange(item.id)}
         className="hidden shrink-0 lg:flex"
@@ -235,7 +237,7 @@ export function ElearningModule() {
           <div className="relative h-full w-[260px] max-w-[82vw] shadow-2xl">
             <Sidebar
               activeItem="training"
-              isAdmin={session.isAdmin}
+              isAdmin={user?.isAdmin ?? false}
               items={sidebarItems}
               onItemSelect={(item) => handlePageChange(item.id)}
               className="h-full"
@@ -246,9 +248,9 @@ export function ElearningModule() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header
-          {...headerProfileProps}
-          user={session.user}
-          isAdmin={session.isAdmin}
+          user={user ?? { name: "" }}
+          isAdmin={user?.isAdmin ?? false}
+          profileHref={profilePath}
           setSidebarOpen={setSidebarOpen}
           onPageChange={handlePageChange}
           onLogout={() => void logoutAndReload()}
@@ -301,7 +303,7 @@ export function ElearningModule() {
               statuses={catalog.statuses}
               emptyLabel={catalog.emptyLabel}
               currentUserRole={
-                session.isAdmin ? "administrator" : "user"
+                user?.isAdmin ? "administrator" : "user"
               }
               onCourseAction={(course) => void handleCourseAction(course)}
               onCourseContentComplete={handleContentComplete}
@@ -333,12 +335,14 @@ export function ElearningModule() {
           )}
         </main>
 
-        <Footer
-          productName={footer?.productName ?? "Mairie360"}
-          version={footer?.version ?? "2.1.0"}
-          links={footer?.links ?? footerLinks}
-          className="shrink-0"
-        />
+        {footer && (
+          <Footer
+            productName={footer.productName}
+            version={footer.version}
+            links={footer.links}
+            className="shrink-0"
+          />
+        )}
       </div>
     </div>
   );
