@@ -1,5 +1,7 @@
 "use client";
 
+import type { components } from "@/contracts/bff";
+
 import { UserProfilePage } from "@mairie360/lib-components";
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
@@ -8,14 +10,8 @@ import { logoutAndReload } from "@/lib/auth-session";
 import { BffRequestError, requestBff } from "@/lib/bff-client";
 import { navigateToPage, profilePath, sidebarItems } from "./appData";
 
-type ProfileUser = NonNullable<ComponentProps<typeof UserProfilePage>["user"]> & {
-  isAdmin: boolean;
-};
 
-type ProfileResponse = {
-  user: ProfileUser;
-  footer?: NonNullable<ComponentProps<typeof UserProfilePage>["footerProps"]>;
-};
+type ProfileResponse = components["schemas"]["ElearningProfileResponse"];
 
 export function ProfileModule() {
   const router = useRouter();

@@ -1,5 +1,7 @@
 "use client";
 
+import type { components } from "@/contracts/bff";
+
 import {
   ElearningCatalog,
   Footer,
@@ -18,36 +20,10 @@ type CatalogCourse = CatalogProps["courses"][number];
 type ContentCompletePayload = Parameters<
   NonNullable<CatalogProps["onCourseContentComplete"]>
 >[1];
-type CatalogUser = NonNullable<ComponentProps<typeof Header>["user"]> & {
-  isAdmin: boolean;
-};
 
-type CatalogResponse = {
-  user: CatalogUser;
-  notifications: {
-    unreadCount: number;
-  };
-  catalog: {
-    title: string;
-    subtitle?: string;
-    certificationCount: number;
-    emptyLabel: string;
-    statuses: NonNullable<CatalogProps["statuses"]>;
-    categories?: CatalogProps["categories"];
-    stats?: CatalogProps["stats"];
-    adminStats?: CatalogProps["adminStats"];
-    courses: CatalogProps["courses"];
-  };
-  footer?: {
-    productName: string;
-    version: string;
-    links: NonNullable<ComponentProps<typeof Footer>["links"]>;
-  };
-};
+type CatalogResponse = components["schemas"]["ElearningCatalogResponse"];
 
-type CourseActionResponse = {
-  course: CatalogCourse;
-};
+type CourseActionResponse = components["schemas"]["CourseActionResponse"];
 
 function getErrorMessage(error: unknown) {
   if (error instanceof BffRequestError) return error.message;
