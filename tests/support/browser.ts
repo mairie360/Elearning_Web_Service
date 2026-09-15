@@ -1,4 +1,4 @@
-// `window` minimal pour le code client exécuté sous Node : localStorage en mémoire et rechargements comptés.
+// `window` minimal pour le code client exécuté sous Node : localStorage en mémoire et navigations enregistrées.
 
 export class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -9,10 +9,10 @@ export class MemoryStorage {
   get length() { return this.values.size; }
 }
 
-export type FakeWindow = { localStorage: MemoryStorage; location: { reload: () => void; reloads: number } };
+export type FakeWindow = { localStorage: MemoryStorage; location: { assign: (url: string) => void; assigned: string[] } };
 
 export function installWindow(): FakeWindow {
-  const location = { reloads: 0, reload() { location.reloads += 1; } };
+  const location = { assigned: [] as string[], assign(url: string) { location.assigned.push(url); } };
   const fake: FakeWindow = { localStorage: new MemoryStorage(), location };
   (globalThis as { window?: unknown }).window = fake;
   return fake;

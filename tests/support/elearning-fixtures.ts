@@ -1,7 +1,5 @@
-// Réponses BFF E-learning et BFF User conformes aux contrats (validées dans tests/bff-contracts.test.cjs)
+// Réponses BFF E-learning conformes au contrat publié (validées dans tests/bff-contracts.test.cjs)
 // et jetons de session du navigateur.
-
-type Overrides<T> = Partial<T> & Record<string, unknown>;
 
 export function content(id: string, overrides: Record<string, unknown> = {}) {
   return { id, title: `Contenu ${id}`, type: 'video', duration: '5 min', completed: false, required: true, ...overrides };
@@ -75,22 +73,6 @@ export function ratingResponse(rating = 4) {
 /** Format d'erreur commun du BFF E-learning (`ApiError`). */
 export function apiError(code: string, message: string, details: Record<string, unknown> = {}) {
   return { code, message, details };
-}
-
-export function group(id: number, name = `Groupe ${id}`) {
-  return { id, name, owner_id: 1, description: null };
-}
-
-/** Corps de BFF User `GET /me` et `GET /session/me` (SessionResponse). */
-export function sessionResponse(
-  user: Overrides<{ first_name: string; last_name: string; email: string; phone: string | null; role: string }> = {},
-  groups: Array<ReturnType<typeof group>> = [group(1, 'Service urbanisme')],
-) {
-  return {
-    user: { id: 2, first_name: 'Alice', last_name: 'Martin', email: 'alice.martin@mairie.test', phone: '+33123456789', status: 'active', role: 'User', ...user },
-    groups,
-    roles: [{ id: 3, name: 'User' }],
-  };
 }
 
 /** Jeton au format JWT : le middleware du front ne lit que `exp`, la signature est vérifiée par les BFFs. */
