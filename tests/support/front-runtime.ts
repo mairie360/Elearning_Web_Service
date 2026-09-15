@@ -86,6 +86,15 @@ export class FrontRuntime {
     this.accessToken = undefined;
   }
 
+  /** Navigation de page (window.location.assign) : seul le middleware s'applique, les pages ne sont pas rendues. */
+  navigate(pathname: string): { status: number; location: string | null; setCookie: string | null } {
+    const url = new URL(pathname, FRONT_ORIGIN);
+    if (!middlewareApplies(url.pathname)) throw new Error(`${pathname} n'est pas une page protégée par le middleware`);
+    const headers = new Headers(this.accessToken ? { cookie: `accessToken=${this.accessToken}` } : {});
+    const response = middleware(new NextRequest(url, { headers }));
+    return { status: response.status, location: response.headers.get('location'), setCookie: response.headers.get('set-cookie') };
+  }
+
   private async fetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
     const url = new URL(input instanceof Request ? input.url : String(input), FRONT_ORIGIN);
     const method = (init.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();

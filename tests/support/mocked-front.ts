@@ -1,22 +1,36 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { installWindow, removeWindow, type FakeWindow } from './browser';
-import { ContractMockServer } from './contract-mock-server';
+import { ContractMockServer, type MockReply } from './contract-mock-server';
 import { accessToken } from './elearning-fixtures';
 import { FrontRuntime } from './front-runtime';
 import { OpenApiContract } from './openapi-contract';
 import { loadOrvalContract } from './orval-contract';
 
-// Front complet (vrai middleware, vrais route handlers, vrai code client) branché sur deux BFF simulés :
-// BFF E-learning piloté par contracts/openapi.json et BFF User piloté par le paquet @mairie360/bff-user-openapi.
-// Après chaque test : aucune violation de contrat côté mocks, aucun appel réseau hors périmètre côté front.
+// Front complet (vrai middleware, vrais route handlers, vrai code client) branché sur son unique BFF : BFF E-learning,
+// simulé depuis le paquet publié @mairie360/bff-elearning-openapi (version épinglée dans package.json).
+// Après chaque test : aucune violation de contrat côté mock, aucun appel réseau hors périmètre côté front.
 
 type Hook = (fn: () => unknown) => void;
 export type NodeTestHooks = { before: Hook; after: Hook; beforeEach: Hook; afterEach: Hook };
 
+export const PUBLISHED_CONTRACT_PACKAGE = '@mairie360/bff-elearning-openapi';
+
+/** Copie versionnée du contrat (allowlist du proxy), identique à la release publiée. */
+export const contractSnapshot = OpenApiContract.load(path.join(__dirname, '..', '..', 'contracts', 'openapi.json'));
+
+/**
+ * Réponse d'erreur du BFF. Orval ne type que les succès : l'erreur est donc hors du contrat du paquet, mais son corps
+ * doit respecter le schéma `ApiError` du contrat publié.
+ */
+export function errorReply(status: number, code: string, message: string): MockReply {
+  const body = { code, message, details: {} };
+  assert.deepEqual(contractSnapshot.validate(contractSnapshot.schema('ApiError'), body), []);
+  return { status, body, outOfContract: true };
+}
+
 export type MockedFront = {
   bffElearning: ContractMockServer;
-  userBff: ContractMockServer;
   runtime: FrontRuntime;
   window: () => FakeWindow;
   /** Origines volontairement injoignables (BFF arrêté), autorisées comme cible du proxy. */
@@ -26,37 +40,34 @@ export type MockedFront = {
 };
 
 export function useMockedFront({ before, after, beforeEach, afterEach }: NodeTestHooks): MockedFront {
-  const bffElearning = new ContractMockServer('BFF_ELEARNING', OpenApiContract.load(path.join(__dirname, '..', '..', 'contracts', 'openapi.json')));
-  const userBff = new ContractMockServer('USER_BFF', loadOrvalContract('@mairie360/bff-user-openapi'));
+  const bffElearning = new ContractMockServer('BFF_ELEARNING', loadOrvalContract(PUBLISHED_CONTRACT_PACKAGE));
   const offline: string[] = [];
-  const runtime = new FrontRuntime(() => [bffElearning.url, userBff.url, ...offline].map((url) => new URL(url).origin));
+  const runtime = new FrontRuntime(() => [bffElearning.url, ...offline].map((url) => new URL(url).origin));
   const elearningOperations = new Set<string>();
   let fakeWindow: FakeWindow | undefined;
 
   before(async () => {
-    await Promise.all([bffElearning.start(), userBff.start()]);
+    await bffElearning.start();
     runtime.install();
   });
   after(async () => {
     runtime.restore();
-    await Promise.all([bffElearning.stop(), userBff.stop()]);
+    await bffElearning.stop();
   });
   beforeEach(() => {
     bffElearning.reset();
-    userBff.reset();
     runtime.reset();
     offline.length = 0;
-    // Relues à chaque requête par src/lib/bff-proxy.ts et src/lib/user-bff-proxy.ts.
+    // Relue à chaque requête par src/lib/bff-proxy.ts.
     process.env.BFF_ELEARNING_BASE_URL = bffElearning.url;
-    process.env.USER_BFF_URL = userBff.url;
     runtime.accessToken = accessToken();
     fakeWindow = installWindow();
   });
   afterEach(() => {
     bffElearning.requests.forEach((request) => elearningOperations.add(`${request.method} ${request.template}`));
     removeWindow();
-    assert.deepEqual([...bffElearning.violations, ...userBff.violations, ...runtime.violations], []);
+    assert.deepEqual([...bffElearning.violations, ...runtime.violations], []);
   });
 
-  return { bffElearning, userBff, runtime, window: () => fakeWindow!, offline, elearningOperations };
+  return { bffElearning, runtime, window: () => fakeWindow!, offline, elearningOperations };
 }

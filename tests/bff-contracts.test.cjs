@@ -3,16 +3,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { describe, test } = require('node:test');
 const { root } = require('./support/load-typescript.cjs');
-const { OpenApiContract } = require('./support/openapi-contract.ts');
 const { loadOrvalContract, resolveOrvalPackage } = require('./support/orval-contract.ts');
+const { PUBLISHED_CONTRACT_PACKAGE, contractSnapshot } = require('./support/mocked-front.ts');
 const fixtures = require('./support/elearning-fixtures.ts');
 
-// Contrats consommés par le front : contracts/openapi.json (copie de BFF_Elearning, seule allowlist du proxy)
-// et le paquet @mairie360/bff-user-openapi installé pour les adaptateurs de session src/app/api/**.
-// Les opérations réellement appelées sont relues dans le code source pour ne pas diverger de ces listes.
+// Le front ne consomme qu'un BFF : BFF_Elearning, dans une version publiée X.Y.Z.
+// - Le paquet @mairie360/bff-elearning-openapi (version épinglée) pilote le mock des tests ;
+// - contracts/openapi.json, allowlist du proxy et source de src/contracts/bff.d.ts, doit déclarer les mêmes opérations.
+// Les opérations appelées sont relues dans src/lib/elearning-api.ts pour ne pas diverger de la liste ci-dessous.
 
-const elearning = OpenApiContract.load(path.join(root, 'contracts', 'openapi.json'));
-const userBff = loadOrvalContract('@mairie360/bff-user-openapi');
+const published = loadOrvalContract(PUBLISHED_CONTRACT_PACKAGE);
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
 /** Opérations BFF E-learning appelées par le navigateur, toutes via src/lib/elearning-api.ts. */
@@ -27,20 +27,10 @@ const ELEARNING_OPERATIONS = [
   'DELETE /elearning/admin/courses/{courseId}',
 ];
 
-/** Adaptateurs same-origin vers BFF User : route du front -> opération du contrat bff_user. */
-const USER_BFF_ADAPTERS = {
-  'GET /api/user/me': 'GET /me',
-  'GET /api/auth/me': 'GET /me',
-  'GET /api/auth/session': 'GET /session/me',
-  'POST /api/auth/logout': 'POST /auth/logout',
-};
+const operations = (contract) => Object.entries(contract.document.paths)
+  .flatMap(([template, methods]) => Object.keys(methods).map((method) => `${method.toUpperCase()} ${template}`)).sort();
 
-function declared(contract, operation) {
-  const [method, template] = operation.split(' ');
-  return Boolean(contract.document.paths[template]?.[method.toLowerCase()]);
-}
-
-function schemaFor(contract, method, pathname, status) {
+function successSchema(contract, method, pathname, status) {
   const match = contract.match(method, pathname);
   assert.ok(match, `${method} ${pathname} absent de ${contract.title}`);
   const { documented, schema } = contract.responseSchema(match, status);
@@ -48,66 +38,79 @@ function schemaFor(contract, method, pathname, status) {
   return schema;
 }
 
-const valid = (contract, method, pathname, status, body) => assert.deepEqual(contract.validate(schemaFor(contract, method, pathname, status), JSON.parse(JSON.stringify(body))), []);
+/** Valide contre le paquet publié et contre la copie versionnée. */
+function valid(method, pathname, status, body) {
+  const json = JSON.parse(JSON.stringify(body));
+  for (const contract of [published, contractSnapshot]) {
+    assert.deepEqual(contract.validate(successSchema(contract, method, pathname, status), json), [], contract === published ? 'paquet publié' : 'contracts/openapi.json');
+  }
+}
 
-describe('contracts consumed by the front', () => {
-  test('contracts/openapi.json is the BFF_Elearning contract and declares every operation the front calls', () => {
-    assert.equal(elearning.title, 'bff_elearning');
-    assert.deepEqual(ELEARNING_OPERATIONS.filter((operation) => !declared(elearning, operation)), []);
+describe('single published BFF contract', () => {
+  test('the contract package is a published X.Y.Z release of bff_elearning pinned in package.json', () => {
+    const { dependencies = {}, devDependencies = {} } = JSON.parse(read('package.json'));
+    const pinned = devDependencies[PUBLISHED_CONTRACT_PACKAGE];
+    assert.match(pinned, /^\d+\.\d+\.\d+$/);
+    assert.equal(resolveOrvalPackage(PUBLISHED_CONTRACT_PACKAGE).version, pinned);
+    assert.equal(published.title, 'bff_elearning');
+    assert.equal(dependencies[PUBLISHED_CONTRACT_PACKAGE], undefined);
+    assert.deepEqual(Object.keys({ ...dependencies, ...devDependencies }).filter((name) => /^@mairie360\/bff-.*-openapi$/.test(name)), [PUBLISHED_CONTRACT_PACKAGE]);
   });
 
-  test('src/lib/elearning-api.ts calls exactly the declared BFF E-learning operations', () => {
+  test('every docker-compose file runs the BFF image of the same published release', () => {
+    const version = resolveOrvalPackage(PUBLISHED_CONTRACT_PACKAGE).version;
+    const files = fs.readdirSync(root).filter((file) => /^docker-compose.*\.ya?ml$/.test(file));
+    assert.ok(files.length > 0);
+    for (const file of files) {
+      const tags = [...read(file).matchAll(/ghcr\.io\/mairie360\/bff-elearning:([^\s}"']+)/g)].map(([, tag]) => tag);
+      assert.ok(tags.length > 0, `${file} : image bff-elearning absente`);
+      assert.deepEqual([...new Set(tags)], [version], file);
+      assert.doesNotMatch(read(file), /ghcr\.io\/mairie360\/bff-(?!elearning:)[\w-]+:(?!\d+\.\d+\.\d+)/, `${file} : image BFF non publiée`);
+    }
+  });
+
+  test('contracts/openapi.json declares exactly the operations of the published package', () => {
+    assert.equal(contractSnapshot.title, 'bff_elearning');
+    assert.deepEqual(operations(contractSnapshot), operations(published));
+  });
+
+  test('src/lib/elearning-api.ts calls exactly the consumed operations, all declared by the contract', () => {
     const calls = [...read('src/lib/elearning-api.ts').matchAll(/callBff\("(\w+)", "([^"]+)"/g)]
       .map(([, method, template]) => `${method.toUpperCase()} ${template}`);
     assert.deepEqual([...new Set(calls)].sort(), [...ELEARNING_OPERATIONS].sort());
+    assert.deepEqual(ELEARNING_OPERATIONS.filter((operation) => !operations(published).includes(operation)), []);
   });
 
-  test('@mairie360/bff-user-openapi is bff_user at the version pinned in package.json', () => {
-    const { devDependencies } = JSON.parse(read('package.json'));
-    assert.equal(userBff.title, 'bff_user');
-    assert.equal(resolveOrvalPackage('@mairie360/bff-user-openapi').version, devDependencies['@mairie360/bff-user-openapi']);
-  });
-
-  test('every src/app/api route handler forwards to a BFF User operation of the contract', () => {
-    const found = {};
+  test('the catch-all proxy is the only route handler: no adapter towards another BFF', () => {
+    const routes = [];
     const walk = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).forEach((entry) => {
       const file = path.join(dir, entry.name);
-      if (entry.isDirectory()) return walk(file);
-      const source = read(file);
-      const route = `/${path.dirname(file).split(path.sep).slice(2).join('/')}`;
-      for (const [, method, target] of source.matchAll(/export function (\w+)\(request: NextRequest\) \{\s*return userBffRequest\(request, '([^']+)'\);/g)) {
-        found[`${method} ${route}`] = `${method} ${target}`;
-      }
-      assert.equal((source.match(/export function/g) ?? []).length, Object.keys(found).filter((key) => key.endsWith(` ${route}`)).length, `${file} : handler non reconnu`);
+      if (entry.isDirectory()) walk(file);
+      else if (/^route\.(ts|js)$/.test(entry.name)) routes.push(file.split(path.sep).join('/'));
     });
-    walk('src/app/api');
-    assert.deepEqual(found, USER_BFF_ADAPTERS);
-    assert.deepEqual(Object.values(found).filter((operation) => !declared(userBff, operation)), []);
+    walk('src/app');
+    assert.deepEqual(routes, ['src/app/[...path]/route.ts']);
   });
 });
 
-describe('fixtures conform to the contracts', () => {
+describe('fixtures conform to the published contract', () => {
   test('BFF E-learning success responses', () => {
-    valid(elearning, 'get', '/elearning/catalog', 200, fixtures.catalogResponse());
-    valid(elearning, 'get', '/elearning/catalog', 200, fixtures.catalogResponse([], fixtures.currentUser({ isAdmin: true, role: 'Admin' })));
-    valid(elearning, 'get', '/elearning/profile', 200, fixtures.profileResponse());
-    valid(elearning, 'post', '/elearning/courses/c/start', 200, { course: fixtures.course('c', { statusValue: 'in-progress', progress: 10 }) });
-    valid(elearning, 'post', '/elearning/courses/c/contents/x/complete', 200, fixtures.contentCompleteResponse());
-    valid(elearning, 'post', '/elearning/courses/c/rating', 200, fixtures.ratingResponse());
-    valid(elearning, 'post', '/elearning/admin/courses', 201, { course: fixtures.course('nouveau') });
-    valid(elearning, 'patch', '/elearning/admin/courses/c', 200, { course: fixtures.course('c') });
-    valid(elearning, 'delete', '/elearning/admin/courses/c', 200, { deleted: true, courseId: 'c' });
+    valid('get', '/elearning/catalog', 200, fixtures.catalogResponse());
+    valid('get', '/elearning/catalog', 200, fixtures.catalogResponse([], fixtures.currentUser({ isAdmin: true, role: 'Admin' })));
+    valid('get', '/elearning/profile', 200, fixtures.profileResponse());
+    valid('post', '/elearning/courses/c/start', 200, { course: fixtures.course('c', { statusValue: 'in-progress', progress: 10 }) });
+    valid('post', '/elearning/courses/c/contents/x/complete', 200, fixtures.contentCompleteResponse());
+    valid('post', '/elearning/courses/c/rating', 200, fixtures.ratingResponse());
+    valid('post', '/elearning/admin/courses', 201, { course: fixtures.course('nouveau') });
+    valid('patch', '/elearning/admin/courses/c', 200, { course: fixtures.course('c') });
+    valid('delete', '/elearning/admin/courses/c', 200, { deleted: true, courseId: 'c' });
   });
 
-  test('BFF E-learning errors use the common ApiError format', () => {
-    for (const status of [400, 401, 500, 502]) valid(elearning, 'get', '/elearning/catalog', status, fixtures.apiError('ERROR', 'Erreur'));
-    valid(elearning, 'post', '/elearning/admin/courses', 409, fixtures.apiError('COURSE_ALREADY_EXISTS', 'Formation existante'));
-  });
-
-  test('BFF User session and logout responses', () => {
-    valid(userBff, 'get', '/me', 200, fixtures.sessionResponse());
-    valid(userBff, 'get', '/session/me', 200, fixtures.sessionResponse({ role: 'Admin', phone: null }, []));
-    valid(userBff, 'post', '/auth/logout', 200, { message: 'Déconnecté' });
+  test('errors use the ApiError schema; orval only types success statuses', () => {
+    for (const contract of [published, contractSnapshot]) {
+      assert.deepEqual(contract.validate(contract.schema('ApiError'), fixtures.apiError('COURSE_NOT_FOUND', 'Formation introuvable.')), []);
+    }
+    assert.equal(published.responseSchema(published.match('get', '/elearning/catalog'), 401).documented, false);
   });
 });
 
@@ -115,15 +118,15 @@ describe('contract validator', () => {
   test('reports wrong types, missing properties and enum violations', () => {
     const invalid = fixtures.catalogResponse([fixtures.course('c', { statusValue: 'paused', progress: 150 })]);
     delete invalid.catalog.emptyLabel;
-    const errors = elearning.validate(schemaFor(elearning, 'get', '/elearning/catalog', 200), invalid);
+    const errors = contractSnapshot.validate(successSchema(contractSnapshot, 'get', '/elearning/catalog', 200), invalid);
     assert.ok(errors.some((error) => error.includes('$.catalog.emptyLabel: propriété requise manquante')), errors.join('\n'));
     assert.ok(errors.some((error) => error.includes('statusValue: valeur "paused" hors enum')), errors.join('\n'));
     assert.ok(errors.some((error) => error.includes('progress: 150 > maximum 100')), errors.join('\n'));
   });
 
-  test('rejects operations absent from the contracts', () => {
-    assert.match(elearning.validateRequest('PUT', new URL('http://bff/elearning/catalog')).errors[0], /n'existe pas dans le contrat bff_elearning/);
-    assert.equal(elearning.match('get', '/elearning/admin/courses'), undefined);
-    assert.equal(userBff.match('get', '/elearning/catalog'), undefined);
+  test('rejects operations absent from the contract', () => {
+    assert.match(published.validateRequest('PUT', new URL('http://bff/elearning/catalog')).errors[0], /n'existe pas dans le contrat bff_elearning/);
+    assert.equal(published.match('get', '/elearning/admin/courses'), undefined);
+    assert.equal(published.match('post', '/auth/logout'), undefined);
   });
 });

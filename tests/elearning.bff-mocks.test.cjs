@@ -3,17 +3,20 @@ const { after, afterEach, before, beforeEach, describe, test } = require('node:t
 require('./support/load-typescript.cjs');
 const { unreachableUrl } = require('./support/contract-mock-server.ts');
 const f = require('./support/elearning-fixtures.ts');
-const { useMockedFront } = require('./support/mocked-front.ts');
+const { errorReply, useMockedFront } = require('./support/mocked-front.ts');
 const { createCatalogActions, replaceCatalogCourse, toContractCourse } = require('../src/features/elearning/catalogActions.ts');
 const { loadProfile } = require('../src/features/elearning/profileActions.ts');
 const { contractUrl } = require('../src/lib/elearning-api.ts');
+const { LOGOUT_PATH, logout } = require('../src/lib/auth-session.ts');
+const { clearStoredAuthJwtToken, formatBearerToken, getStoredAuthJwtToken, storeAuthJwtToken } = require('../src/lib/auth-token.ts');
 
 // Les actions du catalogue et du profil (celles branchées par ElearningModule.tsx / ProfileModule.tsx) sont
 // exécutées de bout en bout : fetch navigateur -> middleware -> src/app/[...path]/route.ts -> proxy -> BFF E-learning
-// simulé. Le mock refuse toute requête absente de contracts/openapi.json et valide ses propres réponses.
+// simulé depuis le paquet publié @mairie360/bff-elearning-openapi. C'est le seul service que le front peut joindre :
+// le mock refuse toute requête absente du contrat et valide ses réponses de succès ; les erreurs passent par errorReply.
 
 const front = useMockedFront({ before, after, beforeEach, afterEach });
-const { bffElearning, userBff, runtime } = front;
+const { bffElearning, runtime } = front;
 
 const CONSUMED = [
   'GET /elearning/catalog',
@@ -152,7 +155,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
   });
 
   test('a documented BFF error is shown as mutation error and the catalogue is not reloaded', async () => {
-    bffElearning.on('post', '/elearning/admin/courses', { status: 409, body: f.apiError('COURSE_ALREADY_EXISTS', 'Une formation porte déjà cet identifiant.') });
+    bffElearning.on('post', '/elearning/admin/courses', errorReply(409, 'COURSE_ALREADY_EXISTS', 'Une formation porte déjà cet identifiant.'));
     const { state, actions } = catalogState();
 
     await actions.createCourse(f.course('doublon'));
@@ -162,9 +165,9 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
   });
 
   for (const [label, reply, expected] of [
-    ['a 500 ApiError', { status: 500, body: f.apiError('INTERNAL_ERROR', 'Erreur interne du BFF.') }, 'Erreur interne du BFF.'],
-    ['a 502 ApiError', { status: 502, body: f.apiError('USER_SERVICE_UNAVAILABLE', 'Le service utilisateur est indisponible.') }, 'Le service utilisateur est indisponible.'],
-    ['a non-JSON 500 body', { status: 500, raw: 'upstream crashed', contentType: 'text/plain' }, 'Le service e-learning a répondu avec le statut 500.'],
+    ['a 500 ApiError', errorReply(500, 'INTERNAL_ERROR', 'Erreur interne du BFF.'), 'Erreur interne du BFF.'],
+    ['a 502 ApiError', errorReply(502, 'USER_SERVICE_UNAVAILABLE', 'Le service utilisateur est indisponible.'), 'Le service utilisateur est indisponible.'],
+    ['a non-JSON 500 body', { status: 500, raw: 'upstream crashed', contentType: 'text/plain', outOfContract: true }, 'Le service e-learning a répondu avec le statut 500.'],
     ['a dropped connection', { dropConnection: true }, 'Le service est indisponible.'],
   ]) {
     test(`loadCatalog reports ${label}`, async () => {
@@ -192,9 +195,8 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.equal(bffElearning.requests.length, 0);
   });
 
-  test('a 401 from the BFF logs out through BFF User and reloads the page', async () => {
-    bffElearning.on('get', '/elearning/catalog', { status: 401, body: f.apiError('UNAUTHORIZED', 'Session expirée ou invalide.') });
-    userBff.on('post', '/auth/logout', { body: { message: 'Déconnecté' }, headers: { 'Set-Cookie': 'accessToken=; Max-Age=0; Path=/; HttpOnly' } });
+  test('a 401 from the BFF logs out without calling any other service', async () => {
+    bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée ou invalide.'));
     front.window().localStorage.setItem('mairie360.auth.jwt', 'expired-jwt');
     const { state, actions } = catalogState();
 
@@ -203,22 +205,19 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.equal(state.error, null);
     assert.deepEqual(runtime.frontCalls.map(({ method, pathname, route, status }) => [method, pathname, route, status]), [
       ['GET', '/elearning/catalog', 'src/app/[...path]/route.ts', 401],
-      ['POST', '/api/auth/logout', 'src/app/api/auth/logout/route.ts', 200],
     ]);
-    assert.equal(userBff.calls('/auth/logout', 'post')[0].headers.authorization, `Bearer ${runtime.accessToken}`);
     assert.equal(front.window().localStorage.length, 0);
-    assert.equal(front.window().location.reloads, 1);
+    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
   });
 
   test('a 401 on a mutation also logs out instead of showing an error', async () => {
-    bffElearning.on('post', '/elearning/courses/{courseId}/rating', { status: 401, body: f.apiError('UNAUTHORIZED', 'Session expirée ou invalide.') });
-    userBff.on('post', '/auth/logout', { body: { message: 'Déconnecté' } });
+    bffElearning.on('post', '/elearning/courses/{courseId}/rating', errorReply(401, 'UNAUTHORIZED', 'Session expirée ou invalide.'));
     const { state, actions } = catalogState();
 
     await actions.rateCourse('rgpd-collectivites', 5);
 
     assert.equal(state.mutationError, null);
-    assert.equal(front.window().location.reloads, 1);
+    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
     assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/rating']);
   });
 
@@ -263,7 +262,7 @@ describe('profile loading against the contract-driven BFF E-learning', () => {
   });
 
   test('shows the BFF error message', async () => {
-    bffElearning.on('get', '/elearning/profile', { status: 502, body: f.apiError('USER_SERVICE_UNAVAILABLE', 'Le service utilisateur est indisponible.') });
+    bffElearning.on('get', '/elearning/profile', errorReply(502, 'USER_SERVICE_UNAVAILABLE', 'Le service utilisateur est indisponible.'));
     const { state, view } = profileState();
 
     await loadProfile(view, new AbortController().signal);
@@ -272,14 +271,13 @@ describe('profile loading against the contract-driven BFF E-learning', () => {
   });
 
   test('logs out on 401', async () => {
-    bffElearning.on('get', '/elearning/profile', { status: 401, body: f.apiError('UNAUTHORIZED', 'Session expirée ou invalide.') });
-    userBff.on('post', '/auth/logout', { body: { message: 'Déconnecté' } });
+    bffElearning.on('get', '/elearning/profile', errorReply(401, 'UNAUTHORIZED', 'Session expirée ou invalide.'));
     const { state, view } = profileState();
 
     await loadProfile(view, new AbortController().signal);
 
     assert.equal(state.error, undefined);
-    assert.equal(front.window().location.reloads, 1);
+    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
   });
 
   test('an aborted load neither calls the network nor updates the view', async () => {
@@ -329,5 +327,49 @@ describe('contract helpers', () => {
     await actions.startCourse('rgpd-collectivites');
 
     assert.equal(mutationError, 'Une erreur inattendue est survenue.');
+  });
+});
+
+describe('logout and stored session without another BFF', () => {
+  test('logout clears local storage, then /logout clears the cookie and redirects to Login', async () => {
+    storeAuthJwtToken(' session-jwt ');
+    assert.equal(front.window().localStorage.getItem('mairie360.auth.jwt'), 'session-jwt');
+
+    await logout();
+
+    assert.equal(front.window().localStorage.length, 0);
+    assert.deepEqual(front.window().location.assigned, ['/logout']);
+    const navigation = runtime.navigate(LOGOUT_PATH);
+    assert.equal(navigation.status, 307);
+    assert.match(navigation.location, /^http:\/\/localhost:5000\//);
+    assert.match(navigation.setCookie, /accessToken=;/);
+    assert.equal(runtime.frontCalls.length, 0);
+    assert.equal(bffElearning.requests.length, 0);
+  });
+
+  test('logout still navigates when storage is denied', async () => {
+    front.window().localStorage.clear = () => { throw new Error('refusé'); };
+
+    await logout();
+
+    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+  });
+
+  test('stored JWT helpers migrate the legacy key and tolerate a missing window', () => {
+    front.window().localStorage.setItem('mairie360.projects.jwt', 'legacy-jwt');
+    assert.equal(getStoredAuthJwtToken(), 'legacy-jwt');
+    assert.equal(front.window().localStorage.getItem('mairie360.auth.jwt'), 'legacy-jwt');
+    storeAuthJwtToken('   ');
+    assert.equal(front.window().localStorage.getItem('mairie360.auth.jwt'), null);
+    clearStoredAuthJwtToken();
+    assert.equal(front.window().localStorage.length, 0);
+    assert.equal(formatBearerToken('Bearer abc'), 'Bearer abc');
+
+    front.window().localStorage.getItem = () => { throw new Error('refusé'); };
+    assert.equal(getStoredAuthJwtToken(), null);
+
+    delete globalThis.window;
+    assert.equal(getStoredAuthJwtToken(), null);
+    assert.doesNotThrow(() => { storeAuthJwtToken('jwt'); clearStoredAuthJwtToken(); });
   });
 });
