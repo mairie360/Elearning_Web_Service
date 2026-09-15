@@ -157,7 +157,7 @@ services:
   bff-elearning:
     profiles: ["legacy-stack"]
     container_name: bff-elearning-elearning-front
-    image: ghcr.io/mairie360/bff-elearning:dev-latest
+    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:0.3.0}
     ports:
       - "4006:4006"
     networks:
@@ -197,7 +197,6 @@ services:
       <<: *common-env
       PORT: 3000
       BFF_ELEARNING_BASE_URL: ${BFF_ELEARNING_BASE_URL:-http://host.docker.internal:4006}
-      USER_BFF_URL: ${USER_BFF_URL:-http://host.docker.internal:4000}
       # Force React/Vite à surveiller les fichiers correctement dans Docker
       WATCHPACK_POLLING: "true" 
       CHOKIDAR_USEPOLLING: "true"
