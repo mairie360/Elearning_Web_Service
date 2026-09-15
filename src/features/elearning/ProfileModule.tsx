@@ -3,7 +3,7 @@
 import { UserProfilePage } from "@mairie360/lib-components";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { logoutAndReload } from "@/lib/auth-session";
+import { logout } from "@/lib/auth-session";
 import type { ElearningProfileResponse } from "@/lib/elearning-api";
 import { navigateToPage, profilePath, sidebarItems } from "./appData";
 import { loadProfile } from "./profileActions";
@@ -32,7 +32,7 @@ export function ProfileModule() {
       user={profile?.user ?? { name: "" }}
       headerProps={{
         onPageChange: handlePageChange,
-        onLogout: () => void logoutAndReload(),
+        onLogout: () => void logout(),
         profileHref: profilePath,
       }}
       sidebarProps={{

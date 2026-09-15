@@ -1,4 +1,4 @@
-import { logoutAndReload } from "../../lib/auth-session";
+import { logout } from "../../lib/auth-session";
 import { BffRequestError } from "../../lib/bff-client";
 import {
   completeCourseContent,
@@ -66,7 +66,7 @@ export function replaceCatalogCourse(
 
 export function createCatalogActions(
   view: CatalogView,
-  onUnauthorized: () => Promise<void> = logoutAndReload,
+  onUnauthorized: () => Promise<void> = logout,
 ) {
   async function handleFailure(error: unknown, report: (message: string) => void) {
     if (error instanceof BffRequestError && error.status === 401) {

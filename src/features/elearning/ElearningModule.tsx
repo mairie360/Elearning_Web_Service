@@ -9,7 +9,7 @@ import {
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { logoutAndReload } from "@/lib/auth-session";
+import { logout } from "@/lib/auth-session";
 import type { ElearningCatalogResponse } from "@/lib/elearning-api";
 import { navigateToPage, profilePath, sidebarItems } from "./appData";
 import { createCatalogActions } from "./catalogActions";
@@ -107,7 +107,7 @@ export function ElearningModule() {
           profileHref={profilePath}
           setSidebarOpen={setSidebarOpen}
           onPageChange={handlePageChange}
-          onLogout={() => void logoutAndReload()}
+          onLogout={() => void logout()}
         />
 
         <main className="min-h-0 flex-1 overflow-y-auto bg-[#f4f2ef]">

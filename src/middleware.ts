@@ -6,6 +6,7 @@ import {
 } from "./lib/content-security-policy";
 
 const ACCESS_TOKEN_COOKIE = "accessToken";
+const LOGOUT_PATH = "/logout";
 const DEFAULT_LOGIN_FRONT_URL = "http://localhost:5000/";
 
 type JwtPayload = {
@@ -55,7 +56,8 @@ function redirectToLogin(request: NextRequest) {
 export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
 
-  if (!accessToken || isExpiredJwt(accessToken)) {
+  // Déconnexion (src/lib/auth-session.ts) : BFF_Elearning 0.3.0 n'expose pas de route de logout.
+  if (request.nextUrl.pathname === LOGOUT_PATH || !accessToken || isExpiredJwt(accessToken)) {
     return redirectToLogin(request);
   }
 
