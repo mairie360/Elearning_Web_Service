@@ -1,12 +1,8 @@
 const assert = require('node:assert/strict');
 const { test, afterEach } = require('node:test');
-const fs = require('node:fs');
-const ts = require('typescript');
 const { NextRequest } = require('next/server');
-const originalLoader = require.extensions['.ts'];
-require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true, resolveJsonModule: true } }).outputText, filename);
+require('./support/load-typescript.cjs');
 const { proxyBffRequest, forwardToBff } = require('../src/lib/bff-proxy.ts');
-require.extensions['.ts'] = originalLoader;
 const originalFetch = global.fetch;
 afterEach(() => { global.fetch = originalFetch; });
 

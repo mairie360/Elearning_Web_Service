@@ -87,15 +87,15 @@ These data paths are exposed at the same origin through the proxy; Next.js pages
 | --- | --- | --- | --- |
 | GET | `/health` | — | 200 |
 | GET | `/check_apis` | — | 200, 502 |
-| POST | `/elearning/admin/courses` | application/json | 201, 400, 401, 403, 409 |
-| PATCH | `/elearning/admin/courses/{courseId}` | application/json | 200, 400, 401, 403, 404 |
-| DELETE | `/elearning/admin/courses/{courseId}` | — | 200, 401, 403, 404 |
-| GET | `/elearning/catalog` | — | 200, 400, 500 |
-| POST | `/elearning/courses/{courseId}/contents/{contentId}/complete` | application/json | 200, 400, 404, 422, 500 |
-| GET | `/elearning/profile` | — | 200, 500 |
-| PATCH | `/elearning/profile` | application/json | 200, 400, 500 |
-| POST | `/elearning/courses/{courseId}/rating` | application/json | 200, 400, 404, 500 |
-| POST | `/elearning/courses/{courseId}/start` | application/json | 200, 400, 404, 422, 500 |
+| POST | `/elearning/admin/courses` | application/json | 201, 400, 401, 403, 409, 500, 502 |
+| PATCH | `/elearning/admin/courses/{courseId}` | application/json | 200, 400, 401, 403, 404, 500, 502 |
+| DELETE | `/elearning/admin/courses/{courseId}` | — | 200, 401, 403, 404, 500, 502 |
+| GET | `/elearning/catalog` | — | 200, 400, 401, 500, 502 |
+| POST | `/elearning/courses/{courseId}/contents/{contentId}/complete` | application/json | 200, 400, 401, 404, 422, 500, 502 |
+| GET | `/elearning/profile` | — | 200, 401, 500, 502 |
+| PATCH | `/elearning/profile` | application/json | 200, 400, 401, 500, 502 |
+| POST | `/elearning/courses/{courseId}/rating` | application/json | 200, 400, 401, 404, 500, 502 |
+| POST | `/elearning/courses/{courseId}/start` | application/json | 200, 400, 401, 404, 422, 500, 502 |
 
 ### Pages and local adapters
 
@@ -131,7 +131,17 @@ npm run lint
 npm run build
 ```
 
-`contracts:sync` copies the BFF contract and regenerates `src/contracts/bff.d.ts`. `contracts:check` also compares a neighboring BFF when present; in an isolated checkout, it checks types against the local committed snapshot. `test:contracts` runs the Node proxy tests.
+`contracts:sync` copies the BFF contract and regenerates `src/contracts/bff.d.ts`. `contracts:check` also compares a neighboring BFF when present; in an isolated checkout, it checks types against the local committed snapshot. `test:contracts` runs every Node test (`npm test` does the same with coverage, 60% minimum on lines, branches and functions).
+
+### Contract-driven unit tests
+
+The browser reaches BFF E-learning only through [src/lib/elearning-api.ts](../../src/lib/elearning-api.ts): paths, methods, parameters, bodies and responses are typed from `src/contracts/bff.d.ts`, so an operation missing from the contract does not compile. Catalogue and profile logic lives in `src/features/elearning/catalogActions.ts` and `profileActions.ts`, which the React components only wire to their state.
+
+- `tests/network-boundary.test.cjs` scans `src/` (TypeScript AST): `fetch` is only allowed in `bff-client.ts` (paths built by `elearning-api.ts`), `auth-session.ts` (`/api/*` session adapters) and `bff-proxy.ts`; no other HTTP client or network API.
+- `tests/elearning.bff-mocks.test.cjs` and `tests/session.bff-mocks.test.cjs` run the real code end to end: browser `fetch` → real middleware → route handler picked like the App Router → proxy → mock BFFs served over HTTP. The BFF E-learning mock is driven by `contracts/openapi.json` and the BFF User mock by the installed `@mairie360/bff-user-openapi` package; each rejects paths, methods, parameters and bodies missing from its contract and validates its mocked responses. Any call from the browser to another origin, or from the server to a non-mocked service, fails the test, and every consumed operation must be exercised.
+- `tests/bff-contracts.test.cjs` checks that the consumed operations exist in both contracts (read back from `elearning-api.ts` and `src/app/api/**`), the pinned package version and the fixtures.
+
+The shared helpers `tests/support/openapi-contract.ts`, `contract-mock-server.ts` and `orval-contract.ts` are copied verbatim from the BFFs (`BFFs/BFF_Elearning/tests/support`); keep the copies identical.
 
 The type generator is pinned to `openapi-typescript@7.10.1` in `scripts/contracts.mjs` and runs through npm. For documentation-only changes, check links, accuracy in both languages and `git diff --check`; do not regenerate contracts without changing their source.
 
@@ -161,6 +171,13 @@ For a proxy error, compare the path and method with the inventory, then check th
 - [src/lib/bff-proxy.ts](../../src/lib/bff-proxy.ts)
 - [src/app/[...path]/route.ts](../../src/app/%5B...path%5D/route.ts)
 - [src/lib/user-bff-proxy.ts](../../src/lib/user-bff-proxy.ts)
+- [src/lib/elearning-api.ts](../../src/lib/elearning-api.ts)
+- [src/features/elearning/catalogActions.ts](../../src/features/elearning/catalogActions.ts)
+- [src/features/elearning/profileActions.ts](../../src/features/elearning/profileActions.ts)
+- [tests/elearning.bff-mocks.test.cjs](../../tests/elearning.bff-mocks.test.cjs)
+- [tests/session.bff-mocks.test.cjs](../../tests/session.bff-mocks.test.cjs)
+- [tests/network-boundary.test.cjs](../../tests/network-boundary.test.cjs)
+- [tests/bff-contracts.test.cjs](../../tests/bff-contracts.test.cjs)
 - [contracts/openapi.json](../../contracts/openapi.json)
 - [src/contracts/bff.d.ts](../../src/contracts/bff.d.ts)
 - [scripts/contracts.mjs](../../scripts/contracts.mjs)
