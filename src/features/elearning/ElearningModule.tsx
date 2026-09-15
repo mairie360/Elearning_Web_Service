@@ -1,7 +1,5 @@
 "use client";
 
-import type { components } from "@/contracts/bff";
-
 import {
   ElearningCatalog,
   Footer,
@@ -10,10 +8,11 @@ import {
 } from "@mairie360/lib-components";
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
-import { useCallback, useEffect, useState } from "react";
-import { logoutAndReload } from "@/lib/auth-session";
-import { BffRequestError, requestBff } from "@/lib/bff-client";
+import { useEffect, useMemo, useState } from "react";
+import { logout } from "@/lib/auth-session";
+import type { ElearningCatalogResponse } from "@/lib/elearning-api";
 import { navigateToPage, profilePath, sidebarItems } from "./appData";
+import { createCatalogActions } from "./catalogActions";
 
 type CatalogProps = ComponentProps<typeof ElearningCatalog>;
 type CatalogCourse = CatalogProps["courses"][number];
@@ -21,167 +20,46 @@ type ContentCompletePayload = Parameters<
   NonNullable<CatalogProps["onCourseContentComplete"]>
 >[1];
 
-type CatalogResponse = components["schemas"]["ElearningCatalogResponse"];
-
-type CourseActionResponse = components["schemas"]["CourseActionResponse"];
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof BffRequestError) return error.message;
-  return "Une erreur inattendue est survenue.";
-}
-
 export function ElearningModule() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [catalogResponse, setCatalogResponse] =
-    useState<CatalogResponse | null>(null);
+    useState<ElearningCatalogResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const loadCatalog = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await requestBff<CatalogResponse>(
-        "/elearning/catalog",
-        { cache: "no-store" },
-      );
-      setCatalogResponse(response);
-    } catch (requestError) {
-      if (requestError instanceof BffRequestError && requestError.status === 401) {
-        await logoutAndReload();
-        return;
-      }
-
-      setError(getErrorMessage(requestError));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const actions = useMemo(
+    () =>
+      createCatalogActions({
+        setCatalogResponse,
+        setLoading,
+        setError,
+        setMutationError,
+      }),
+    [],
+  );
 
   useEffect(() => {
-    void loadCatalog();
-  }, [loadCatalog]);
+    void actions.loadCatalog();
+  }, [actions]);
 
   const handlePageChange = (page: string) => {
     navigateToPage(page, router.push);
     setSidebarOpen(false);
   };
 
-  const runCourseMutation = useCallback(
-    async (path: string, body?: unknown) => {
-      setMutationError(null);
-
-      try {
-        await requestBff(path, {
-          method: "POST",
-          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-        });
-        await loadCatalog();
-      } catch (requestError) {
-        if (
-          requestError instanceof BffRequestError &&
-          requestError.status === 401
-        ) {
-          await logoutAndReload();
-          return;
-        }
-
-        setMutationError(getErrorMessage(requestError));
-      }
-    },
-    [loadCatalog],
-  );
-
-  const runAdminCourseMutation = useCallback(
-    async (method: "POST" | "PATCH" | "DELETE", path: string, body?: unknown) => {
-      setMutationError(null);
-
-      try {
-        await requestBff(path, {
-          method,
-          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-        });
-        await loadCatalog();
-      } catch (requestError) {
-        if (
-          requestError instanceof BffRequestError &&
-          requestError.status === 401
-        ) {
-          await logoutAndReload();
-          return;
-        }
-
-        setMutationError(getErrorMessage(requestError));
-      }
-    },
-    [loadCatalog],
-  );
-
-  const handleCourseAction = useCallback(
-    async (course: CatalogCourse) => {
-      setMutationError(null);
-
-      try {
-        const response = await requestBff<CourseActionResponse>(
-          `/elearning/courses/${encodeURIComponent(course.id)}/start`,
-          { method: "POST", body: JSON.stringify({}) },
-        );
-
-        setCatalogResponse((current) =>
-          current
-            ? {
-                ...current,
-                catalog: {
-                  ...current.catalog,
-                  courses: current.catalog.courses.map((currentCourse) =>
-                    currentCourse.id === response.course.id
-                      ? response.course
-                      : currentCourse,
-                  ),
-                },
-              }
-            : current,
-        );
-      } catch (requestError) {
-        if (
-          requestError instanceof BffRequestError &&
-          requestError.status === 401
-        ) {
-          await logoutAndReload();
-          return;
-        }
-
-        setMutationError(getErrorMessage(requestError));
-      }
-    },
-    [],
-  );
-
-  const handleContentComplete = useCallback(
-    (course: CatalogCourse, payload: ContentCompletePayload) => {
-      void runCourseMutation(
-        `/elearning/courses/${encodeURIComponent(course.id)}/contents/${encodeURIComponent(payload.content.id)}/complete`,
-        {
-          chapterId: payload.chapter.id,
-          completed: payload.content.completed ?? true,
-        },
-      );
-    },
-    [runCourseMutation],
-  );
-
-  const handleRatingSubmit = useCallback(
-    (course: CatalogCourse, rating: number) => {
-      void runCourseMutation(
-        `/elearning/courses/${encodeURIComponent(course.id)}/rating`,
-        { rating },
-      );
-    },
-    [runCourseMutation],
-  );
+  const handleContentComplete = (
+    course: CatalogCourse,
+    payload: ContentCompletePayload,
+  ) => {
+    void actions.completeContent(
+      course.id,
+      payload.chapter.id,
+      payload.content.id,
+      payload.content.completed ?? true,
+    );
+  };
 
   const catalog = catalogResponse?.catalog;
   const footer = catalogResponse?.footer;
@@ -229,7 +107,7 @@ export function ElearningModule() {
           profileHref={profilePath}
           setSidebarOpen={setSidebarOpen}
           onPageChange={handlePageChange}
-          onLogout={() => void logoutAndReload()}
+          onLogout={() => void logout()}
         />
 
         <main className="min-h-0 flex-1 overflow-y-auto bg-[#f4f2ef]">
@@ -259,7 +137,7 @@ export function ElearningModule() {
               <p className="text-sm font-semibold text-[#a4232c]">{error}</p>
               <button
                 className="mt-4 rounded-md bg-[#1256a6] px-4 py-2 text-sm font-semibold text-white"
-                onClick={() => void loadCatalog()}
+                onClick={() => void actions.loadCatalog()}
                 type="button"
               >
                 Réessayer
@@ -281,31 +159,14 @@ export function ElearningModule() {
               currentUserRole={
                 user?.isAdmin ? "administrator" : "user"
               }
-              onCourseAction={(course) => void handleCourseAction(course)}
+              onCourseAction={(course) => void actions.startCourse(course.id)}
               onCourseContentComplete={handleContentComplete}
               onCourseRatingSubmit={(course, rating) =>
-                handleRatingSubmit(course, rating)
+                void actions.rateCourse(course.id, rating)
               }
-              onCreateCourse={(course) =>
-                void runAdminCourseMutation(
-                  "POST",
-                  "/elearning/admin/courses",
-                  course,
-                )
-              }
-              onUpdateCourse={(course) =>
-                void runAdminCourseMutation(
-                  "PATCH",
-                  `/elearning/admin/courses/${encodeURIComponent(course.id)}`,
-                  course,
-                )
-              }
-              onDeleteCourse={(course) =>
-                void runAdminCourseMutation(
-                  "DELETE",
-                  `/elearning/admin/courses/${encodeURIComponent(course.id)}`,
-                )
-              }
+              onCreateCourse={(course) => void actions.createCourse(course)}
+              onUpdateCourse={(course) => void actions.updateCourse(course)}
+              onDeleteCourse={(course) => void actions.deleteCourse(course.id)}
               className="elearning-catalog-shell min-h-full !px-6 !py-10 md:!px-10 lg:!px-14 xl:!px-14"
             />
           )}

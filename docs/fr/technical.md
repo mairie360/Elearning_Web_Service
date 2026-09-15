@@ -40,10 +40,9 @@ Créer `.env.local` à la racine. Exemple pour des BFF exécutés sur la même m
 
 ```dotenv
 BFF_ELEARNING_BASE_URL=http://localhost:4006
-USER_BFF_URL=http://localhost:4000
 ```
 
-Démarrer le BFF associé et BFF User pour les parcours de session, puis lancer le web service. Le port `5006` ci-dessous est un choix local explicite pour éviter les collisions; ce n’est pas une affirmation sur les ports de tous les fichiers Compose.
+Démarrer le BFF associé (lui-même relié à BFF User pour résoudre la session), puis lancer le web service. Le port `5006` ci-dessous est un choix local explicite pour éviter les collisions; ce n’est pas une affirmation sur les ports de tous les fichiers Compose.
 
 ```bash
 npm run dev -- --port 5006
@@ -63,9 +62,8 @@ Les valeurs ci-dessous sont des exemples locaux ou des comportements expliciteme
 | Variable ou priorité | Exemple / repli indiqué | Rôle |
 | --- | --- | --- |
 | `BFF_ELEARNING_BASE_URL` → `ELEARNING_BFF_URL` → `NEXT_PUBLIC_BFF_ELEARNING_BASE_URL` | http://localhost:4006 | Priorité de gauche à droite dans le proxy; l’URL indiquée est le repli local. |
-| `USER_BFF_URL` → `BFF_USER_API_URL` | http://localhost:4000 | Priorité propre aux adaptateurs de session vers BFF User. |
 | `BFF_CONTRACT_DIR` | ../BFF_Elearning/contracts | Répertoire des contrats BFF pour les scripts de synchronisation et de contrôle. |
-| `COOKIE_DOMAIN` | — | Domaine des cookies; vérifier sa cohérence avec Login et BFF User. |
+| `COOKIE_DOMAIN` | — | Domaine du cookie `accessToken` effacé par le middleware (session expirée, `/logout`); vérifier sa cohérence avec Login. |
 | `ADMINISTRATION_FRONT_URL` | — | Destination de navigation; voir le fichier source qui la lit. Les variables injectées par `next.config.ts` ou préfixées `NEXT_PUBLIC_` sont publiques et prises en compte lors du build. |
 | `CALENDAR_FRONT_URL` | — | Destination de navigation; voir le fichier source qui la lit. Les variables injectées par `next.config.ts` ou préfixées `NEXT_PUBLIC_` sont publiques et prises en compte lors du build. |
 | `ELEARNING_FRONT_URL` | — | Destination de navigation; voir le fichier source qui la lit. Les variables injectées par `next.config.ts` ou préfixées `NEXT_PUBLIC_` sont publiques et prises en compte lors du build. |
@@ -97,23 +95,18 @@ Ces chemins de données sont exposés à la même origine par le proxy; les page
 | POST | `/elearning/courses/{courseId}/rating` | application/json | 200, 400, 404, 500 |
 | POST | `/elearning/courses/{courseId}/start` | application/json | 200, 400, 404, 422, 500 |
 
-### Pages et adaptateurs locaux
+### Pages
 
 | Page | Source |
 | --- | --- |
 | `/` | [src/app/page.tsx](../../src/app/page.tsx) |
 | `/profile` | [src/app/profile/page.tsx](../../src/app/profile/page.tsx) |
 
-| Méthode | Route locale | Source |
-| --- | --- | --- |
-| GET | `/api/user/me` | [src/app/api/user/me/route.ts](../../src/app/api/user/me/route.ts) |
-| POST | `/api/auth/logout` | [src/app/api/auth/logout/route.ts](../../src/app/api/auth/logout/route.ts) |
-| GET | `/api/auth/me` | [src/app/api/auth/me/route.ts](../../src/app/api/auth/me/route.ts) |
-| GET | `/api/auth/session` | [src/app/api/auth/session/route.ts](../../src/app/api/auth/session/route.ts) |
+`/logout` n’a pas de page: le middleware efface le cookie `accessToken` et redirige vers Login.
 
 ## Session, permissions et erreurs
 
-Les adaptateurs `/api/auth/me`, `/api/auth/session` et `/api/user/me` utilisent BFF User pour la session; `/api/auth/logout` relaie la déconnexion. Le proxy générique utilise le Bearer explicite ou, en son absence, le cookie `accessToken`. Les permissions métier restent celles du BFF et de ses sources.
+Le front ne joint qu’un service, BFF_Elearning, qui résout la session (auprès de BFF User) pour chaque route `/elearning/*`; l’utilisateur courant provient de ses réponses (`user`). Sur un 401, ou à la déconnexion, le front vide son stockage local et navigue vers `/logout`: le contrat publié du BFF ne propose pas de route de déconnexion (voir `BFF.md`), la session n’est donc pas révoquée côté serveur avant son expiration. Le proxy générique utilise le Bearer explicite ou, en son absence, le cookie `accessToken`. Les permissions métier restent celles du BFF et de ses sources.
 
 Le proxy générique répond 400 pour un chemin invalide, 404 pour un chemin hors contrat, 405 pour une méthode interdite et 502 si le service est injoignable ou dépasse le délai. Les réponses amont sont conservées, y compris les corps vides 204/205/304.
 
@@ -121,17 +114,29 @@ Toutes les réponses portent `X-Frame-Options: DENY`, `X-Content-Type-Options: n
 
 ## Synchronisation et vérifications
 
-Après une modification de routes ou de schémas, exporter le contrat dans **BFF_Elearning** avec `npm run contracts:generate`, puis exécuter dans ce dépôt:
+Le front ne consomme que des versions publiées `X.Y.Z` de BFF_Elearning (jamais une branche ni une version `0.0.0-dev`/`staging`), actuellement **0.3.0**. Pour passer à une nouvelle release, monter le paquet de contrat, copier le contrat du même tag puis régénérer les types:
 
 ```bash
-npm run contracts:sync
+npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@X.Y.Z
+git -C ../../BFFs/BFF_Elearning show vX.Y.Z:contracts/openapi.json > contracts/openapi.json
+npm run contracts:generate
 npm run contracts:check
-npm run test:contracts
+npm test
 npm run lint
 npm run build
 ```
 
-`contracts:sync` copie le contrat BFF et régénère `src/contracts/bff.d.ts`. `contracts:check` compare aussi le BFF voisin lorsqu’il est présent; dans un checkout isolé, il vérifie les types contre la copie locale versionnée. `test:contracts` exécute les tests Node du proxy.
+`contracts:generate` régénère `src/contracts/bff.d.ts` depuis la copie versionnée; `contracts:check` vérifie ces types et, avec `BFF_CONTRACT_DIR`, compare au contrat d’un checkout BFF (qui doit alors être sur le tag publié). Les stacks isolées utilisent l’image publiée `ghcr.io/mairie360/bff-elearning:0.3.0` (`BFF_ELEARNING_IMAGE`). `test:contracts` exécute tous les tests Node (`npm test` fait de même avec la couverture, minimum 60 % sur lignes, branches et fonctions).
+
+### Tests unitaires pilotés par les contrats
+
+Le navigateur n’atteint BFF E-learning que par [src/lib/elearning-api.ts](../../src/lib/elearning-api.ts): chemins, méthodes, paramètres, corps et réponses sont typés depuis `src/contracts/bff.d.ts`, donc une opération absente du contrat ne compile pas. La logique du catalogue et du profil vit dans `src/features/elearning/catalogActions.ts` et `profileActions.ts`, que les composants React se contentent de brancher sur leur état.
+
+- `tests/network-boundary.test.cjs` analyse `src/` (AST TypeScript): `fetch` n’est autorisé que dans `bff-client.ts` (chemins construits par `elearning-api.ts`) et `bff-proxy.ts`, dont l’unique cible est `configuredBffUrl()`; aucun autre client HTTP ni API réseau.
+- `tests/elearning.bff-mocks.test.cjs` exécute le vrai code de bout en bout: `fetch` navigateur → vrai middleware → route handler choisi comme par l’App Router → proxy → BFF E-learning simulé en HTTP, seul service joignable. Le mock est piloté par le paquet publié `@mairie360/bff-elearning-openapi` (sortie orval): il refuse chemins, méthodes, paramètres et corps absents du contrat et valide ses réponses de succès; orval ne typant pas les erreurs, les réponses d’erreur passent par `errorReply`, qui valide le corps contre `ApiError`. Tout appel du navigateur vers une autre origine, ou du serveur vers un autre service, fait échouer le test, et chaque opération consommée doit être rejouée.
+- `tests/bff-contracts.test.cjs` vérifie que le paquet est une version `X.Y.Z` épinglée, que `contracts/openapi.json` déclare exactement ses opérations, que `elearning-api.ts` appelle les opérations consommées, que le proxy catch-all est le seul route handler et que les fixtures sont conformes.
+
+Les utilitaires `tests/support/openapi-contract.ts`, `contract-mock-server.ts` et `orval-contract.ts` sont copiés à l’identique depuis les BFFs (`BFFs/BFF_Elearning/tests/support`); garder les copies identiques.
 
 Le générateur de types est fixé à `openapi-typescript@7.10.1` dans `scripts/contracts.mjs` et s’exécute via npm. Pour une modification uniquement documentaire, vérifier les liens, l’exactitude des deux langues et `git diff --check`; ne pas régénérer les contrats sans modification de leur source.
 
@@ -147,9 +152,9 @@ Avant un lancement Docker, vérifier les variables de service, les secrets de bu
 
 ## Diagnostic
 
-Diagnostic du BFF associé: Si le catalogue refuse la session, vérifier BFF User. Si une progression disparaît après redémarrage ou entre deux instances, cela correspond à la limite mémoire actuelle. Distinguer les fixtures du catalogue des données persistantes attendues à terme.
+Diagnostic du BFF associé: Si le catalogue refuse la session, vérifier BFF_Elearning et sa dépendance BFF User. Si une progression disparaît après redémarrage ou entre deux instances, cela correspond à la limite mémoire actuelle. Distinguer les fixtures du catalogue des données persistantes attendues à terme.
 
-En cas d’erreur de proxy, comparer la route et la méthode à l’inventaire, vérifier l’URL du BFF puis la session. Pour un 401 après navigation entre modules, vérifier le cookie `accessToken`, son domaine et le service BFF User. Un 404 sur un besoin décrit dans `BACKEND.md` peut correspondre à une fonctionnalité seulement proposée.
+En cas d’erreur de proxy, comparer la route et la méthode à l’inventaire, vérifier l’URL du BFF puis la session. Pour un 401 après navigation entre modules, vérifier le cookie `accessToken`, son domaine et la résolution de session par BFF_Elearning. Un 404 sur un besoin décrit dans `BACKEND.md` peut correspondre à une fonctionnalité seulement proposée.
 
 ## Repères dans le dépôt
 
@@ -160,7 +165,13 @@ En cas d’erreur de proxy, comparer la route et la méthode à l’inventaire, 
 - [src/middleware.ts](../../src/middleware.ts)
 - [src/lib/bff-proxy.ts](../../src/lib/bff-proxy.ts)
 - [src/app/[...path]/route.ts](../../src/app/%5B...path%5D/route.ts)
-- [src/lib/user-bff-proxy.ts](../../src/lib/user-bff-proxy.ts)
+- [src/lib/auth-session.ts](../../src/lib/auth-session.ts)
+- [src/lib/elearning-api.ts](../../src/lib/elearning-api.ts)
+- [src/features/elearning/catalogActions.ts](../../src/features/elearning/catalogActions.ts)
+- [src/features/elearning/profileActions.ts](../../src/features/elearning/profileActions.ts)
+- [tests/elearning.bff-mocks.test.cjs](../../tests/elearning.bff-mocks.test.cjs)
+- [tests/network-boundary.test.cjs](../../tests/network-boundary.test.cjs)
+- [tests/bff-contracts.test.cjs](../../tests/bff-contracts.test.cjs)
 - [contracts/openapi.json](../../contracts/openapi.json)
 - [src/contracts/bff.d.ts](../../src/contracts/bff.d.ts)
 - [scripts/contracts.mjs](../../scripts/contracts.mjs)
