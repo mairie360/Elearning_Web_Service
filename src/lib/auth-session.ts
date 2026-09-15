@@ -116,6 +116,87 @@ export function resolveAppRoles(roles: Array<SessionRole | string>): AppRole[] {
   return resolvedRoles.length ? resolvedRoles : ["Guest"];
 }
 
+export type LoadedAuthSession = Omit<AuthSession, "loading" | "error">;
+
+export type AuthSessionResult =
+  | { status: "ready"; session: LoadedAuthSession }
+  | { status: "unauthorized" }
+  | { status: "unavailable"; error: string };
+
+export function toAuthSession(body: SessionResponse): LoadedAuthSession {
+  const rawGroups = Array.isArray(body.groups)
+    ? body.groups
+    : Array.isArray(body.user?.groups)
+      ? body.user.groups
+      : [];
+  const groups = rawGroups
+    .map((group) => {
+      const groupName = getGroupName(group);
+      return typeof groupName === "string" ? groupName.trim() : "";
+    })
+    .filter(Boolean);
+  const userRole =
+    typeof body.user?.role === "string" && body.user.role.trim()
+      ? [body.user.role]
+      : [];
+  const responseRoles = Array.isArray(body.user?.roles)
+    ? body.user.roles
+    : Array.isArray(body.roles)
+      ? body.roles
+      : [];
+  const roles = resolveAppRoles(userRole.length > 0 ? userRole : responseRoles);
+  const role = roles[0];
+  const explicitName =
+    typeof body.user?.name === "string" ? body.user.name.trim() : "";
+  const firstName =
+    typeof body.user?.first_name === "string" ? body.user.first_name.trim() : "";
+  const lastName =
+    typeof body.user?.last_name === "string" ? body.user.last_name.trim() : "";
+  const name = explicitName || `${firstName} ${lastName}`.trim();
+  const email = typeof body.user?.email === "string" ? body.user.email.trim() : "";
+  const rawPhone = body.user?.phone ?? body.user?.phone_number;
+  const phone = typeof rawPhone === "string" ? rawPhone.trim() : "";
+  const status =
+    typeof body.user?.status === "string" ? body.user.status.trim() : "";
+  const groupLabel = groups.length ? groups.join(", ") : undefined;
+
+  return {
+    user: {
+      name: name || email,
+      email: email || undefined,
+      phone: phone || undefined,
+      status: status || undefined,
+      service: groupLabel,
+      position: undefined,
+      address: undefined,
+      city: undefined,
+      lastConnection: undefined,
+      role,
+    },
+    groups,
+    roles,
+    role,
+    isAdmin: role === "Admin",
+  };
+}
+
+/** Session courante via l'adaptateur same-origin /api/user/me (BFF User GET /me) ; `null` si annulé. */
+export async function loadAuthSession(signal?: AbortSignal): Promise<AuthSessionResult | null> {
+  try {
+    const response = await fetch("/api/user/me", { cache: "no-store", signal });
+
+    if (response.status === 401) return { status: "unauthorized" };
+    if (!response.ok) {
+      return { status: "unavailable", error: "Les informations du profil sont indisponibles." };
+    }
+
+    return { status: "ready", session: toAuthSession((await response.json()) as SessionResponse) };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") return null;
+    return { status: "unavailable", error: "Le service utilisateur est indisponible." };
+  }
+}
+
 export function useAuthSession(initialUser: AuthSessionUser = EMPTY_SESSION_USER) {
   const [session, setSession] = useState<AuthSession>({
     user: {
@@ -142,102 +223,18 @@ export function useAuthSession(initialUser: AuthSessionUser = EMPTY_SESSION_USER
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadSession() {
-      try {
-        const response = await fetch("/api/user/me", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-
-        if (response.status === 401) {
-          await logoutAndReload();
-          return;
-        }
-
-        if (!response.ok) {
-          setSession((current) => ({
-            ...current,
-            loading: false,
-            error: "Les informations du profil sont indisponibles.",
-          }));
-          return;
-        }
-
-        const body = (await response.json()) as SessionResponse;
-        const rawGroups = Array.isArray(body.groups)
-          ? body.groups
-          : Array.isArray(body.user?.groups)
-            ? body.user.groups
-            : [];
-        const groups = rawGroups
-          .map((group) => {
-            const groupName = getGroupName(group);
-            return typeof groupName === "string" ? groupName.trim() : "";
-          })
-          .filter(Boolean);
-        const userRole =
-          typeof body.user?.role === "string" && body.user.role.trim()
-            ? [body.user.role]
-            : [];
-        const responseRoles = Array.isArray(body.user?.roles)
-          ? body.user.roles
-          : Array.isArray(body.roles)
-            ? body.roles
-            : [];
-        const roles = resolveAppRoles(
-          userRole.length > 0 ? userRole : responseRoles,
-        );
-        const role = roles[0];
-        const explicitName =
-          typeof body.user?.name === "string" ? body.user.name.trim() : "";
-        const firstName =
-          typeof body.user?.first_name === "string"
-            ? body.user.first_name.trim()
-            : "";
-        const lastName =
-          typeof body.user?.last_name === "string"
-            ? body.user.last_name.trim()
-            : "";
-        const name = explicitName || `${firstName} ${lastName}`.trim();
-        const email =
-          typeof body.user?.email === "string" ? body.user.email.trim() : "";
-        const rawPhone = body.user?.phone ?? body.user?.phone_number;
-        const phone = typeof rawPhone === "string" ? rawPhone.trim() : "";
-        const status =
-          typeof body.user?.status === "string" ? body.user.status.trim() : "";
-        const groupLabel = groups.length ? groups.join(", ") : undefined;
-
-        setSession({
-          user: {
-            name: name || email,
-            email: email || undefined,
-            phone: phone || undefined,
-            status: status || undefined,
-            service: groupLabel,
-            position: undefined,
-            address: undefined,
-            city: undefined,
-            lastConnection: undefined,
-            role,
-          },
-          groups,
-          roles,
-          role,
-          isAdmin: role === "Admin",
-          loading: false,
-          error: null,
-        });
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        setSession((current) => ({
-          ...current,
-          loading: false,
-          error: "Le service utilisateur est indisponible.",
-        }));
+    void loadAuthSession(controller.signal).then(async (result) => {
+      if (!result) return;
+      if (result.status === "unauthorized") {
+        await logoutAndReload();
+        return;
       }
-    }
-
-    void loadSession();
+      if (result.status === "unavailable") {
+        setSession((current) => ({ ...current, loading: false, error: result.error }));
+        return;
+      }
+      setSession({ ...result.session, loading: false, error: null });
+    });
 
     return () => controller.abort();
   }, [initialUser]);
