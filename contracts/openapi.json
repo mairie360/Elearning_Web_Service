@@ -3924,14 +3924,7 @@
             }
           },
           "502": {
-            "description": "API Core injoignable ou API E-learning injoignable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CheckApiResponse"
-                }
-              }
-            }
+            "description": "API Core injoignable ou API E-learning injoignable"
           }
         }
       }
@@ -4811,7 +4804,7 @@
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Session invalide",
             "content": {
               "application/json": {
                 "schema": {
@@ -4872,66 +4865,6 @@
           },
           "409": {
             "description": "Identifiant déjà utilisé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur serveur non prevue",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
             "content": {
               "application/json": {
                 "schema": {
@@ -5851,7 +5784,7 @@
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Session invalide",
             "content": {
               "application/json": {
                 "schema": {
@@ -5912,66 +5845,6 @@
           },
           "404": {
             "description": "Formation introuvable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur serveur non prevue",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
             "content": {
               "application/json": {
                 "schema": {
@@ -6045,7 +5918,7 @@
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Session invalide",
             "content": {
               "application/json": {
                 "schema": {
@@ -6106,66 +5979,6 @@
           },
           "404": {
             "description": "Formation introuvable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Erreur serveur non prevue",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
             "content": {
               "application/json": {
                 "schema": {
@@ -6986,68 +6799,8 @@
               }
             }
           },
-          "401": {
-            "description": "Session invalide, expirée ou manquante",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
           "500": {
             "description": "Erreur serveur non prevue",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
             "content": {
               "application/json": {
                 "schema": {
@@ -7449,36 +7202,6 @@
               }
             }
           },
-          "401": {
-            "description": "Session invalide, expirée ou manquante",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
           "404": {
             "description": "Formation, chapitre ou contenu introuvable",
             "content": {
@@ -7541,36 +7264,6 @@
           },
           "500": {
             "description": "Erreur serveur non prevue",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
             "content": {
               "application/json": {
                 "schema": {
@@ -7732,68 +7425,8 @@
               }
             }
           },
-          "401": {
-            "description": "Session invalide, expirée ou manquante",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
           "500": {
             "description": "Erreur serveur non prevue",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
             "content": {
               "application/json": {
                 "schema": {
@@ -7969,68 +7602,8 @@
               }
             }
           },
-          "401": {
-            "description": "Session invalide, expirée ou manquante",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
           "500": {
             "description": "Erreur serveur non prevue",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
             "content": {
               "application/json": {
                 "schema": {
@@ -8199,36 +7772,6 @@
               }
             }
           },
-          "401": {
-            "description": "Session invalide, expirée ou manquante",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
           "404": {
             "description": "Formation introuvable",
             "content": {
@@ -8261,36 +7804,6 @@
           },
           "500": {
             "description": "Erreur serveur non prevue",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
             "content": {
               "application/json": {
                 "schema": {
@@ -8819,36 +8332,6 @@
               }
             }
           },
-          "401": {
-            "description": "Session invalide, expirée ou manquante",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
           "404": {
             "description": "Formation introuvable",
             "content": {
@@ -8911,36 +8394,6 @@
           },
           "500": {
             "description": "Erreur serveur non prevue",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
             "content": {
               "application/json": {
                 "schema": {
