@@ -4,7 +4,6 @@ import type { components } from "@/contracts/bff";
 
 import { UserProfilePage } from "@mairie360/lib-components";
 import { useRouter } from "next/navigation";
-import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
 import { logoutAndReload } from "@/lib/auth-session";
 import { BffRequestError, requestBff } from "@/lib/bff-client";
