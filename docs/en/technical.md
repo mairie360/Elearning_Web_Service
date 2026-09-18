@@ -40,10 +40,9 @@ Create `.env.local` in the repository root. Example for BFFs running on the same
 
 ```dotenv
 BFF_ELEARNING_BASE_URL=http://localhost:4006
-USER_BFF_URL=http://localhost:4000
 ```
 
-Start the associated BFF and BFF User for session flows, then start the web service. Port `5006` below is an explicit local choice to avoid collisions; it is not a claim about ports in every Compose file.
+Start the associated BFF (itself connected to BFF User to resolve sessions), then start the web service. Port `5006` below is an explicit local choice to avoid collisions; it is not a claim about ports in every Compose file.
 
 ```bash
 npm run dev -- --port 5006
@@ -63,9 +62,8 @@ Values below are local examples or explicitly described behavior, not production
 | Variable or precedence | Example / stated fallback | Purpose |
 | --- | --- | --- |
 | `BFF_ELEARNING_BASE_URL` → `ELEARNING_BFF_URL` → `NEXT_PUBLIC_BFF_ELEARNING_BASE_URL` | http://localhost:4006 | Left-to-right proxy precedence; the URL shown is the local fallback. |
-| `USER_BFF_URL` → `BFF_USER_API_URL` | http://localhost:4000 | Separate precedence used by session adapters targeting BFF User. |
 | `BFF_CONTRACT_DIR` | ../BFF_Elearning/contracts | BFF contract directory for synchronization and checking scripts. |
-| `COOKIE_DOMAIN` | — | Cookie domain; keep it consistent with Login and BFF User. |
+| `COOKIE_DOMAIN` | — | Domain of the `accessToken` cookie cleared by the middleware (expired session, `/logout`); keep it consistent with Login. |
 | `ADMINISTRATION_FRONT_URL` | — | Navigation destination; see the source file that reads it. Variables injected by `next.config.ts` or prefixed `NEXT_PUBLIC_` are public and consumed at build time. |
 | `CALENDAR_FRONT_URL` | — | Navigation destination; see the source file that reads it. Variables injected by `next.config.ts` or prefixed `NEXT_PUBLIC_` are public and consumed at build time. |
 | `ELEARNING_FRONT_URL` | — | Navigation destination; see the source file that reads it. Variables injected by `next.config.ts` or prefixed `NEXT_PUBLIC_` are public and consumed at build time. |
@@ -97,23 +95,18 @@ These data paths are exposed at the same origin through the proxy; Next.js pages
 | POST | `/elearning/courses/{courseId}/rating` | application/json | 200, 400, 404, 500 |
 | POST | `/elearning/courses/{courseId}/start` | application/json | 200, 400, 404, 422, 500 |
 
-### Pages and local adapters
+### Pages
 
 | Page | Source |
 | --- | --- |
 | `/` | [src/app/page.tsx](../../src/app/page.tsx) |
 | `/profile` | [src/app/profile/page.tsx](../../src/app/profile/page.tsx) |
 
-| Method | Local route | Source |
-| --- | --- | --- |
-| GET | `/api/user/me` | [src/app/api/user/me/route.ts](../../src/app/api/user/me/route.ts) |
-| POST | `/api/auth/logout` | [src/app/api/auth/logout/route.ts](../../src/app/api/auth/logout/route.ts) |
-| GET | `/api/auth/me` | [src/app/api/auth/me/route.ts](../../src/app/api/auth/me/route.ts) |
-| GET | `/api/auth/session` | [src/app/api/auth/session/route.ts](../../src/app/api/auth/session/route.ts) |
+`/logout` has no page: the middleware clears the `accessToken` cookie and redirects to Login.
 
 ## Session, permissions and errors
 
-The `/api/auth/me`, `/api/auth/session` and `/api/user/me` adapters use BFF User for session access; `/api/auth/logout` forwards logout. The generic proxy uses an explicit Bearer header or, when absent, the `accessToken` cookie. Business permissions remain those of the BFF and its sources.
+The front reaches a single service, BFF_Elearning, which resolves the session (through BFF User) on every `/elearning/*` route; the current user comes from its responses (`user`). On a 401, or on logout, the front clears its local storage and navigates to `/logout`: the BFF's published contract has no logout route (see `BFF.md`), so the session is not revoked server-side before it expires. The generic proxy uses an explicit Bearer header or, when absent, the `accessToken` cookie. Business permissions remain those of the BFF and its sources.
 
 The generic proxy returns 400 for an invalid path, 404 for a path outside the contract, 405 for a disallowed method and 502 when the service is unreachable or times out. Upstream responses are preserved, including empty 204/205/304 bodies.
 
@@ -121,17 +114,29 @@ Every response carries `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff
 
 ## Synchronization and verification
 
-After changing routes or schemas, export the contract in **BFF_Elearning** using `npm run contracts:generate`, then run in this repository:
+The front only consumes published `X.Y.Z` releases of BFF_Elearning (never a branch or a `0.0.0-dev`/`staging` version), currently **0.4.0**. To move to a new release, bump the contract package, copy the contract from the same tag and regenerate the types:
 
 ```bash
-npm run contracts:sync
+npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@X.Y.Z
+git -C ../../BFFs/BFF_Elearning show vX.Y.Z:contracts/openapi.json > contracts/openapi.json
+npm run contracts:generate
 npm run contracts:check
-npm run test:contracts
+npm test
 npm run lint
 npm run build
 ```
 
-`contracts:sync` copies the BFF contract and regenerates `src/contracts/bff.d.ts`. `contracts:check` also compares a neighboring BFF when present; in an isolated checkout, it checks types against the local committed snapshot. `test:contracts` runs the Node proxy tests.
+`contracts:generate` regenerates `src/contracts/bff.d.ts` from the committed copy; `contracts:check` checks those types and, with `BFF_CONTRACT_DIR`, compares against a BFF checkout (which must then be on the published tag). The isolated stacks use the published image `ghcr.io/mairie360/bff-elearning:0.4.0` (`BFF_ELEARNING_IMAGE`). `test:contracts` runs every Node test (`npm test` does the same with coverage, 60% minimum on lines, branches and functions).
+
+### Contract-driven unit tests
+
+The browser reaches BFF E-learning only through [src/lib/elearning-api.ts](../../src/lib/elearning-api.ts): paths, methods, parameters, bodies and responses are typed from `src/contracts/bff.d.ts`, so an operation missing from the contract does not compile. Catalogue and profile logic lives in `src/features/elearning/catalogActions.ts` and `profileActions.ts`, which the React components only wire to their state.
+
+- `tests/network-boundary.test.cjs` scans `src/` (TypeScript AST): `fetch` is only allowed in `bff-client.ts` (paths built by `elearning-api.ts`) and `bff-proxy.ts`, whose only target is `configuredBffUrl()`; no other HTTP client or network API.
+- `tests/elearning.bff-mocks.test.cjs` runs the real code end to end: browser `fetch` → real middleware → route handler picked like the App Router → proxy → mock BFF E-learning served over HTTP, the only reachable service. The mock is driven by the published `@mairie360/bff-elearning-openapi` package (orval output): it rejects paths, methods, parameters and bodies missing from the contract and validates its success responses; orval does not type errors, so error replies go through `errorReply`, which validates the body against `ApiError`. Any call from the browser to another origin, or from the server to another service, fails the test, and every consumed operation must be exercised.
+- `tests/bff-contracts.test.cjs` checks that the package is a pinned `X.Y.Z` release, that `contracts/openapi.json` declares exactly its operations, that `elearning-api.ts` calls the consumed operations, that the catch-all proxy is the only route handler and that fixtures conform.
+
+The shared helpers `tests/support/openapi-contract.ts`, `contract-mock-server.ts` and `orval-contract.ts` are copied verbatim from the BFFs (`BFFs/BFF_Elearning/tests/support`); keep the copies identical.
 
 The type generator is pinned to `openapi-typescript@7.10.1` in `scripts/contracts.mjs` and runs through npm. For documentation-only changes, check links, accuracy in both languages and `git diff --check`; do not regenerate contracts without changing their source.
 
@@ -147,9 +152,9 @@ Before running Docker, check service variables, build secrets and networks in th
 
 ## Troubleshooting
 
-Associated BFF diagnostics: If the catalogue rejects the session, check BFF User. Progress disappearing after a restart or between instances is a consequence of the current in-memory design. Distinguish catalogue fixtures from the persistent data expected in a future implementation.
+Associated BFF diagnostics: If the catalogue rejects the session, check BFF_Elearning and its BFF User dependency. Progress disappearing after a restart or between instances is a consequence of the current in-memory design. Distinguish catalogue fixtures from the persistent data expected in a future implementation.
 
-For a proxy error, compare the path and method with the inventory, then check the BFF URL and session. For a 401 after navigating between modules, check the `accessToken` cookie, its domain and BFF User. A 404 for a requirement described in `BACKEND.md` may refer to a feature that is only proposed.
+For a proxy error, compare the path and method with the inventory, then check the BFF URL and session. For a 401 after navigating between modules, check the `accessToken` cookie, its domain and session resolution by BFF_Elearning. A 404 for a requirement described in `BACKEND.md` may refer to a feature that is only proposed.
 
 ## Repository reference
 
@@ -160,7 +165,13 @@ For a proxy error, compare the path and method with the inventory, then check th
 - [src/middleware.ts](../../src/middleware.ts)
 - [src/lib/bff-proxy.ts](../../src/lib/bff-proxy.ts)
 - [src/app/[...path]/route.ts](../../src/app/%5B...path%5D/route.ts)
-- [src/lib/user-bff-proxy.ts](../../src/lib/user-bff-proxy.ts)
+- [src/lib/auth-session.ts](../../src/lib/auth-session.ts)
+- [src/lib/elearning-api.ts](../../src/lib/elearning-api.ts)
+- [src/features/elearning/catalogActions.ts](../../src/features/elearning/catalogActions.ts)
+- [src/features/elearning/profileActions.ts](../../src/features/elearning/profileActions.ts)
+- [tests/elearning.bff-mocks.test.cjs](../../tests/elearning.bff-mocks.test.cjs)
+- [tests/network-boundary.test.cjs](../../tests/network-boundary.test.cjs)
+- [tests/bff-contracts.test.cjs](../../tests/bff-contracts.test.cjs)
 - [contracts/openapi.json](../../contracts/openapi.json)
 - [src/contracts/bff.d.ts](../../src/contracts/bff.d.ts)
 - [scripts/contracts.mjs](../../scripts/contracts.mjs)

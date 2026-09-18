@@ -203,7 +203,7 @@ services:
       - backend
 
   bff-elearning:
-    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:dev-latest}
+    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:0.4.0}
     container_name: elearning-front-sec-bff-elearning
     depends_on:
       seeder:
@@ -249,15 +249,12 @@ services:
       args:
         NODE_AUTH_TOKEN: ${NODE_AUTH_TOKEN:-}
     depends_on:
-      bff-user-ready:
-        condition: service_completed_successfully
       bff-elearning-ready:
         condition: service_completed_successfully
     environment:
       HOSTNAME: "0.0.0.0"
       PORT: 5006
       BFF_ELEARNING_BASE_URL: http://bff-elearning:4006
-      USER_BFF_URL: http://bff-user:4000
     expose:
       - "5006"
     networks:

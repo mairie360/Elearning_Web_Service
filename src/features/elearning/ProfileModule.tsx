@@ -1,51 +1,23 @@
 "use client";
 
-import type { components } from "@/contracts/bff";
-
 import { UserProfilePage } from "@mairie360/lib-components";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { logoutAndReload } from "@/lib/auth-session";
-import { BffRequestError, requestBff } from "@/lib/bff-client";
+import { logout } from "@/lib/auth-session";
+import type { ElearningProfileResponse } from "@/lib/elearning-api";
 import { navigateToPage, profilePath, sidebarItems } from "./appData";
-
-
-type ProfileResponse = components["schemas"]["ElearningProfileResponse"];
+import { loadProfile } from "./profileActions";
 
 export function ProfileModule() {
   const router = useRouter();
-  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [profile, setProfile] = useState<ElearningProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    async function loadProfile() {
-      try {
-        const response = await requestBff<ProfileResponse>("/elearning/profile", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        setProfile(response);
-        setError(null);
-      } catch (requestError) {
-        if (requestError instanceof DOMException && requestError.name === "AbortError") return;
-        if (requestError instanceof BffRequestError && requestError.status === 401) {
-          await logoutAndReload();
-          return;
-        }
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "Le profil est indisponible.",
-        );
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-
-    void loadProfile();
+    void loadProfile({ setProfile, setLoading, setError }, controller.signal);
     return () => controller.abort();
   }, []);
 
@@ -60,7 +32,7 @@ export function ProfileModule() {
       user={profile?.user ?? { name: "" }}
       headerProps={{
         onPageChange: handlePageChange,
-        onLogout: () => void logoutAndReload(),
+        onLogout: () => void logout(),
         profileHref: profilePath,
       }}
       sidebarProps={{
