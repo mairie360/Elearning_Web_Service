@@ -12,6 +12,23 @@ x-common-env: &common-env
   REDIS_URL: redis://redis:6379
   CORE_PUBLIC_URL: http://development.mairie360.fr
 
+x-db-env: &db-env
+  DB_TYPE: postgres
+  DB_NAME: mairie_360_database
+  DB_USER: ${DB_USER:-postgres}
+  DB_PASSWORD: ${DB_PASSWORD:-password}
+  DB_HOST: postgres
+  DB_PORT: 5432
+
+# JWT_SECRET identique sur toute la chaîne : le cookie accessToken du front est
+# relayé tel quel (Bearer) à BFF User, aux BFFs métier et aux APIs.
+x-api-env: &api-env
+  <<: *db-env
+  HOST: "0.0.0.0"
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: b"secret"
+  JWT_TIMEOUT: 3600
+
 # x-depends-on: &depends-on
 #   postgres:
 #     condition: service_healthy
@@ -38,7 +55,7 @@ x-service: &service-template
 services:
   postgres:
     profiles: ["legacy-stack"]
-    image: ghcr.io/mairie360/database:dev-latest
+    image: ${DB_IMAGE:-ghcr.io/mairie360/database:1.3.0}
     restart: always
     container_name: mairie360-db-elearning-front #change front name
     environment:
@@ -59,13 +76,12 @@ services:
 
   liquibase:
     profiles: ["legacy-stack"]
-    image: ghcr.io/mairie360/liquibase-migrations:dev-latest
+    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:1.3.0}
     container_name: mairie360-liquibase-elearning-front #change front name
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      <<: *common-env
       LIQUIBASE_COMMAND_URL: jdbc:postgresql://postgres:5432/mairie_360_database
       LIQUIBASE_COMMAND_USERNAME: ${DB_USER:-postgres}
       LIQUIBASE_COMMAND_PASSWORD: ${DB_PASSWORD:-password}
@@ -93,66 +109,68 @@ services:
       timeout: 5s
       retries: 5
 
-  # core:
-  #   container_name: core-elearning-front-developpement
-  #   image: ghcr.io/mairie360/core-api:dev-1644fa7
-  #   ports:
-  #     - "3000:3000"
-  #   networks:
-  #     - backend
-  #   dns:
-  #     - 8.8.8.8
-  #     - 1.1.1.1
-  #   environment:
-  #     HOST: "0.0.0.0"
-  #     PORT: 3000
-  #     REDIS_URL: redis://redis:6379
-  #     DB_TYPE: postgres
-  #     DB_NAME: mairie_360_database
-  #     DB_USER: postgres
-  #     DB_HOST: postgres
-  #     DB_PASSWORD: password
-  #     DB_PORT: 5432
-  #     PUBLIC_URL: http://core.development.mairie360.fr
-  #     JWT_SECRET: b"secret"
-  #     JWT_TIMEOUT: 3600
-  #   depends_on:
-  #     liquibase:
-  #       condition: service_completed_successfully
-  #     redis:
-  #       condition: service_healthy
-      
-  elearning-api:
+  core-api:
     profiles: ["legacy-stack"]
-    container_name: elearning-api-front-elearning-developpement
-    image: ghcr.io/mairie360/elearning-api:dev-latest
+    container_name: core-api-elearning-front-developpement
+    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:1.2.0}
     ports:
-      - "3006:3006"
+      - "3000:3000"
     networks:
       - backend
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     environment:
-      HOST: "0.0.0.0"
-      PORT: 3006
-      REDIS_URL: redis://redis:6379
-      DB_TYPE: postgres
-      DB_NAME: mairie_360_database
-      DB_USER: postgres
-      DB_HOST: postgres
-      DB_PASSWORD: password
-      DB_PORT: 5432
-      PUBLIC_URL: http://core.development.mairie360.fr
-      JWT_SECRET: b"secret"
-      JWT_TIMEOUT: 3600
+      <<: *api-env
+      PORT: 3000
+      PUBLIC_URL: http://core-api:3000
     depends_on:
       liquibase:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-  
+
+  elearning-api:
+    profiles: ["legacy-stack"]
+    container_name: elearning-api-front-elearning-developpement
+    image: ${ELEARNING_API_IMAGE:-ghcr.io/mairie360/elearning-api:0.6.1}
+    ports:
+      - "3006:3006"
+    networks:
+      - backend
+    environment:
+      <<: *api-env
+      PORT: 3006
+      PUBLIC_URL: http://elearning-api:3006
+      S3_BUCKET: mairie360-elearning
+      S3_REGION: fr-par
+      S3_ENDPOINT: https://s3.fr-par.scw.cloud
+      S3_ACCESS_KEY: ""
+      S3_SECRET_KEY: ""
+      S3_PRESIGN_TTL_SECS: 900
+    depends_on:
+      liquibase:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
   #add other apis if needed
+
+  bff-user:
+    profiles: ["legacy-stack"]
+    container_name: bff-user-elearning-front-developpement
+    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:0.5.0}
+    ports:
+      - "4000:4000"
+    networks:
+      - backend
+    environment:
+      <<: *db-env
+      HOST: "0.0.0.0"
+      PORT: 4000
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: b"secret"
+      CORE_API_URL: http://core-api:3000
+    depends_on:
+      core-api:
+        condition: service_started
 
   bff-elearning:
     profiles: ["legacy-stack"]
@@ -164,11 +182,17 @@ services:
       - backend
       - frontend
     environment:
-      CORE_API_URL: "core" 
+      CORE_API_URL: "core-api"
       CORE_API_PORT: 3000
-      ELEARNING_API_URL: "elearning-api" 
+      ELEARNING_API_URL: "elearning-api"
       ELEARNING_API_PORT: 3006
+      USER_BFF_URL: http://bff-user:4000
       PORT: 4006
+    depends_on:
+      elearning-api:
+        condition: service_started
+      bff-user:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4006/health"]
       interval: 10s
