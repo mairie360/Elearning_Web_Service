@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@mairie360/bff-elearning-openapi": "0.3.0",
+    "@mairie360/bff-elearning-openapi": "0.4.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

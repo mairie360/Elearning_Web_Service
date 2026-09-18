@@ -114,7 +114,7 @@ Toutes les réponses portent `X-Frame-Options: DENY`, `X-Content-Type-Options: n
 
 ## Synchronisation et vérifications
 
-Le front ne consomme que des versions publiées `X.Y.Z` de BFF_Elearning (jamais une branche ni une version `0.0.0-dev`/`staging`), actuellement **0.3.0**. Pour passer à une nouvelle release, monter le paquet de contrat, copier le contrat du même tag puis régénérer les types:
+Le front ne consomme que des versions publiées `X.Y.Z` de BFF_Elearning (jamais une branche ni une version `0.0.0-dev`/`staging`), actuellement **0.4.0**. Pour passer à une nouvelle release, monter le paquet de contrat, copier le contrat du même tag puis régénérer les types:
 
 ```bash
 npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@X.Y.Z
@@ -126,7 +126,7 @@ npm run lint
 npm run build
 ```
 
-`contracts:generate` régénère `src/contracts/bff.d.ts` depuis la copie versionnée; `contracts:check` vérifie ces types et, avec `BFF_CONTRACT_DIR`, compare au contrat d’un checkout BFF (qui doit alors être sur le tag publié). Les stacks isolées utilisent l’image publiée `ghcr.io/mairie360/bff-elearning:0.3.0` (`BFF_ELEARNING_IMAGE`). `test:contracts` exécute tous les tests Node (`npm test` fait de même avec la couverture, minimum 60 % sur lignes, branches et fonctions).
+`contracts:generate` régénère `src/contracts/bff.d.ts` depuis la copie versionnée; `contracts:check` vérifie ces types et, avec `BFF_CONTRACT_DIR`, compare au contrat d’un checkout BFF (qui doit alors être sur le tag publié). Les stacks isolées utilisent l’image publiée `ghcr.io/mairie360/bff-elearning:0.4.0` (`BFF_ELEARNING_IMAGE`). `test:contracts` exécute tous les tests Node (`npm test` fait de même avec la couverture, minimum 60 % sur lignes, branches et fonctions).
 
 ### Tests unitaires pilotés par les contrats
 

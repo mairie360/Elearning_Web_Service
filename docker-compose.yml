@@ -157,7 +157,7 @@ services:
   bff-elearning:
     profiles: ["legacy-stack"]
     container_name: bff-elearning-elearning-front
-    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:0.3.0}
+    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:0.4.0}
     ports:
       - "4006:4006"
     networks:

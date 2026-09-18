@@ -203,7 +203,7 @@ services:
       - backend
 
   bff-elearning:
-    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:0.3.0}
+    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:0.4.0}
     container_name: elearning-front-sec-bff-elearning
     depends_on:
       seeder:

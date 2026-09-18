@@ -4,7 +4,7 @@ Ce web service consomme **BFF_Elearning**. La copie [OpenAPI](contracts/openapi.
 
 ## Routes implémentées
 
-Les chemins sont relatifs au BFF. Le proxy web conserve méthode, paramètres, contenu binaire, statuts et cookies. BFF_Elearning est le seul service joint par ce web service (version publiée **0.3.0**, paquet `@mairie360/bff-elearning-openapi`) ; les pages Next.js sont distinctes des routes de données.
+Les chemins sont relatifs au BFF. Le proxy web conserve méthode, paramètres, contenu binaire, statuts et cookies. BFF_Elearning est le seul service joint par ce web service (version publiée **0.4.0**, paquet `@mairie360/bff-elearning-openapi`) ; les pages Next.js sont distinctes des routes de données.
 
 | Méthode | Route | Réponse / schéma |
 | --- | --- | --- |
