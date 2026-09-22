@@ -1,0 +1,13 @@
+# The tests load TypeScript with inline source maps, and Node's
+# --experimental-test-coverage then reports top-level module code (imports,
+# constants, types, comments) as uncovered even when it runs. Patch coverage
+# is under-reported for every new file, so it is informational only;
+# codecov/project still fails on a real drop of overall coverage.
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+    patch:
+      default:
+        informational: true
