@@ -4,6 +4,7 @@ import {
   createNonce,
   NONCE_REQUEST_HEADER,
 } from "./lib/content-security-policy";
+import { readFrontUrlsFromEnv } from "./lib/front-urls";
 
 const ACCESS_TOKEN_COOKIE = "accessToken";
 const LOGOUT_PATH = "/logout";
@@ -36,9 +37,21 @@ function isExpiredJwt(token: string) {
   }
 }
 
-function redirectToLogin(request: NextRequest) {
+function redirectToLogin(request: NextRequest, includeReturn = true) {
   const loginUrl = process.env.LOGIN_FRONT_URL || DEFAULT_LOGIN_FRONT_URL;
-  const response = NextResponse.redirect(new URL(loginUrl, request.url));
+  const destination = new URL(loginUrl);
+  const publicFrontUrl = readFrontUrlsFromEnv().ELEARNING_FRONT_URL;
+  if (includeReturn && publicFrontUrl) {
+    try {
+      const requestedPage = new URL(publicFrontUrl);
+      requestedPage.pathname = request.nextUrl.pathname;
+      requestedPage.search = request.nextUrl.search;
+      destination.searchParams.set("redirect", requestedPage.href);
+    } catch {
+      // A missing or invalid public URL leaves Login's default destination in place.
+    }
+  }
+  const response = NextResponse.redirect(destination);
   const cookieDomain = process.env.COOKIE_DOMAIN?.trim();
 
   response.cookies.set({
@@ -57,7 +70,11 @@ export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
 
   // Déconnexion (src/lib/auth-session.ts) : BFF_Elearning 0.3.0 n'expose pas de route de logout.
-  if (request.nextUrl.pathname === LOGOUT_PATH || !accessToken || isExpiredJwt(accessToken)) {
+  if (request.nextUrl.pathname === LOGOUT_PATH) {
+    return redirectToLogin(request, false);
+  }
+
+  if (!accessToken || isExpiredJwt(accessToken)) {
     return redirectToLogin(request);
   }
 
