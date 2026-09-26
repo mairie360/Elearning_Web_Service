@@ -1,5 +1,13 @@
 # Elearning_Web_Service — Présentation du module
 
+## Un seul espace compte
+
+Le profil est désormais ouvert dans **Paramètres (Settings)**. Les anciens liens
+`/profile` et leurs sous-chemins redirigent vers le front Settings configuré.
+La sidebar conserve Paramètres sans doublon Profil. Si Settings n'est pas configuré
+correctement, une indisponibilité explicite remplace la redirection ; aucune donnée
+personnelle de démonstration ni fausse sauvegarde n'est affichée.
+
 [Documentation technique](technical.md) · [English](../en/module.md) · [README](../../README.md)
 
 Présenter le catalogue de formations et permettre aux agents de suivre leur apprentissage. L’interface consomme les routes de BFF Elearning et expose les fonctions administrateur selon le contexte.
@@ -14,7 +22,7 @@ Domaine fonctionnel: Formation en ligne.
 
 - Catalogue, filtres et détails de formation.
 - Démarrage, reprise, progression de contenu et notation.
-- Profil d’apprentissage et gestion des formations pour les administrateurs.
+- Accès au compte via Settings et gestion des formations pour les administrateurs.
 
 ## Parcours type
 
