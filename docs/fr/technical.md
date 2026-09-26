@@ -1,5 +1,16 @@
 # Elearning_Web_Service — Documentation technique
 
+## Profil centralisé dans Settings — lot MAIR-180
+
+La route serveur `/profile/[[...path]]` remplace les écrans de profil locaux.
+Elle redirige temporairement (307) vers `SETTINGS_FRONT_URL`, lue à chaque
+requête ; aucun profil métier n'est chargé dans ce module. Une destination
+absente, invalide, avec identifiants intégrés ou contenant un segment `profile`
+affiche un état d'indisponibilité avec un lien de retour au module. Les paramètres
+de l'ancien favori ne sont pas transmis. L'authentification middleware reste
+inchangée. Aucun nouveau contrat, paquet, secret ou variable n'est ajouté.
+Ce lot ne termine pas la migration complète vers l'AppShell partagé (MAIR-179).
+
 ## Destinations frontend explicites (MAIR-177)
 
 Les redirections utilisent uniquement des URL HTTP(S) configurées, sans
@@ -24,7 +35,7 @@ flowchart LR
   Next --> BFF["BFF_Elearning"]
 ```
 
-La page racine monte `ElearningModule`; la page profil monte le module de profil. Les fichiers de `src/features/elearning` pilotent le chargement, les actions et la navigation, tandis que le proxy conserve les routes `/elearning`.
+La page racine monte `ElearningModule` ; les anciennes pages profil redirigent vers Settings. Les fichiers de `src/features/elearning` pilotent le catalogue, les actions et la navigation, tandis que le proxy conserve les routes `/elearning`.
 
 Le proxy générique lit le contrat OpenAPI versionné pour autoriser chemins et méthodes. Il conserve paramètres de requête, corps binaire, statuts et en-têtes utiles, filtre les en-têtes de transport, désactive le cache et n’effectue pas de suivi automatique des redirections. Son délai est de 15 secondes.
 
@@ -114,7 +125,7 @@ Ces chemins de données sont exposés à la même origine par le proxy; les page
 | Page | Source |
 | --- | --- |
 | `/` | [src/app/page.tsx](../../src/app/page.tsx) |
-| `/profile` | [src/app/profile/page.tsx](../../src/app/profile/page.tsx) |
+| `/profile/[[...path]]` | [src/app/profile/[[...path]]/page.tsx](../../src/app/profile/%5B%5B...path%5D%5D/page.tsx) |
 
 `/logout` n’a pas de page: le middleware efface le cookie `accessToken` et redirige vers Login.
 
@@ -174,7 +185,6 @@ En cas d’erreur de proxy, comparer la route et la méthode à l’inventaire, 
 
 - [src/app/page.tsx](../../src/app/page.tsx)
 - [src/features/elearning/ElearningModule.tsx](../../src/features/elearning/ElearningModule.tsx)
-- [src/features/elearning/ProfileModule.tsx](../../src/features/elearning/ProfileModule.tsx)
 - [src/features/elearning/appData.ts](../../src/features/elearning/appData.ts)
 - [src/middleware.ts](../../src/middleware.ts)
 - [src/lib/bff-proxy.ts](../../src/lib/bff-proxy.ts)

@@ -1,5 +1,12 @@
 # Elearning_Web_Service — Module overview
 
+## One account destination
+
+Profile access now opens **Settings**. Existing `/profile` bookmarks and subpaths
+redirect to the configured Settings frontend. The sidebar keeps Settings without
+a duplicate Profile entry. If Settings is not configured correctly, an explicit
+unavailable state replaces the redirect; no demo identity or simulated save is shown.
+
 [Technical documentation](technical.md) · [Français](../fr/module.md) · [README](../../README.md)
 
 Present the training catalogue and let staff track their learning. The interface consumes BFF Elearning routes and exposes administrator functions according to context.
@@ -14,7 +21,7 @@ Business domain: E-learning.
 
 - Catalogue, filters and course details.
 - Start, resume, content progress and rating.
-- Learning profile and administrator course management.
+- Account access through Settings and administrator course management.
 
 ## Typical workflow
 

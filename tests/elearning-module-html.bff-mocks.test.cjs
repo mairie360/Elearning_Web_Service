@@ -3,7 +3,7 @@ const { after, afterEach, before, beforeEach, test } = require('node:test');
 require('./support/load-typescript.cjs');
 const { installReactRuntime, mount } = require('./support/server-view.cjs');
 
-// HTML of the e-learning pages (ElearningModule.tsx behind src/app/page.tsx, ProfileModule.tsx) rendered with
+// HTML of the e-learning catalogue (ElearningModule.tsx behind src/app/page.tsx) rendered with
 // react-dom/server against the mocked BFF E-learning: the real modules and the real components of
 // @mairie360/lib-components are rendered, the hook state is kept between render passes
 // (tests/support/server-view.cjs), so the markup reflects what the BFF answered through the proxy.
@@ -13,7 +13,6 @@ const React = require('react');
 const f = require('./support/elearning-fixtures.ts');
 const { errorReply, useMockedFront } = require('./support/mocked-front.ts');
 const Home = require('../src/app/page.tsx').default;
-const { ProfileModule } = require('../src/features/elearning/ProfileModule.tsx');
 
 const front = useMockedFront({ before, after, beforeEach, afterEach });
 const { bffElearning, runtime } = front;
@@ -121,27 +120,14 @@ test('a session refused by the BFF leaves the page through the logout route', as
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
 });
 
-test('the sidebar navigation goes through the App Router for local pages', async () => {
+test('the sidebar has one Settings account entry and legacy profile actions reach its redirect', async () => {
   await renderLoadedCatalog();
+  const ids = view.props('Sidebar').items.map((item) => item.id);
+  assert.equal(ids.includes('profile'), false);
+  assert.equal(ids.filter((id) => id === 'settings').length, 1);
 
   await view.act(() => view.props('Sidebar').onItemSelect({ id: 'profile' }));
 
   assert.deepEqual(router.pushes, ['/profile']);
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
-});
-
-test('the profile module renders the user of GET /elearning/profile', async () => {
-  bffElearning.on('get', '/elearning/profile', { body: f.profileResponse(f.currentUser({ email: 'alice.martin@mairie.test' })) });
-  view = mount(React.createElement(ProfileModule));
-
-  assert.equal(view.props('UserProfilePage').profileProps.loading, true);
-  await view.waitFor(() => view.props('UserProfilePage').profileProps.loading === false);
-
-  assert.deepEqual(operations(), ['GET /elearning/profile']);
-  const page = view.props('UserProfilePage');
-  assert.equal(page.user.name, 'Alice Martin');
-  assert.equal(page.profileProps.error, null);
-  assert.match(view.text(), /Alice Martin/);
-  assert.match(view.html, /value="alice\.martin@mairie\.test"/);
-  assert.match(view.html, /<h2[^>]*>Informations personnelles<\/h2>/);
 });

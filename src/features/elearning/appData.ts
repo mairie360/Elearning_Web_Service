@@ -11,7 +11,6 @@ import {
   MessageSquare,
   Settings,
   Shield,
-  UserRound,
 } from "lucide-react";
 
 export const profilePath = "/profile";
@@ -33,7 +32,6 @@ export const sidebarItems = [
     adminOnly: true,
     badge: "Admin",
   },
-  { id: "profile", label: "Profil", icon: UserRound },
   { id: "settings", label: "Paramètres", icon: Settings },
 ] satisfies SidebarItem[];
 
