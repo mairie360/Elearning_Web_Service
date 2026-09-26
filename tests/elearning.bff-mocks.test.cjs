@@ -10,7 +10,7 @@ const { contractUrl } = require('../src/lib/elearning-api.ts');
 const { LOGOUT_PATH, logout } = require('../src/lib/auth-session.ts');
 const { clearStoredAuthJwtToken, formatBearerToken, getStoredAuthJwtToken, storeAuthJwtToken } = require('../src/lib/auth-token.ts');
 
-// Les actions du catalogue et du profil (celles branchées par ElearningModule.tsx / ProfileModule.tsx) sont
+// Les actions du catalogue et les anciens helpers de profil sont
 // exécutées de bout en bout : fetch navigateur -> middleware -> src/app/[...path]/route.ts -> proxy -> BFF E-learning
 // simulé depuis le paquet publié @mairie360/bff-elearning-openapi. C'est le seul service que le front peut joindre :
 // le mock refuse toute requête absente du contrat et valide ses réponses de succès ; les erreurs passent par errorReply.

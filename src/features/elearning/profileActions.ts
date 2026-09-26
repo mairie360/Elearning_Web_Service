@@ -2,7 +2,7 @@ import { logout } from "../../lib/auth-session";
 import { BffRequestError } from "../../lib/bff-client";
 import { getProfile, type ElearningProfileResponse } from "../../lib/elearning-api";
 
-// Chargement du profil, séparé de ProfileModule.tsx pour être testé sans DOM
+// Helper du contrat BFF de profil conservé pour les tests, sans écran de profil local
 // (tests/elearning.bff-mocks.test.cjs).
 
 export type ProfileView = {

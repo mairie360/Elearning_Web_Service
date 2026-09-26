@@ -6,6 +6,7 @@ import {
   NONCE_REQUEST_HEADER,
 } from "./lib/content-security-policy";
 import { readFrontUrlsFromEnv } from "./lib/front-urls";
+import { settingsProfileUrl } from "./lib/settings-profile";
 
 const ACCESS_TOKEN_COOKIE = "accessToken";
 const LOGOUT_PATH = "/logout";
@@ -77,13 +78,27 @@ function redirectToLogin(request: NextRequest, includeReturn = true) {
 export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
 
-  // Déconnexion (src/lib/auth-session.ts) : BFF_Elearning 0.3.0 n'expose pas de route de logout.
+  // Déconnexion (src/lib/auth-session.ts) : le contrat BFF_Elearning publié n'expose pas de route de logout.
   if (request.nextUrl.pathname === LOGOUT_PATH) {
     return redirectToLogin(request, false);
   }
 
   if (!accessToken || isExpiredJwt(accessToken)) {
     return redirectToLogin(request);
+  }
+
+  if (request.nextUrl.pathname === "/profile" || request.nextUrl.pathname.startsWith("/profile/")) {
+    const destination = settingsProfileUrl(process.env.SETTINGS_FRONT_URL);
+    return destination ? NextResponse.redirect(destination) : new NextResponse(
+      "Paramètres indisponibles. Veuillez contacter votre administrateur.",
+      {
+        status: 503,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      },
+    );
   }
 
   // Next.js lit la CSP de la requête pour poser le nonce sur ses propres scripts :

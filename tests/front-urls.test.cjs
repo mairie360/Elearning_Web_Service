@@ -4,7 +4,6 @@ require('./support/load-typescript.cjs');
 
 const frontUrls = require('../src/lib/front-urls.ts');
 const { FrontUrlsProvider } = require('../src/lib/front-urls-provider.tsx');
-const appData = require('../src/features/elearning/appData.ts');
 
 // The other fronts' URLs are read at runtime (src/lib/front-urls.ts): from the server environment the
 // Helm chart injects, and in the browser from what the root layout hands to FrontUrlsProvider.
@@ -47,32 +46,19 @@ test('the provider leaves the browser store alone when rendered on the server', 
   assert.equal(frontUrls.frontUrl('DASHBOARD_FRONT_URL'), undefined);
 });
 
-test('navigation resolves every other front on use, from the URLs of this instance', () => {
+test('every active front URL remains available at render time for the shared shell', () => {
   global.window = {};
-  assert.equal(appData.getRouteForPage('dashboard'), undefined, 'nothing configured yet');
+  assert.equal(frontUrls.frontUrl('DASHBOARD_FRONT_URL'), undefined, 'nothing configured yet');
 
   const urls = {
     DASHBOARD_FRONT_URL: 'https://dashboard.test.example/',
     PROJECT_FRONT_URL: 'https://project.test.example/',
     MESSAGE_FRONT_URL: 'https://message.test.example/',
-    EMAIL_FRONT_URL: 'https://email.test.example/',
-    FILES_FRONT_URL: 'https://files.test.example/',
     ELEARNING_FRONT_URL: 'https://elearning.test.example/',
     CALENDAR_FRONT_URL: 'https://calendar.test.example/',
     ADMINISTRATION_FRONT_URL: 'https://admin.test.example/',
     SETTINGS_FRONT_URL: 'https://settings.test.example/',
   };
   frontUrls.setBrowserFrontUrls(urls);
-  const expected = {
-    dashboard: urls.DASHBOARD_FRONT_URL,
-    projects: urls.PROJECT_FRONT_URL,
-    messages: urls.MESSAGE_FRONT_URL,
-    emails: urls.EMAIL_FRONT_URL,
-    files: urls.FILES_FRONT_URL,
-    training: urls.ELEARNING_FRONT_URL,
-    calendar: urls.CALENDAR_FRONT_URL,
-    admin: urls.ADMINISTRATION_FRONT_URL,
-    settings: urls.SETTINGS_FRONT_URL,
-  };
-  for (const [page, href] of Object.entries(expected)) assert.equal(appData.getRouteForPage(page), href, page);
+  for (const [key, href] of Object.entries(urls)) assert.equal(frontUrls.frontUrl(key), href, key);
 });

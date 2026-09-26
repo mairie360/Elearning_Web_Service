@@ -8,7 +8,7 @@ const { installReactRuntime, mount } = require('./support/server-view.cjs');
 // @mairie360/lib-components are rendered, the hook state is kept between render passes
 // (tests/support/server-view.cjs), so the markup reflects what the BFF answered through the proxy.
 
-const { router } = installReactRuntime();
+installReactRuntime();
 const React = require('react');
 const f = require('./support/elearning-fixtures.ts');
 const { errorReply, useMockedFront } = require('./support/mocked-front.ts');
@@ -18,7 +18,6 @@ const front = useMockedFront({ before, after, beforeEach, afterEach });
 const { bffElearning, runtime } = front;
 let view;
 
-beforeEach(() => { router.reset(); });
 afterEach(() => {
   view?.unmount();
   view = undefined;
@@ -39,6 +38,7 @@ test('the first pass renders the loading state, the next one the catalogue of GE
   assert.equal(view.passes, 1);
   assert.match(view.html, /<div[^>]*role="status"[^>]*>Chargement des formations…<\/div>/);
   assert.equal(view.find('ElearningCatalog').length, 0);
+  assert.equal(view.find('AppShell').length, 1);
   assert.equal(view.props('Header').user.name, '');
 
   const html = await view.waitFor((current) => !current.includes('role="status"'));
@@ -125,9 +125,19 @@ test('desktop and mobile navigation expose only active modules and keep Settings
   const assigned = [];
   const originalAssign = global.window.location.assign;
   global.window.location.assign = (href) => assigned.push(href);
-  setBrowserFrontUrls({ SETTINGS_FRONT_URL: 'https://settings.test.example/' });
+  setBrowserFrontUrls({
+    DASHBOARD_FRONT_URL: 'https://dashboard.test.example/',
+    PROJECT_FRONT_URL: 'https://projects.test.example/',
+    MESSAGE_FRONT_URL: 'https://messages.test.example/',
+    ELEARNING_FRONT_URL: 'https://training.test.example/',
+    CALENDAR_FRONT_URL: 'https://calendar.test.example/',
+    ADMINISTRATION_FRONT_URL: 'https://admin.test.example/',
+    SETTINGS_FRONT_URL: 'https://settings.test.example/',
+  });
   try {
     await renderLoadedCatalog();
+    assert.equal(view.props('AppShell').activeItem, 'training');
+    assert.equal(view.props('AppShell').hrefs.profile, 'https://settings.test.example/');
     const isAdmin = view.props('Sidebar').isAdmin;
     for (const mobileOpen of [false, true]) {
       await view.act(() => view.props('Header').setSidebarOpen(mobileOpen));
@@ -158,14 +168,23 @@ test('desktop and mobile navigation expose only active modules and keep Settings
   }
 });
 
-test('the sidebar has one Settings account entry and legacy profile actions reach its redirect', async () => {
-  await renderLoadedCatalog();
-  const ids = view.props('Sidebar').items.map((item) => item.id);
-  assert.equal(ids.includes('profile'), false);
-  assert.equal(ids.filter((id) => id === 'settings').length, 1);
-
-  await view.act(() => view.props('Sidebar').onItemSelect({ id: 'profile' }));
-
-  assert.deepEqual(router.pushes, ['/profile']);
-  assert.deepEqual(operations(), ['GET /elearning/catalog']);
+test('the shared shell directs profile access to configured Settings', async () => {
+  const { setBrowserFrontUrls } = require('../src/lib/front-urls.ts');
+  const assigned = [];
+  const originalAssign = global.window.location.assign;
+  global.window.location.assign = (href) => assigned.push(href);
+  setBrowserFrontUrls({ SETTINGS_FRONT_URL: 'https://settings.test.example/' });
+  try {
+    await renderLoadedCatalog();
+    const ids = view.props('Sidebar').items.map((item) => item.id);
+    assert.equal(ids.includes('profile'), false);
+    assert.equal(ids.filter((id) => id === 'settings').length, 1);
+    assert.equal(view.props('Header').profileHref, 'https://settings.test.example/');
+    await view.act(() => view.props('Header').onPageChange('profile'));
+    assert.deepEqual(assigned, ['https://settings.test.example/']);
+    assert.deepEqual(operations(), ['GET /elearning/catalog']);
+  } finally {
+    setBrowserFrontUrls({});
+    global.window.location.assign = originalAssign;
+  }
 });

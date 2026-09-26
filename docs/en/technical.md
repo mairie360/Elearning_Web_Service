@@ -19,25 +19,23 @@ Docker runtime/build versions and their locked install remain unchanged; no new
 runtime environment variable, secret, API/BFF contract or shared-CICD edit is
 part of this slice. These CI checks do not certify a deployed environment.
 
-## Active-module menu — MAIR-180 preparatory slice
+## Shared application shell — MAIR-180
 
-Only the Sidebar item list excludes `emails` and `files`; existing URL resolution,
-environment configuration, sessions and BFF calls are unchanged. Both desktop and
-mobile render the same active list. Page-level regression coverage renders the
-real Sidebar, checks item order/active item/admin visibility, opens the mobile
-menu and follows Settings while closing the drawer. No library fork or new
-package is introduced; the full MAIR-179/MAIR-180 AppShell dependency remains.
+`ElearningModule` uses the shared `AppShell` for desktop/mobile navigation,
+header and footer. The shell receives runtime URLs for active modules only;
+invalid frontend destinations are omitted. The BFF catalogue still supplies
+the current user, administrator role and footer data. No BFF call or contract
+changes. The frontend requires a published `@mairie360/lib-components` release
+that exports `AppShell` before this slice can be deployed.
 
 ## Settings account destination — MAIR-180 slice
 
-The server route `/profile/[[...path]]` replaces the local profile screens.
-It temporarily redirects (307) to `SETTINGS_FRONT_URL`, resolved on each request;
-no business profile is fetched by this module. Missing, invalid, credential-bearing
-or legacy `profile` path destinations render an unavailable state with a link
-back to the module. Old bookmark query parameters are not forwarded. Middleware
-authentication is unchanged. No new contract, package, secret or environment
-variable is introduced. This slice does not complete shared AppShell migration
-(MAIR-179).
+Authenticated requests to `/profile` and its subpaths redirect (307) in
+middleware to `SETTINGS_FRONT_URL`, resolved on each request; no business profile
+is fetched by this module. Missing, invalid, credential-bearing or legacy
+`profile` path destinations return an uncached HTTP 503. Old bookmark query
+parameters are not forwarded. The existing authentication gate runs first.
+No new BFF contract, secret or runtime variable is introduced.
 
 ## Explicit frontend destinations (MAIR-177)
 
@@ -63,7 +61,7 @@ flowchart LR
   Next --> BFF["BFF_Elearning"]
 ```
 
-The root page mounts `ElearningModule`; legacy profile pages redirect to Settings. Files in `src/features/elearning` manage catalogue loading, actions and navigation, while the proxy preserves `/elearning` routes.
+The root page mounts `ElearningModule` inside the shared AppShell; middleware redirects legacy profile URLs to Settings. Files in `src/features/elearning` manage catalogue loading and actions, while the proxy preserves `/elearning` routes.
 
 The generic proxy reads the versioned OpenAPI contract to allow paths and methods. It preserves query parameters, binary bodies, statuses and useful headers, filters transport headers, disables caching and does not automatically follow redirects. Its timeout is 15 seconds.
 
@@ -153,7 +151,7 @@ These data paths are exposed at the same origin through the proxy; Next.js pages
 | Page | Source |
 | --- | --- |
 | `/` | [src/app/page.tsx](../../src/app/page.tsx) |
-| `/profile/[[...path]]` | [src/app/profile/[[...path]]/page.tsx](../../src/app/profile/%5B%5B...path%5D%5D/page.tsx) |
+| `/profile` and subpaths | [src/middleware.ts](../../src/middleware.ts) redirects to Settings |
 
 `/logout` has no page: the middleware clears the `accessToken` cookie and redirects to Login.
 
@@ -213,7 +211,6 @@ For a proxy error, compare the path and method with the inventory, then check th
 
 - [src/app/page.tsx](../../src/app/page.tsx)
 - [src/features/elearning/ElearningModule.tsx](../../src/features/elearning/ElearningModule.tsx)
-- [src/features/elearning/appData.ts](../../src/features/elearning/appData.ts)
 - [src/middleware.ts](../../src/middleware.ts)
 - [src/lib/bff-proxy.ts](../../src/lib/bff-proxy.ts)
 - [src/app/[...path]/route.ts](../../src/app/%5B...path%5D/route.ts)
