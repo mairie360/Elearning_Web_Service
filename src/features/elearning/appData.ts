@@ -34,7 +34,7 @@ export const sidebarItems = [
     badge: "Admin",
   },
   { id: "profile", label: "Profil", icon: UserRound },
-  { id: "settings", label: "Parametres", icon: Settings },
+  { id: "settings", label: "Paramètres", icon: Settings },
 ] satisfies SidebarItem[];
 
 const pageRoutes: Partial<Record<string, string>> = {
