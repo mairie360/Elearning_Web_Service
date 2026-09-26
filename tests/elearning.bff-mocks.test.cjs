@@ -17,6 +17,12 @@ const { clearStoredAuthJwtToken, formatBearerToken, getStoredAuthJwtToken, store
 
 const front = useMockedFront({ before, after, beforeEach, afterEach });
 const { bffElearning, runtime } = front;
+const savedLoginUrl = process.env.LOGIN_FRONT_URL;
+beforeEach(() => { process.env.LOGIN_FRONT_URL = 'https://login.mairie.test/'; });
+afterEach(() => {
+  if (savedLoginUrl === undefined) delete process.env.LOGIN_FRONT_URL;
+  else process.env.LOGIN_FRONT_URL = savedLoginUrl;
+});
 
 const CONSUMED = [
   'GET /elearning/catalog',
@@ -229,7 +235,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
 
     assert.equal(state.error, 'Une erreur inattendue est survenue.');
     assert.equal(runtime.frontCalls[0].status, 307);
-    assert.match(runtime.frontCalls[0].redirectedTo, /^http:\/\/localhost:5000\//);
+    assert.match(runtime.frontCalls[0].redirectedTo, /^https:\/\/login\.mairie\.test\//);
     assert.equal(runtime.upstreamCalls.length, 0);
   });
 
@@ -341,7 +347,7 @@ describe('logout and stored session without another BFF', () => {
     assert.deepEqual(front.window().location.assigned, ['/logout']);
     const navigation = runtime.navigate(LOGOUT_PATH);
     assert.equal(navigation.status, 307);
-    assert.match(navigation.location, /^http:\/\/localhost:5000\//);
+    assert.match(navigation.location, /^https:\/\/login\.mairie\.test\//);
     assert.match(navigation.setCookie, /accessToken=;/);
     assert.equal(runtime.frontCalls.length, 0);
     assert.equal(bffElearning.requests.length, 0);
