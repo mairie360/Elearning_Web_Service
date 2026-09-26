@@ -24,25 +24,10 @@ export const metadata: Metadata = {
   description: "Module de formation en ligne Mairie360",
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      {
-        url: "/web-app-manifest-192x192.png",
-        sizes: "192x192",
-        type: "image/png",
-      },
-      {
-        url: "/web-app-manifest-512x512.png",
-        sizes: "512x512",
-        type: "image/png",
-      },
+      { url: "/favicon.ico?v=8dd52d5111b8", sizes: "192x192", type: "image/x-icon" },
+      { url: "/mairie360-favicon.png?v=8dd52d5111b8", sizes: "192x192", type: "image/png" },
     ],
-    apple: [
-      {
-        url: "/web-app-manifest-192x192.png",
-        sizes: "192x192",
-        type: "image/png",
-      },
-    ],
+    apple: [{ url: "/mairie360-logo.png?v=8dd52d5111b8", sizes: "192x192", type: "image/png" }],
   },
 };
 
