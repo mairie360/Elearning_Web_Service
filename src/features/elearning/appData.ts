@@ -4,10 +4,8 @@ import type { Sidebar } from "@mairie360/lib-components";
 import {
   Briefcase,
   Calendar,
-  Files,
   GraduationCap,
   LayoutDashboard,
-  Mail,
   MessageSquare,
   Settings,
   Shield,
@@ -21,8 +19,6 @@ export const sidebarItems = [
   { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { id: "projects", label: "Projets", icon: Briefcase },
   { id: "messages", label: "Messagerie", icon: MessageSquare },
-  { id: "emails", label: "E-mails", icon: Mail },
-  { id: "files", label: "Fichiers", icon: Files },
   { id: "training", label: "Formation", icon: GraduationCap },
   { id: "calendar", label: "Calendrier", icon: Calendar },
   {
