@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Next.js 15 (App Router, React 19, TypeScript, Tailwind 4) web service for Mairie360 hosting the e-learning module (catalog, course progress, admin course management, profile). The browser only talks to this app's own origin; the Next.js server forwards data calls to **BFF_Elearning**, the only service this front may reach (it resolves sessions through BFF User on its side). Only published `X.Y.Z` releases of that BFF are consumed, currently **0.3.0**: never a BFF branch/checkout or a `0.0.0-dev`/`staging` build. UI building blocks come from the private package `@mairie360/lib-components`. Docs are bilingual: `docs/en|fr/module.md` (functional) and `docs/en|fr/technical.md` (routes, config, troubleshooting) — update both languages together. `BFF.md` / `BACKEND.md` contain *proposed* backend needs; the OpenAPI snapshot is the source of truth for implemented behaviour.
+Next.js 16 (App Router, React 19, TypeScript, Tailwind 4) web service for Mairie360 hosting the e-learning module (catalog, course progress, admin course management). The browser only talks to this app's own origin; the Next.js server forwards data calls to **BFF_Elearning**, the only service this front may reach (it resolves sessions through BFF User on its side). Only published `X.Y.Z` releases of that BFF are consumed: never a BFF branch/checkout or a `0.0.0-dev`/`staging` build. UI building blocks come from the private package `@mairie360/lib-components`. Docs are bilingual: `docs/en|fr/module.md` (functional) and `docs/en|fr/technical.md` (routes, config, troubleshooting) — update both languages together. `BFF.md` / `BACKEND.md` contain *proposed* backend needs; the OpenAPI snapshot is the source of truth for implemented behaviour.
 
 ## Commands
 
@@ -14,7 +14,7 @@ Private `@mairie360/*` packages come from GitHub Packages: `.npmrc` reads `NODE_
 npm ci
 npm run dev -- --port 5006         # needs BFF_Elearning reachable, see "BFF URL" below
 npm run build && npm run start -- --port 5006
-npm run lint                             # next lint (next/core-web-vitals + next/typescript)
+npm run lint                             # ESLint on src/
 npm test                                 # node:test on tests/*.test.cjs, coverage >= 60% lines/branches/functions, lcov in coverage/lcov.info (what CI runs)
 npm run test:contracts                   # same tests, no coverage
 node --test --test-name-pattern="<name>" tests/elearning.bff-mocks.test.cjs   # single test
@@ -28,7 +28,7 @@ Same approach as the BFFs' `*.upstream-mocks.test.ts`. `tests/support/openapi-co
 
 - `tests/support/mocked-front.ts` starts a single `ContractMockServer`, BFF E-learning. It is rebuilt from the published devDependency `@mairie360/bff-elearning-openapi` (orval output, exact version). It also installs `FrontRuntime` (`tests/support/front-runtime.ts`), which replaces `global.fetch`. A browser-side call must target the front origin and goes through the real `middleware` (with its matcher), then the `src/app/**/route.ts` handler that the App Router would pick. A server-side call (inside a handler, tracked with `AsyncLocalStorage`) may only target that mock. After each test, any contract violation or out-of-scope call fails it. `BFF_ELEARNING_BASE_URL` is reset per test. `runtime.navigate(path)` runs only the middleware, for page navigations such as `/logout`.
 - Mocked success replies are validated against the package contract. Orval only types success statuses, so error replies go through `errorReply(status, code, message)`. It marks them `outOfContract` but validates the body against the `ApiError` schema of `contracts/openapi.json`.
-- `tests/elearning-module-html.bff-mocks.test.cjs` renders the real `ElearningModule` (behind `src/app/page.tsx`) and `ProfileModule` through `tests/support/server-view.cjs` (`react-dom/server` with hook state kept between passes, same file in every front, see `../CLAUDE.md`) on `useMockedFront`: loading state, catalogue and header from `/elearning/catalog`, retry after an error, course start, refused mutation, 401 → `/logout`, sidebar navigation and the profile page are asserted on the HTML. The loader transpiles `.tsx` with `jsx: react-jsx`.
+- `tests/elearning-module-html.bff-mocks.test.cjs` renders the real `ElearningModule` (behind `src/app/page.tsx`) inside the shared `AppShell` through `tests/support/server-view.cjs` (`react-dom/server` with hook state kept between passes, same file in every front, see `../CLAUDE.md`) on `useMockedFront`: loading state, catalogue, BFF-supplied user/footer, retry after an error, course start, refused mutation, 401 → `/logout`, active-module navigation and Settings profile access are asserted on the HTML. The loader transpiles `.tsx` with `jsx: react-jsx`.
 - `tests/elearning.bff-mocks.test.cjs` asserts in `after()` that every operation listed in `CONSUMED` was exercised. `tests/bff-contracts.test.cjs` enforces several things:
   - the package is an exact `X.Y.Z` and the only `bff-*-openapi` dependency;
   - `contracts/openapi.json` declares exactly the package's operations;
@@ -53,21 +53,21 @@ Then move `BFF_ELEARNING_IMAGE` defaults in every `docker-compose*.yml` to `X.Y.
 
 ## Architecture
 
-- **Profile routing (MAIR-180 partial delivery)** — `src/app/profile/[[...path]]/page.tsx`
-  is now a dynamic Server Component redirecting old profile URLs to the existing
-  runtime `SETTINGS_FRONT_URL`. It does not load a local user/profile; absent,
-  invalid or looping destinations render an unavailable state with a return link.
-  The sidebar no longer duplicates Settings with a Profile item. Earlier profile
-  page descriptions below are superseded by this route; the shared AppShell
-  migration and BFF session contracts are unchanged.
+- **Shared shell and profile routing (MAIR-180)** — `ElearningModule` uses the
+  published library `AppShell` with BFF-supplied user, role and footer. It reads
+  active frontend destinations at runtime and excludes archived modules. The
+  middleware redirects authenticated legacy `/profile` URLs to validated
+  `SETTINGS_FRONT_URL`; invalid or missing destinations return uncached 503.
+  No local profile UI or demo identity is rendered. BFF session contracts are
+  unchanged. Deploy only after a published library version exports `AppShell`.
 
 - **Contract-gated catch-all proxy** — `src/app/[...path]/route.ts` exports `proxyBffRequest` (`src/lib/bff-proxy.ts`) for every method. It matches the path against `contracts/openapi.json` `paths` (brace segments are wildcards): unknown path → 404, method not declared → 405 with `Allow`, `.`/`..` segments → 400; `/openapi.json` and `/swagger.json` are always forwarded. **A BFF route is therefore reachable from the browser only once the synced contract declares it.**
 - **`forwardToBff`** strips hop-by-hop headers and the `cookie` header, turns the `accessToken` cookie into `Authorization: Bearer` when no Authorization header is present, keeps the query string and raw (binary) body, uses `redirect: 'manual'`, a 15 s timeout and `Cache-Control: no-store`, preserves upstream status/headers (including `Set-Cookie`, empty 204/205/304 bodies) and returns a controlled 502 JSON error when the BFF is unreachable. `tests/proxy.test.cjs` pins this behaviour.
 - **BFF URL** — `BFF_ELEARNING_BASE_URL` → `ELEARNING_BFF_URL` → `NEXT_PUBLIC_BFF_ELEARNING_BASE_URL`; resolved at request time on the server. Missing or invalid configuration returns an uncached 503 without contacting an upstream; configure the URL explicitly for local development too.
-- **Session and logout, single BFF** — there is no `src/app/api` adapter and no BFF User call. The current user comes from BFF_Elearning responses (`user.isAdmin`, etc.). On a 401 or on logout, `logout()` (`src/lib/auth-session.ts`) clears `localStorage` and navigates to `/logout`. There, the middleware clears the `accessToken` cookie and redirects to Login. The session isn't revoked server-side, because BFF_Elearning 0.3.0 has no logout route.
+- **Session and logout, single BFF** — there is no `src/app/api` adapter and no BFF User call. The current user comes from BFF_Elearning responses (`user.isAdmin`, etc.). On a 401 or on logout, `logout()` (`src/lib/auth-session.ts`) clears `localStorage` and navigates to `/logout`. There, the middleware clears the `accessToken` cookie and redirects to Login. The session isn't revoked server-side, because the published BFF_Elearning contract has no logout route.
 - **Auth gate** — `src/middleware.ts` redirects every page request (matcher excludes `/api`, `/_next/*` and paths with a dot) to `LOGIN_FRONT_URL` when the request is `/logout`, the `accessToken` cookie is missing or its JWT `exp` is past, clearing the cookie on `COOKIE_DOMAIN`. It only decodes the payload; signature validation is the BFF/Core's job. Note that the catch-all data routes (e.g. `/health`) also pass through it. For authenticated requests it also sets a per-request nonce `Content-Security-Policy` (built in `src/lib/content-security-policy.ts`, forwarded to Next.js via request headers), which is why `src/app/layout.tsx` forces dynamic rendering: a prerendered page would carry no nonce and its scripts would be blocked. Any new external origin (images, fonts, browser-side API calls) must be added to that policy.
 - **Client calls** — `src/lib/elearning-api.ts` is the only browser entry point to BFF E-learning. Its `callBff(method, template, { path, body })` is typed from `src/contracts/bff.d.ts`, so a path/method missing from the contract, or a wrong body, does not compile. It builds the URL with `contractUrl` (encoded path params; a `/` inside an id is refused with 400 by the proxy) and calls `requestBff` (`src/lib/bff-client.ts`), which sends same-origin requests, parses `{ error: { message } }` / `{ message }` bodies into typed errors and, when no Authorization header is set, add a Bearer token stored in `localStorage` (`mairie360.auth.jwt`, see `src/lib/auth-token.ts`); in normal use the proxy relies on the cookie.
-- `src/app/page.tsx` mounts `ElearningModule`, `src/app/profile/page.tsx` mounts `ProfileModule`. The components only wire React state to `createCatalogActions` (`catalogActions.ts`: load, start, complete, rate and admin CRUD, logout on 401, reload after mutations) and `loadProfile` (`profileActions.ts`). `appData.ts` holds sidebar items and cross-module navigation. lib-components types the admin form's `statusValue` as a free string, so `toContractCourse` drops values outside the contract enum before sending.
+- `src/app/page.tsx` mounts `ElearningModule`, which wires React state to `createCatalogActions` (`catalogActions.ts`: load, start, complete, rate and admin CRUD, logout on 401, reload after mutations) and passes runtime frontend destinations to the shared AppShell. lib-components types the admin form's `statusValue` as a free string, so `toContractCourse` drops values outside the contract enum before sending.
 - `next.config.ts` sets `output: 'standalone'` (required by the Dockerfile), `poweredByHeader: false` and static security headers on every route (`tests/security-headers.test.cjs` pins them, and the ZAP baseline fails without them), and inlines the `*_FRONT_URL` values at **build time** (defaults `https://<module>.dev.mairie360-eip.fr/`), so changing them requires a rebuild.
 
 ## CI/CD
@@ -85,7 +85,7 @@ Then move `BFF_ELEARNING_IMAGE` defaults in every `docker-compose*.yml` to `X.Y.
 
 Same pattern as the APIs/BFFs, adapted to a web front. Not part of `npm test`; they need Docker and `NODE_AUTH_TOKEN` (the front image is built from the production `Dockerfile`).
 
-- `./security_test.sh` → `docker-compose-security.yml`: full isolated upstream stack (Postgres + Liquibase + `init-test.sql` seed, Redis, Core API, ELearning API, BFF User and `bff-elearning:0.3.0`; published GHCR images, versions overridable via `*_IMAGE` env vars) + this front (which only receives `BFF_ELEARNING_BASE_URL`), then `zap-baseline.py` (spider + passive scan) authenticated with a static `accessToken` cookie. Any WARN/FAIL alert not set to IGNORE in `.zap/rules.tsv` fails the run.
+- `./security_test.sh` → `docker-compose-security.yml`: full isolated upstream stack (Postgres + Liquibase + `init-test.sql` seed, Redis, Core API, ELearning API, BFF User and the `bff-elearning` image pinned in the Compose file; published GHCR images, versions overridable via `*_IMAGE` env vars) + this front (which only receives `BFF_ELEARNING_BASE_URL`), then `zap-baseline.py` (spider + passive scan) authenticated with a static `accessToken` cookie. Any WARN/FAIL alert not set to IGNORE in `.zap/rules.tsv` fails the run.
 - `./performance_test.sh` → `docker-compose-performance.yml`: same stack + k6 running `load-test.js` (pages, `/health`, `/elearning/*` through the proxy) with a JWT minted from `JWT_SECRET`; thresholds fail the run.
 - Test user is id 2 (seeded in `init-test.sql`); every service shares `JWT_SECRET=b"secret"`. `TARGET_IMAGE` lets the stacks reuse a pre-built front image. These files are excluded from the image by `.dockerignore`.
 

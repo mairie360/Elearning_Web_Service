@@ -22,3 +22,14 @@ body {
 .elearning-catalog-shell > div {
   max-width: none;
 }
+
+.elearning-shell {
+  background: #f4f2ef;
+  color: #2f3747;
+}
+
+.elearning-shell > .flex > .flex > main {
+  padding: 0;
+  background: #f4f2ef;
+  overflow-y: auto;
+}

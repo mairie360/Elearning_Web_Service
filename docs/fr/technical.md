@@ -21,25 +21,23 @@ restent inchangées ; aucune nouvelle variable runtime, aucun nouveau secret,
 contrat API/BFF ou changement du CICD partagé. Ces vérifications ne constituent
 pas une recette d’environnement déployé.
 
-## Menu des modules actifs — lot préparatoire MAIR-180
+## Structure applicative partagée — MAIR-180
 
-Seule la liste transmise à Sidebar exclut `emails` et `files` ; la résolution des
-URL existantes, la configuration, les sessions et les appels BFF sont inchangés.
-Ordinateur et mobile utilisent la même liste active. Le test de page rend le
-vrai Sidebar, vérifie ordre/sélection/visibilité admin, ouvre le menu mobile puis
-suit Paramètres en refermant le panneau. Aucune copie de bibliothèque ni nouvelle
-dépendance ; la migration AppShell MAIR-179/MAIR-180 reste distincte et incomplète.
+`ElearningModule` utilise l’`AppShell` partagé pour la navigation ordinateur et
+mobile, l’en-tête et le pied de page. Seules les URL runtime des modules actifs
+sont transmises ; les destinations invalides sont omises. Le BFF fournit toujours
+l’utilisateur courant, le rôle administrateur et le contenu du pied de page.
+Aucun changement d’appel ni de contrat BFF. Un paquet publié de
+`@mairie360/lib-components` exportant `AppShell` est nécessaire avant déploiement.
 
 ## Profil centralisé dans Settings — lot MAIR-180
 
-La route serveur `/profile/[[...path]]` remplace les écrans de profil locaux.
-Elle redirige temporairement (307) vers `SETTINGS_FRONT_URL`, lue à chaque
-requête ; aucun profil métier n'est chargé dans ce module. Une destination
-absente, invalide, avec identifiants intégrés ou contenant un segment `profile`
-affiche un état d'indisponibilité avec un lien de retour au module. Les paramètres
-de l'ancien favori ne sont pas transmis. L'authentification middleware reste
-inchangée. Aucun nouveau contrat, paquet, secret ou variable n'est ajouté.
-Ce lot ne termine pas la migration complète vers l'AppShell partagé (MAIR-179).
+Les requêtes authentifiées vers `/profile` et ses sous-chemins redirigent (307)
+dans le middleware vers `SETTINGS_FRONT_URL`, lue à chaque requête ; aucun profil
+métier n’est chargé ici. Une destination absente, invalide, avec identifiants
+intégrés ou contenant un segment `profile` renvoie HTTP 503 sans cache. Les
+paramètres de l’ancien favori ne sont pas transmis. Le contrôle d’authentification
+existant s’applique d’abord. Aucun nouveau contrat BFF, secret ni variable runtime.
 
 ## Destinations frontend explicites (MAIR-177)
 
@@ -65,7 +63,7 @@ flowchart LR
   Next --> BFF["BFF_Elearning"]
 ```
 
-La page racine monte `ElearningModule` ; les anciennes pages profil redirigent vers Settings. Les fichiers de `src/features/elearning` pilotent le catalogue, les actions et la navigation, tandis que le proxy conserve les routes `/elearning`.
+La page racine monte `ElearningModule` dans l’AppShell partagé ; le middleware redirige les anciens liens profil vers Settings. Les fichiers de `src/features/elearning` pilotent le catalogue et ses actions, tandis que le proxy conserve les routes `/elearning`.
 
 Le proxy générique lit le contrat OpenAPI versionné pour autoriser chemins et méthodes. Il conserve paramètres de requête, corps binaire, statuts et en-têtes utiles, filtre les en-têtes de transport, désactive le cache et n’effectue pas de suivi automatique des redirections. Son délai est de 15 secondes.
 
@@ -155,7 +153,7 @@ Ces chemins de données sont exposés à la même origine par le proxy; les page
 | Page | Source |
 | --- | --- |
 | `/` | [src/app/page.tsx](../../src/app/page.tsx) |
-| `/profile/[[...path]]` | [src/app/profile/[[...path]]/page.tsx](../../src/app/profile/%5B%5B...path%5D%5D/page.tsx) |
+| `/profile` et sous-chemins | [src/middleware.ts](../../src/middleware.ts) redirige vers Settings |
 
 `/logout` n’a pas de page: le middleware efface le cookie `accessToken` et redirige vers Login.
 
@@ -215,7 +213,6 @@ En cas d’erreur de proxy, comparer la route et la méthode à l’inventaire, 
 
 - [src/app/page.tsx](../../src/app/page.tsx)
 - [src/features/elearning/ElearningModule.tsx](../../src/features/elearning/ElearningModule.tsx)
-- [src/features/elearning/appData.ts](../../src/features/elearning/appData.ts)
 - [src/middleware.ts](../../src/middleware.ts)
 - [src/lib/bff-proxy.ts](../../src/lib/bff-proxy.ts)
 - [src/app/[...path]/route.ts](../../src/app/%5B...path%5D/route.ts)
