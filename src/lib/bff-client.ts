@@ -7,6 +7,15 @@ type BffErrorBody = {
   };
 };
 
+function errorMessage(body: BffErrorBody | null, status: number): string {
+  for (const message of [body?.message, body?.error?.message]) {
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return status >= 500
+    ? "Le service est momentanément indisponible. Veuillez réessayer plus tard."
+    : "La demande n’a pas pu aboutir. Veuillez réessayer.";
+}
+
 export class BffRequestError extends Error {
   constructor(
     public readonly status: number,
@@ -53,12 +62,7 @@ export async function requestBff<T>(path: string, init: RequestInit = {}) {
       // La réponse peut ne pas contenir de JSON exploitable.
     }
 
-    const message =
-      (typeof body?.message === "string" && body.message) ||
-      (typeof body?.error?.message === "string" && body.error.message) ||
-      `Le service e-learning a répondu avec le statut ${response.status}.`;
-
-    throw new BffRequestError(response.status, message);
+    throw new BffRequestError(response.status, errorMessage(body, response.status));
   }
 
   if (response.status === 204) return undefined as T;

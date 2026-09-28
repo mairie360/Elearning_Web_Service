@@ -173,7 +173,8 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
   for (const [label, reply, expected] of [
     ['a 500 ApiError', errorReply(500, 'INTERNAL_ERROR', 'Erreur interne du BFF.'), 'Erreur interne du BFF.'],
     ['a 502 ApiError', errorReply(502, 'USER_SERVICE_UNAVAILABLE', 'Le service utilisateur est indisponible.'), 'Le service utilisateur est indisponible.'],
-    ['a non-JSON 500 body', { status: 500, raw: 'upstream crashed', contentType: 'text/plain', outOfContract: true }, 'Le service e-learning a répondu avec le statut 500.'],
+    ['a non-JSON 500 body', { status: 500, raw: 'upstream crashed', contentType: 'text/plain', outOfContract: true }, 'Le service est momentanément indisponible. Veuillez réessayer plus tard.'],
+    ['a blank 400 business message', { status: 400, body: { message: ' ' }, outOfContract: true }, 'La demande n’a pas pu aboutir. Veuillez réessayer.'],
     ['a dropped connection', { dropConnection: true }, 'Le service est indisponible.'],
   ]) {
     test(`loadCatalog reports ${label}`, async () => {
