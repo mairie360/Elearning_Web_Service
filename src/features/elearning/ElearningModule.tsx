@@ -44,12 +44,13 @@ export function ElearningModule() {
   }, [actions]);
 
   useEffect(() => {
+    const browserWindow = window;
     const syncRequestedCourse = () =>
-      setRequestedCourseId(courseIdFromSearch(window.location.search));
+      setRequestedCourseId(courseIdFromSearch(browserWindow.location.search));
 
     syncRequestedCourse();
-    window.addEventListener("popstate", syncRequestedCourse);
-    return () => window.removeEventListener("popstate", syncRequestedCourse);
+    browserWindow.addEventListener("popstate", syncRequestedCourse);
+    return () => browserWindow.removeEventListener("popstate", syncRequestedCourse);
   }, []);
 
   const clearRequestedCourse = () => {
