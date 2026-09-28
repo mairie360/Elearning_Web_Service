@@ -64,6 +64,35 @@ test('an administrator sees the catalogue with the administrator role', async ()
   assert.match(view.html, /<span[^>]*>Admin Mairie<\/span>/);
 });
 
+test('a course link opens only an existing course and closing preserves other URL parameters', async () => {
+  front.window().location.href = 'https://elearning.test.example/?view=all&course=rgpd-collectivites#catalog';
+  await renderLoadedCatalog();
+
+  assert.equal(view.props('ElearningCatalog').initialCourseId, 'rgpd-collectivites');
+  assert.match(view.html, /role="dialog"/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog']);
+
+  await view.click((props, _text, tag) => tag === 'button' && props['aria-label'] === 'Fermer le détail du cours');
+  assert.doesNotMatch(view.html, /role="dialog"/);
+  assert.equal(front.window().location.href, 'https://elearning.test.example/?view=all#catalog');
+  assert.deepEqual(operations(), ['GET /elearning/catalog']);
+});
+
+test('an unavailable course link reports the missing course without inventing data', async () => {
+  front.window().location.href = 'https://elearning.test.example/?course=unknown&view=all';
+  await renderLoadedCatalog();
+
+  assert.equal(view.props('ElearningCatalog').initialCourseId, 'unknown');
+  assert.match(view.html, /role="alert"/);
+  assert.match(view.text(), /Cette formation n’est plus disponible/);
+  assert.doesNotMatch(view.html, /role="dialog"/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog']);
+
+  await view.click('Voir le catalogue');
+  assert.equal(front.window().location.href, 'https://elearning.test.example/?view=all');
+  assert.doesNotMatch(view.html, /role="alert"/);
+});
+
 test('a BFF error is rendered as an alert with a retry button that reloads the catalogue', async () => {
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'BFF_UNAVAILABLE', 'Le service de formation est indisponible'));
   view = mount(React.createElement(Home));

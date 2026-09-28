@@ -8,6 +8,7 @@ import type { ComponentProps } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { logout } from "@/lib/auth-session";
 import type { ElearningCatalogResponse } from "@/lib/elearning-api";
+import { courseIdFromSearch, urlWithoutCourse } from "@/lib/course-query";
 import { parseFrontUrl } from "@/lib/front-url";
 import { frontUrl } from "@/lib/front-urls";
 import { settingsProfileUrl } from "@/lib/settings-profile";
@@ -25,6 +26,7 @@ export function ElearningModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  const [requestedCourseId, setRequestedCourseId] = useState<string | null>(null);
 
   const actions = useMemo(
     () =>
@@ -41,6 +43,22 @@ export function ElearningModule() {
     void actions.loadCatalog();
   }, [actions]);
 
+  useEffect(() => {
+    const browserWindow = window;
+    const syncRequestedCourse = () =>
+      setRequestedCourseId(courseIdFromSearch(browserWindow.location.search));
+
+    syncRequestedCourse();
+    browserWindow.addEventListener("popstate", syncRequestedCourse);
+    return () => browserWindow.removeEventListener("popstate", syncRequestedCourse);
+  }, []);
+
+  const clearRequestedCourse = () => {
+    const nextUrl = urlWithoutCourse(window.location.href);
+    if (nextUrl) window.history.replaceState(window.history.state, "", nextUrl);
+    setRequestedCourseId(null);
+  };
+
   const handleContentComplete = (
     course: CatalogCourse,
     payload: ContentCompletePayload,
@@ -54,6 +72,10 @@ export function ElearningModule() {
   };
 
   const catalog = catalogResponse?.catalog;
+  const requestedCourseMissing =
+    requestedCourseId !== null &&
+    !!catalog &&
+    !catalog.courses.some((course) => course.id === requestedCourseId);
   const footer = catalogResponse?.footer;
   const user = catalogResponse?.user;
   const configuredUrl = (key: Parameters<typeof frontUrl>[0]) =>
@@ -121,8 +143,27 @@ export function ElearningModule() {
         </div>
       )}
 
+      {requestedCourseMissing && (
+        <div
+          className="mx-auto mt-6 max-w-[1130px] rounded-md border border-[#efb9bd] bg-white px-4 py-3 text-sm text-[#a4232c]"
+          role="alert"
+        >
+          Cette formation n’est plus disponible. Vous pouvez consulter les autres formations.
+          <button
+            className="ml-3 font-semibold underline"
+            onClick={clearRequestedCourse}
+            type="button"
+          >
+            Voir le catalogue
+          </button>
+        </div>
+      )}
+
       {catalog && (
         <ElearningCatalog
+          key={requestedCourseId === null ? "catalog" : `course:${requestedCourseId}`}
+          initialCourseId={requestedCourseId}
+          onCourseClose={clearRequestedCourse}
           title={catalog.title}
           subtitle={catalog.subtitle}
           certificationCount={catalog.certificationCount}

@@ -9,11 +9,34 @@ export class MemoryStorage {
   get length() { return this.values.size; }
 }
 
-export type FakeWindow = { localStorage: MemoryStorage; location: { assign: (url: string) => void; assigned: string[] } };
+export type FakeWindow = {
+  localStorage: MemoryStorage;
+  location: {
+    assign: (url: string) => void;
+    assigned: string[];
+    href: string;
+    readonly search: string;
+  };
+  history: { state: unknown; replaceState: (state: unknown, unused: string, url: string) => void };
+};
 
 export function installWindow(): FakeWindow {
-  const location = { assigned: [] as string[], assign(url: string) { location.assigned.push(url); } };
-  const fake: FakeWindow = { localStorage: new MemoryStorage(), location };
+  let currentUrl = new URL('https://elearning.test.example/');
+  const location = {
+    assigned: [] as string[],
+    assign(url: string) { location.assigned.push(url); },
+    get href() { return currentUrl.href; },
+    set href(url: string) { currentUrl = new URL(url, currentUrl); },
+    get search() { return currentUrl.search; },
+  };
+  const history = {
+    state: null as unknown,
+    replaceState(state: unknown, _unused: string, url: string) {
+      history.state = state;
+      location.href = url;
+    },
+  };
+  const fake: FakeWindow = { localStorage: new MemoryStorage(), location, history };
   (globalThis as { window?: unknown }).window = fake;
   return fake;
 }
