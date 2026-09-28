@@ -337,13 +337,17 @@ describe('contract helpers', () => {
 });
 
 describe('logout and stored session without another BFF', () => {
-  test('logout clears local storage, then /logout clears the cookie and redirects to Login', async () => {
+  test('logout clears only auth tokens, then /logout clears the cookie and redirects to Login', async () => {
     storeAuthJwtToken(' session-jwt ');
+    front.window().localStorage.setItem('mairie360.projects.jwt', 'legacy-jwt');
+    front.window().localStorage.setItem('unrelated.preference', 'keep');
     assert.equal(front.window().localStorage.getItem('mairie360.auth.jwt'), 'session-jwt');
 
     await logout();
 
-    assert.equal(front.window().localStorage.length, 0);
+    assert.equal(front.window().localStorage.getItem('mairie360.auth.jwt'), null);
+    assert.equal(front.window().localStorage.getItem('mairie360.projects.jwt'), null);
+    assert.equal(front.window().localStorage.getItem('unrelated.preference'), 'keep');
     assert.deepEqual(front.window().location.assigned, ['/logout']);
     const navigation = runtime.navigate(LOGOUT_PATH);
     assert.equal(navigation.status, 307);
@@ -354,7 +358,7 @@ describe('logout and stored session without another BFF', () => {
   });
 
   test('logout still navigates when storage is denied', async () => {
-    front.window().localStorage.clear = () => { throw new Error('refusé'); };
+    front.window().localStorage.removeItem = () => { throw new Error('refusé'); };
 
     await logout();
 
