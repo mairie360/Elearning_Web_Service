@@ -23,6 +23,25 @@ body {
   max-width: none;
 }
 
+/* Keep the published catalog controls inside the narrower AppShell content area. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .elearning-catalog-shell > div > .mt-7.grid.gap-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .elearning-catalog-shell > div > .mt-7.grid.gap-4 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .elearning-catalog-shell[data-stat-count="3"] > div > .mt-6.grid.gap-4 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .elearning-shell {
   background: #f4f2ef;
   color: #2f3747;

@@ -169,6 +169,7 @@ export function ElearningModule() {
           certificationCount={catalog.certificationCount}
           courses={catalog.courses}
           stats={catalog.stats}
+          data-stat-count={catalog.stats?.length}
           adminStats={catalog.adminStats}
           categories={catalog.categories}
           statuses={catalog.statuses}
