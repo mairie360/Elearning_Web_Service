@@ -64,6 +64,36 @@ test('an administrator sees the catalogue with the administrator role', async ()
   assert.match(view.html, /<span[^>]*>Admin Mairie<\/span>/);
 });
 
+test('the catalog marks the real BFF statistic count for the responsive layout', async () => {
+  const threeStats = f.catalogResponse();
+  threeStats.catalog.stats = [
+    { label: 'Formations disponibles', value: 3 },
+    { label: 'En cours', value: 1 },
+    { label: 'Terminées', value: 2 },
+  ];
+  const html = await renderLoadedCatalog(threeStats);
+
+  assert.equal(view.props('ElearningCatalog')['data-stat-count'], 3);
+  assert.match(html, /data-stat-count="3"/);
+  assert.match(view.text(), /Formations disponibles/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog']);
+});
+
+test('four BFF statistics retain the shared four-column layout', async () => {
+  const fourStats = f.catalogResponse();
+  fourStats.catalog.stats = [
+    { label: 'Formations disponibles', value: 4 },
+    { label: 'En cours', value: 1 },
+    { label: 'Terminées', value: 2 },
+    { label: 'Certifications', value: 1 },
+  ];
+  const html = await renderLoadedCatalog(fourStats);
+
+  assert.equal(view.props('ElearningCatalog')['data-stat-count'], 4);
+  assert.match(html, /data-stat-count="4"/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog']);
+});
+
 test('a course link opens only an existing course and closing preserves other URL parameters', async () => {
   front.window().location.href = 'https://elearning.test.example/?view=all&course=rgpd-collectivites#catalog';
   await renderLoadedCatalog();
