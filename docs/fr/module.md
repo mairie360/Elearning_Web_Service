@@ -53,6 +53,23 @@ Le catalogue initial est défini dans `elearning_helpers.ts`. Les formations mod
 
 Un redémarrage réinitialise les données en mémoire; plusieurs instances ne partagent pas cet état. La validation du contrat ou un succès HTTP ne prouve pas un enregistrement durable dans Elearning API.
 
+### Échec d’actualisation et ordre des réponses (MAIR-350)
+
+Si l’actualisation du catalogue échoue après une progression, une note ou une
+action administrateur, la dernière version chargée reste visible avec une erreur
+et un bouton de reprise. Réessayer recharge seulement le catalogue, sans renvoyer
+la mutation. Une ancienne réponse ou erreur du catalogue ne peut remplacer une
+actualisation plus récente ni un démarrage confirmé par le serveur. Le front
+n’invente aucun succès optimiste de progression ou de notation.
+Les erreurs restent visibles au-dessus du dialogue de formation. Un 401 déclenche
+toujours la déconnexion, même pour une requête dépassée : l’ordre des réponses ne
+réduit pas le contrôle d’authentification.
+
+Cette tranche concerne uniquement la fiabilité frontend. Les téléchargements
+autorisés, les avis écrits et la progression durable entre sessions restent des
+dépendances non validées de MAIR-350 ; ce changement ne termine pas le ticket et
+n’ajoute aucune route non publiée.
+
 ## Pour développer ou exploiter ce module
 
 Le [guide technique](technical.md) détaille architecture, configuration, routes, session, persistance, tests et CI/CD. Il décrit les sources de vérité et les étapes de synchronisation des contrats avec les dépôts associés.
