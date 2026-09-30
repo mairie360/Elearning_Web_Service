@@ -157,6 +157,29 @@ test('starting a course replaces it in the rendered catalogue without reloading'
   assert.doesNotMatch(view.html, /role="alert"/);
 });
 
+test('a failed refresh after a rating keeps the catalogue visible and offers a reload-only retry', async () => {
+  await renderLoadedCatalog();
+  bffElearning.on('post', '/elearning/courses/{courseId}/rating', { body: f.ratingResponse(4) });
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'BFF_UNAVAILABLE', 'Actualisation indisponible'));
+
+  await view.act(() => view.props('ElearningCatalog').onCourseRatingSubmit(view.props('ElearningCatalog').courses[0], 4));
+  await view.waitFor(() => operations().length === 3);
+  const html = await view.waitFor((current) => current.includes('role="alert"'));
+
+  assert.match(html, /Actualisation indisponible/);
+  assert.match(html, /class="fixed inset-x-4 bottom-4 z-\[60\]/);
+  assert.match(view.text(), /Le catalogue affiché est la dernière version chargée/);
+  assert.equal(view.find('ElearningCatalog').length, 1);
+  assert.match(view.text(), /RGPD et collectivités/);
+
+  const updated = f.catalogResponse([f.course('rgpd-collectivites', { title: 'Catalogue actualisé' })]);
+  bffElearning.on('get', '/elearning/catalog', { body: updated });
+  await view.click('Réessayer');
+  await view.waitFor((current) => !current.includes('role="alert"') && current.includes('Catalogue actualisé'));
+  assert.match(view.text(), /Catalogue actualisé/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/rating', 'GET /elearning/catalog', 'GET /elearning/catalog']);
+});
+
 test('a refused mutation is shown as an alert above the catalogue, which stays displayed', async () => {
   await renderLoadedCatalog();
   bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(403, 'FORBIDDEN', 'Cette formation ne vous est pas ouverte'));
@@ -165,6 +188,7 @@ test('a refused mutation is shown as an alert above the catalogue, which stays d
   const html = await view.waitFor((current) => current.includes('role="alert"'));
 
   assert.match(html, /<div[^>]*role="alert">Cette formation ne vous est pas ouverte<\/div>/);
+  assert.match(html, /class="fixed inset-x-4 bottom-4 z-\[60\]/);
   assert.equal(view.find('ElearningCatalog').length, 1);
   assert.match(view.text(), /RGPD et collectivités/);
 });

@@ -51,6 +51,20 @@ The initial catalogue is defined in `elearning_helpers.ts`. Course edits, progre
 
 Restarting resets in-memory data; multiple instances do not share that state. Contract validation or an HTTP success does not prove durable storage in Elearning API.
 
+### Refresh failures and response ordering (MAIR-350)
+
+If catalogue refresh fails after a progress, rating or administrator action, the
+last successfully loaded catalogue stays visible with an error and a retry button.
+Retry only reloads the catalogue: it does not submit the mutation again. An older
+catalogue response or error cannot replace a newer refresh or a server-confirmed
+course start. No optimistic progress or rating success is invented by the front.
+Error feedback is visible above the course dialog. A 401 always triggers logout,
+including a superseded request; response ordering does not relax authentication.
+
+This is a frontend-only reliability slice. Authorized resource downloads, written
+reviews and durable cross-session progress remain unverified dependencies of
+MAIR-350; this change does not declare that ticket complete or add unpublished routes.
+
 ## Developing or operating this module
 
 The [technical guide](technical.md) covers architecture, configuration, routes, session handling, persistence, tests and CI/CD. It describes sources of truth and contract synchronization with associated repositories.

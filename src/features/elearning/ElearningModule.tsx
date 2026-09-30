@@ -111,7 +111,7 @@ export function ElearningModule() {
     >
       {mutationError && (
         <div
-          className="mx-auto mt-6 max-w-[1130px] rounded-md border border-[#efb9bd] bg-[#fff1f2] px-4 py-3 text-sm font-semibold text-[#a4232c]"
+          className="fixed inset-x-4 bottom-4 z-[60] mx-auto max-w-[640px] rounded-md border border-[#efb9bd] bg-[#fff1f2] px-4 py-3 text-sm font-semibold text-[#a4232c] shadow-lg"
           role="alert"
         >
           {mutationError}
@@ -127,14 +127,22 @@ export function ElearningModule() {
         </div>
       )}
 
-      {error && !catalog && (
+      {error && !mutationError && (
         <div
-          className="mx-auto my-10 max-w-[1130px] rounded-lg border border-[#efb9bd] bg-white p-8 text-center"
+          className={catalog
+            ? "fixed inset-x-4 bottom-4 z-[60] mx-auto max-w-[640px] rounded-lg border border-[#efb9bd] bg-white px-4 py-3 text-center shadow-lg"
+            : "mx-auto my-10 max-w-[1130px] rounded-lg border border-[#efb9bd] bg-white p-8 text-center"}
           role="alert"
         >
           <p className="text-sm font-semibold text-[#a4232c]">{error}</p>
+          {catalog && (
+            <p className="mt-2 text-sm text-[#5f6470]">
+              Le catalogue affiché est la dernière version chargée. Réessayez pour actualiser les formations.
+            </p>
+          )}
           <button
             className="mt-4 rounded-md bg-[#1256a6] px-4 py-2 text-sm font-semibold text-white"
+            disabled={loading}
             onClick={() => void actions.loadCatalog()}
             type="button"
           >

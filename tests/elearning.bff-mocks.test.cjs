@@ -54,7 +54,93 @@ function catalogState(initial = null) {
 const operations = () => bffElearning.requests.map((request) => `${request.method} ${request.template}`);
 const reloadCatalog = () => bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse() });
 
+// Hold the first real contract-backed browser response until a newer action has completed.
+// This tests response ordering without adding artificial operations to the published contract.
+async function withDelayedCatalog(run) {
+  const originalFetch = global.fetch;
+  let release;
+  let ready;
+  const held = new Promise((resolve) => { release = resolve; });
+  const received = new Promise((resolve) => { ready = resolve; });
+  let delayed = false;
+  global.fetch = async (...args) => {
+    const response = await originalFetch(...args);
+    if (args[0] === '/elearning/catalog' && !delayed) {
+      delayed = true;
+      ready();
+      await held;
+    }
+    return response;
+  };
+  try { await run({ received, release }); }
+  finally { release(); global.fetch = originalFetch; }
+}
+
 describe('catalog actions against the contract-driven BFF E-learning', () => {
+  test('an older catalogue response cannot overwrite a newer refresh', async () => {
+    const old = f.catalogResponse([f.course('old', { title: 'Ancien catalogue' })]);
+    const current = f.catalogResponse([f.course('current', { title: 'Catalogue récent' })]);
+    bffElearning.on('get', '/elearning/catalog', { body: old });
+    const { state, actions } = catalogState();
+    await withDelayedCatalog(async ({ received, release }) => {
+      const first = actions.loadCatalog();
+      await received;
+      bffElearning.on('get', '/elearning/catalog', { body: current });
+      await actions.loadCatalog();
+      release();
+      await first;
+      assert.deepEqual(state.catalogResponse, current);
+      assert.deepEqual(state.loading, [true, true, false]);
+    });
+  });
+
+  test('a late refresh error does not replace the state of a successful newer refresh', async () => {
+    bffElearning.on('get', '/elearning/catalog', errorReply(503, 'BFF_UNAVAILABLE', 'Ancienne panne'));
+    const current = f.catalogResponse();
+    const { state, actions } = catalogState();
+    await withDelayedCatalog(async ({ received, release }) => {
+      const first = actions.loadCatalog();
+      await received;
+      bffElearning.on('get', '/elearning/catalog', { body: current });
+      await actions.loadCatalog();
+      release();
+      await first;
+      assert.deepEqual(state.catalogResponse, current);
+      assert.equal(state.error, null);
+    });
+  });
+
+  test('a late catalogue response cannot reset a server-confirmed course start', async () => {
+    const old = f.catalogResponse();
+    const started = f.course('rgpd-collectivites', { statusValue: 'in-progress', progress: 10 });
+    bffElearning.on('get', '/elearning/catalog', { body: old });
+    bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: started } });
+    const { state, actions } = catalogState(old);
+    await withDelayedCatalog(async ({ received, release }) => {
+      const first = actions.loadCatalog();
+      await received;
+      await actions.startCourse('rgpd-collectivites');
+      release();
+      await first;
+      assert.deepEqual(state.catalogResponse.catalog.courses[0], started);
+    });
+  });
+
+  test('a superseded 401 still logs out instead of weakening session rejection', async () => {
+    bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
+    const { state, actions } = catalogState();
+    await withDelayedCatalog(async ({ received, release }) => {
+      const first = actions.loadCatalog();
+      await received;
+      reloadCatalog();
+      await actions.loadCatalog();
+      release();
+      await first;
+      assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+      assert.equal(state.error, null);
+    });
+  });
+
   test('loadCatalog goes through the catch-all proxy with the session cookie as Bearer token', async () => {
     const body = f.catalogResponse();
     bffElearning.on('get', '/elearning/catalog', { body });

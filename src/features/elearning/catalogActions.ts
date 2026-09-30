@@ -68,6 +68,8 @@ export function createCatalogActions(
   view: CatalogView,
   onUnauthorized: () => Promise<void> = logout,
 ) {
+  let catalogRevision = 0;
+
   async function handleFailure(error: unknown, report: (message: string) => void) {
     if (error instanceof BffRequestError && error.status === 401) {
       await onUnauthorized();
@@ -78,16 +80,20 @@ export function createCatalogActions(
   }
 
   async function loadCatalog() {
+    const revision = ++catalogRevision;
     view.setLoading(true);
     view.setError(null);
 
     try {
       const response = await getCatalog({ cache: "no-store" });
-      view.setCatalogResponse(() => response);
+      if (revision === catalogRevision) view.setCatalogResponse(() => response);
     } catch (error) {
-      await handleFailure(error, view.setError);
+      // Session rejection must still leave the page, even for a superseded request.
+      if (revision === catalogRevision || (error instanceof BffRequestError && error.status === 401)) {
+        await handleFailure(error, view.setError);
+      }
     } finally {
-      view.setLoading(false);
+      if (revision === catalogRevision) view.setLoading(false);
     }
   }
 
@@ -107,6 +113,9 @@ export function createCatalogActions(
 
     try {
       const { course } = await startCourse(courseId);
+      // A catalogue request started before this confirmed mutation is now stale.
+      catalogRevision += 1;
+      view.setLoading(false);
       view.setCatalogResponse((current) => replaceCatalogCourse(current, course));
     } catch (error) {
       await handleFailure(error, view.setMutationError);
