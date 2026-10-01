@@ -13,6 +13,7 @@ import { parseFrontUrl } from "@/lib/front-url";
 import { frontUrl } from "@/lib/front-urls";
 import { settingsProfileUrl } from "@/lib/settings-profile";
 import { createCatalogActions } from "./catalogActions";
+import { withCategoryReset } from "./catalogFilters";
 
 type CatalogProps = ComponentProps<typeof ElearningCatalog>;
 type CatalogCourse = CatalogProps["courses"][number];
@@ -181,7 +182,7 @@ export function ElearningModule() {
           stats={catalog.stats}
           data-stat-count={catalog.stats?.length}
           adminStats={catalog.adminStats}
-          categories={catalog.categories}
+          categories={withCategoryReset(catalog.categories)}
           statuses={catalog.statuses}
           emptyLabel={catalog.emptyLabel}
           currentUserRole={

@@ -84,6 +84,17 @@ du catalogue pour laisser accessibles reprise/annulation ; les retours du lecteu
 apprenant sont inchangés. Routes et DTOs
 existants restent inchangés ; upload/clés et avis écrits sont des travaux distincts.
 
+### Réinitialisation du filtre de catégorie (MAIR-379)
+
+Le catalogue propose toujours un seul choix neutre `all` utilisable. Si la liste
+reçue ne le contient pas (y compris une liste vide), le front ajoute uniquement
+« Toutes les catégories », sans données métier. Le libellé et la position d’un
+choix neutre existant sont conservés, ses doublons retirés ; les catégories métier
+désactivées le restent. En l’absence de liste, le composant partagé dérive les
+choix des formations reçues comme auparavant. La réinitialisation conserve la
+recherche et le statut, sans nouvel appel réseau. Bibliothèque publiée, contrat
+BFF et environnement restent inchangés.
+
 ## Pour développer ou exploiter ce module
 
 Le [guide technique](technical.md) détaille architecture, configuration, routes, session, persistance, tests et CI/CD. Il décrit les sources de vérité et les étapes de synchronisation des contrats avec les dépôts associés.
