@@ -70,6 +70,17 @@ autorisés, les avis écrits et la progression durable entre sessions restent de
 dépendances non validées de MAIR-350 ; ce changement ne termine pas le ticket et
 n’ajoute aucune route non publiée.
 
+### Confirmation du formulaire de formation (MAIR-378)
+
+Les actions de création/modification retournent `false` après un refus et `true`
+après une mutation confirmée, indépendamment d’un échec ultérieur d’actualisation.
+Le composant transmet cette promesse au catalogue partagé sans l’ignorer.
+L’adoption de la version publiée de la bibliothèque MAIR-378 reste nécessaire pour
+conserver champs/chapitres/ressources après un refus et bloquer saisies/annulation
+pendant l’attente. Ne pas considérer l’intégration comme terminée avant vérification
+de cette version exacte et du parcours de reprise desktop/mobile. Routes et DTOs
+existants restent inchangés ; upload/clés et avis écrits sont des travaux distincts.
+
 ## Pour développer ou exploiter ce module
 
 Le [guide technique](technical.md) détaille architecture, configuration, routes, session, persistance, tests et CI/CD. Il décrit les sources de vérité et les étapes de synchronisation des contrats avec les dépôts associés.

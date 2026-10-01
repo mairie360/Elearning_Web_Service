@@ -65,6 +65,17 @@ This is a frontend-only reliability slice. Authorized resource downloads, writte
 reviews and durable cross-session progress remain unverified dependencies of
 MAIR-350; this change does not declare that ticket complete or add unpublished routes.
 
+### Course form confirmation (MAIR-378)
+
+Course creation/update actions return `false` after a refused mutation and `true`
+after a confirmed mutation, independently of a later catalogue refresh failure.
+The component forwards that promise to the shared catalogue instead of discarding
+it. Adoption of the published MAIR-378 library release is still required for the
+form to retain fields/chapters/resources after refusal and freeze edits/cancellation
+while pending. Do not count the integration as complete before that exact release
+and rendered desktop/mobile retry flow have been verified. Existing contract DTOs
+and routes remain unchanged; uploads/keys and written reviews are separate work.
+
 ## Developing or operating this module
 
 The [technical guide](technical.md) covers architecture, configuration, routes, session handling, persistence, tests and CI/CD. It describes sources of truth and contract synchronization with associated repositories.
