@@ -78,6 +78,16 @@ form is open, its own failure alert replaces global catalogue toasts so retry/ca
 controls stay accessible; learner reader feedback is unaffected. Existing contract DTOs
 and routes remain unchanged; uploads/keys and written reviews are separate work.
 
+### Resetting category filters (MAIR-379)
+
+The catalog always offers one usable `all` reset choice. If category options are
+supplied without it (including an empty list), the front adds only the neutral
+“Toutes les catégories” control, not business data. Existing reset labels/positions
+are retained and duplicate resets removed; disabled business categories remain
+disabled. When options are absent, the shared component derives them from received
+courses as before. Resetting preserves search/status filters and makes no additional
+network request. The published library, BFF contract and environment are unchanged.
+
 ## Developing or operating this module
 
 The [technical guide](technical.md) covers architecture, configuration, routes, session handling, persistence, tests and CI/CD. It describes sources of truth and contract synchronization with associated repositories.

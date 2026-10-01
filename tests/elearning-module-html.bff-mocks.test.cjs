@@ -66,6 +66,38 @@ test('an administrator sees the catalogue with the administrator role', async ()
   assert.match(view.html, /<span[^>]*>Admin Mairie<\/span>/);
 });
 
+for (const supplied of [undefined, [], [{ label: 'Juridique', value: 'Juridique' }], [
+  { label: 'Tout le catalogue', value: 'all' }, { label: 'Juridique', value: 'Juridique' },
+]]) {
+  test(`category reset preserves search/status without another request (${JSON.stringify(supplied)})`, async () => {
+    const body = f.catalogResponse([
+      f.course('legal', { title: 'Parcours juridique', statusValue: 'in-progress' }),
+      f.course('welcome', { title: 'Parcours accueil', category: 'Accueil', statusValue: 'in-progress' }),
+      f.course('not-started', { title: 'Parcours non commencé', category: 'Accueil' }),
+      f.course('other-search', { title: 'Autre formation', category: 'Accueil', statusValue: 'in-progress' }),
+    ]);
+    if (supplied === undefined) delete body.catalog.categories;
+    else body.catalog.categories = supplied;
+    await renderLoadedCatalog(body);
+    const resetChoices = view.props('ElearningFilterSelect', 0).options.filter(option => option.value === 'all');
+    assert.equal(resetChoices.length, 1);
+    await view.act(() => view.props('ElearningSearchInput').onValueChange('Parcours'));
+    await view.act(() => view.props('ElearningFilterSelect', 1).onValueChange('in-progress'));
+    if (supplied?.length !== 0) {
+      await view.act(() => view.props('ElearningFilterSelect', 0).onValueChange('Juridique'));
+      assert.match(view.html, /Parcours juridique/);
+      assert.doesNotMatch(view.html, /Parcours accueil/);
+    }
+    await view.act(() => view.props('ElearningFilterSelect', 0).onValueChange('all'));
+    assert.match(view.html, /Parcours juridique/);
+    assert.match(view.html, /Parcours accueil/);
+    assert.doesNotMatch(view.html, /Parcours non commencé|Autre formation/);
+    assert.equal(view.props('ElearningSearchInput').value, 'Parcours');
+    assert.equal(view.props('ElearningFilterSelect', 1).value, 'in-progress');
+    assert.deepEqual(operations(), ['GET /elearning/catalog']);
+  });
+}
+
 for (const mode of ['create', 'update']) {
   test(`the rendered administrator catalogue forwards ${mode} refusal and confirmation promises`, async () => {
     await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
