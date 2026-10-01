@@ -100,4 +100,15 @@ network request. The published library, BFF contract and environment are unchang
 
 ## Developing or operating this module
 
+### Preserved catalogue and reader presentation (MAIR-384)
+
+The catalogue retains the preserved prototype's 17px system typography, full-width
+content with 1.5rem horizontal / 2rem vertical spacing (25.5px / 34px at 17px), card shadows and
+poster colour. The reader preserves its desktop chapter columns and mobile stack;
+its title and close control stay visible while its own content scrolls. The mobile
+reader uses 16px padding. CSS targets only the published reader's chapter-aside
+structure, not author forms, and adds no scroll listeners or network calls. Search,
+filters and existing contract-backed actions are unchanged. Authorized downloads,
+persisted progress and written reviews remain separate unresolved MAIR-350 work.
+
 The [technical guide](technical.md) covers architecture, configuration, routes, session handling, persistence, tests and CI/CD. It describes sources of truth and contract synchronization with associated repositories.

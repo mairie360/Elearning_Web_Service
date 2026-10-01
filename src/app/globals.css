@@ -4,23 +4,69 @@
 :root {
   --background: #f4f2ef;
   --foreground: #2f3747;
+  --elearning-card-shadow: 0 5px 15px rgb(23 32 51 / 14%), 0 1px 3px rgb(23 32 51 / 12%);
+}
+
+html {
+  font-size: 17px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: system-ui, sans-serif;
 }
 
 .elearning-catalog-shell > div {
   max-width: none;
+}
+
+.elearning-catalog-shell article {
+  box-shadow: var(--elearning-card-shadow);
+}
+
+.elearning-catalog-shell article > button:first-child {
+  background: #eff6ff;
+}
+
+.elearning-catalog-shell article > button:first-child:hover {
+  background: #dcebed;
+}
+
+/* The published reader contains a chapter aside; author forms do not. Keep this
+   presentation override off author dialogs and retain the reader's grid. */
+.elearning-catalog-shell [role="dialog"]:has(> div > aside) {
+  box-shadow: 0 20px 60px rgb(0 0 0 / 32%);
+  overscroll-behavior: contain;
+}
+
+.elearning-catalog-shell [role="dialog"]:has(> div > aside) > header {
+  position: sticky;
+  top: -24px;
+  z-index: 35;
+  background: #fbfaf9;
+  margin: -24px -24px 0;
+  padding: 20px 24px;
+  border-bottom: 1px solid #d8d2ca;
+}
+
+@media (max-width: 767px) {
+  .elearning-catalog-shell [role="dialog"]:has(> div > aside) {
+    padding: 16px;
+  }
+
+  .elearning-catalog-shell [role="dialog"]:has(> div > aside) > header {
+    top: -16px;
+    margin: -16px -16px 0;
+    padding: 16px;
+  }
 }
 
 /* Keep the published catalog controls inside the narrower AppShell content area. */

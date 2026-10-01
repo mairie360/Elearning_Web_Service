@@ -108,4 +108,17 @@ BFF et environnement restent inchangés.
 
 ## Pour développer ou exploiter ce module
 
+### Présentation conservée du catalogue et du lecteur (MAIR-384)
+
+Le catalogue reprend la typographie système de 17 px du prototype, sa pleine largeur
+et ses espacements de référence (1,5 rem horizontaux / 2 rem verticaux, soit
+25,5 px / 34 px à l’échelle de 17 px), les ombres des cartes et la couleur des vignettes. Le lecteur
+conserve ses colonnes de chapitres sur ordinateur et leur empilement sur mobile ;
+son titre et sa fermeture restent visibles pendant le défilement de son contenu.
+Son padding mobile est de 16 px. Le CSS cible uniquement la structure du lecteur
+publié contenant les chapitres, pas les formulaires auteur. Aucun écouteur de
+défilement ni appel réseau n’est ajouté. Recherche, filtres et actions existantes
+restent inchangés. Téléchargements autorisés, progression persistée et avis écrits
+restent des travaux non résolus indépendants sous MAIR-350.
+
 Le [guide technique](technical.md) détaille architecture, configuration, routes, session, persistance, tests et CI/CD. Il décrit les sources de vérité et les étapes de synchronisation des contrats avec les dépôts associés.
