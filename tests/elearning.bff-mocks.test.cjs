@@ -67,7 +67,7 @@ async function withDelayedCatalog(run) {
     const response = await originalFetch(...args);
     if (args[0] === '/elearning/catalog' && !delayed) {
       delayed = true;
-      ready();
+      ready(args[1]);
       await held;
     }
     return response;
@@ -119,6 +119,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     await withDelayedCatalog(async ({ received, release }) => {
       const first = actions.loadCatalog();
       await received;
+      bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse([started]) });
       await actions.startCourse('rgpd-collectivites');
       release();
       await first;
@@ -169,19 +170,82 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.equal(bffElearning.requests[0].headers.authorization, 'Bearer stored-jwt');
   });
 
-  test('startCourse posts the StartCourseBody and replaces the course in place without reloading', async () => {
+  test('startCourse retains the confirmed course and refreshes official catalogue statistics', async () => {
     const started = f.course('rgpd-collectivites', { statusValue: 'in-progress', progress: 10 });
     bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: started } });
+    const updated = f.catalogResponse([started, f.course('accueil')]);
+    updated.catalog.stats = [{ label: 'En cours', value: 7 }];
+    bffElearning.on('get', '/elearning/catalog', { body: updated });
     const { state, actions } = catalogState(f.catalogResponse([f.course(), f.course('accueil')]));
 
     await actions.startCourse('rgpd-collectivites');
 
-    assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/start']);
+    assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/start', 'GET /elearning/catalog']);
     assert.deepEqual(bffElearning.requests[0].pathParams, { courseId: 'rgpd-collectivites' });
     assert.deepEqual(bffElearning.requests[0].body, {});
     assert.equal(bffElearning.requests[0].headers['content-type'], 'application/json');
     assert.deepEqual(state.catalogResponse.catalog.courses.map((course) => [course.id, course.statusValue]), [['rgpd-collectivites', 'in-progress'], ['accueil', 'not-started']]);
     assert.equal(state.mutationError, null);
+    assert.deepEqual(state.catalogResponse, updated, 'statistics are supplied by the server, not counted from visible courses');
+  });
+
+  test('a refused start leaves courses and statistics unchanged without fetching the catalogue', async () => {
+    const initial = f.catalogResponse();
+    bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(403, 'FORBIDDEN', 'Formation refusée'));
+    const { state, actions } = catalogState(initial);
+    await actions.startCourse('rgpd-collectivites');
+    assert.deepEqual(state.catalogResponse, initial);
+    assert.equal(state.mutationError, 'Formation refusée');
+    assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/start']);
+  });
+
+  test('the course is confirmed while its uncached statistics refresh is still pending', async () => {
+    const initial = f.catalogResponse();
+    const started = f.course('rgpd-collectivites', { statusValue: 'in-progress', progress: 10 });
+    const updated = f.catalogResponse([started]);
+    updated.catalog.stats = [{ label: 'En cours', value: 7 }];
+    bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: started } });
+    bffElearning.on('get', '/elearning/catalog', { body: updated });
+    const { state, actions } = catalogState(initial);
+    await withDelayedCatalog(async ({ received, release }) => {
+      const start = actions.startCourse('rgpd-collectivites');
+      const requestInit = await received;
+      assert.equal(requestInit.cache, 'no-store');
+      assert.deepEqual(state.catalogResponse.catalog.courses, [started]);
+      assert.deepEqual(state.catalogResponse.catalog.stats, initial.catalog.stats);
+      release();
+      await start;
+      assert.deepEqual(state.catalogResponse, updated);
+    });
+  });
+
+  test('a failed start refresh retains the confirmation and retries only the catalogue', async () => {
+    const started = f.course('rgpd-collectivites', { statusValue: 'in-progress', progress: 10 });
+    const initial = f.catalogResponse();
+    bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: started } });
+    bffElearning.on('get', '/elearning/catalog', errorReply(503, 'BFF_UNAVAILABLE', 'Actualisation indisponible'));
+    const { state, actions } = catalogState(initial);
+    await actions.startCourse('rgpd-collectivites');
+    assert.deepEqual(state.catalogResponse.catalog.courses, [started]);
+    assert.deepEqual(state.catalogResponse.catalog.stats, initial.catalog.stats);
+    assert.equal(state.mutationError, null);
+    assert.equal(state.error, 'Actualisation indisponible');
+    const updated = f.catalogResponse([started]);
+    updated.catalog.stats = [{ label: 'En cours', value: 2 }];
+    bffElearning.on('get', '/elearning/catalog', { body: updated });
+    await actions.loadCatalog();
+    assert.deepEqual(state.catalogResponse, updated);
+    assert.equal(state.error, null);
+    assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/start', 'GET /elearning/catalog', 'GET /elearning/catalog']);
+  });
+
+  test('a session refused during start refresh still logs out', async () => {
+    bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: f.course('rgpd-collectivites', { statusValue: 'in-progress' }) } });
+    bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
+    const { state, actions } = catalogState(f.catalogResponse());
+    await actions.startCourse('rgpd-collectivites');
+    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+    assert.equal(state.error, null);
   });
 
   test('completeContent encodes path parameters, sends CompleteContentBody, then reloads the catalogue', async () => {
