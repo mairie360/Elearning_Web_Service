@@ -66,6 +66,29 @@ test('an administrator sees the catalogue with the administrator role', async ()
   assert.match(view.html, /<span[^>]*>Admin Mairie<\/span>/);
 });
 
+for (const mode of ['create', 'update']) {
+  test(`the rendered administrator catalogue forwards ${mode} refusal and confirmation promises`, async () => {
+    await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+    const method = mode === 'create' ? 'post' : 'patch';
+    const path = mode === 'create' ? '/elearning/admin/courses' : '/elearning/admin/courses/{courseId}';
+    const callback = mode === 'create' ? 'onCreateCourse' : 'onUpdateCourse';
+    bffElearning.on(method, path, errorReply(503, 'UNAVAILABLE', 'Enregistrement refusé'));
+    const refused = await view.act(() => {
+      const pending = view.props('ElearningCatalog')[callback](f.course());
+      assert.equal(typeof pending?.then, 'function');
+      return pending;
+    });
+    assert.equal(refused, false);
+    assert.match(view.text(), /Enregistrement refusé/);
+    assert.deepEqual(operations(), ['GET /elearning/catalog', `${method.toUpperCase()} ${path}`]);
+
+    bffElearning.on(method, path, ({ body }) => ({ status: mode === 'create' ? 201 : 200, body: { course: body } }));
+    const confirmed = await view.act(() => view.props('ElearningCatalog')[callback](f.course()));
+    assert.equal(confirmed, true);
+    assert.deepEqual(operations(), ['GET /elearning/catalog', `${method.toUpperCase()} ${path}`, `${method.toUpperCase()} ${path}`, 'GET /elearning/catalog']);
+  });
+}
+
 test('the catalog marks the real BFF statistic count for the responsive layout', async () => {
   const threeStats = f.catalogResponse();
   threeStats.catalog.stats = [
@@ -191,6 +214,7 @@ test('a refused mutation is shown as an alert above the catalogue, which stays d
 
   assert.match(html, /<div[^>]*role="alert">Cette formation ne vous est pas ouverte<\/div>/);
   assert.match(html, /class="fixed inset-x-4 bottom-4 z-\[60\]/);
+  assert.match(html, /data-elearning-catalog-feedback/);
   assert.equal(view.find('ElearningCatalog').length, 1);
   assert.match(view.text(), /RGPD et collectivités/);
 });

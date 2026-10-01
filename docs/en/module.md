@@ -70,10 +70,12 @@ MAIR-350; this change does not declare that ticket complete or add unpublished r
 Course creation/update actions return `false` after a refused mutation and `true`
 after a confirmed mutation, independently of a later catalogue refresh failure.
 The component forwards that promise to the shared catalogue instead of discarding
-it. Adoption of the published MAIR-378 library release is still required for the
+it. The exact published `@mairie360/lib-components@0.6.8` release is pinned for the
 form to retain fields/chapters/resources after refusal and freeze edits/cancellation
-while pending. Do not count the integration as complete before that exact release
-and rendered desktop/mobile retry flow have been verified. Existing contract DTOs
+while pending. A confirmed mutation closes the form; retrying a failed catalogue
+refresh only reloads the catalogue and does not repeat the mutation. While an author
+form is open, its own failure alert replaces global catalogue toasts so retry/cancel
+controls stay accessible; learner reader feedback is unaffected. Existing contract DTOs
 and routes remain unchanged; uploads/keys and written reviews are separate work.
 
 ## Developing or operating this module

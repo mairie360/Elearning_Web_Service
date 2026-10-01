@@ -75,10 +75,13 @@ n’ajoute aucune route non publiée.
 Les actions de création/modification retournent `false` après un refus et `true`
 après une mutation confirmée, indépendamment d’un échec ultérieur d’actualisation.
 Le composant transmet cette promesse au catalogue partagé sans l’ignorer.
-L’adoption de la version publiée de la bibliothèque MAIR-378 reste nécessaire pour
+La version publiée exacte `@mairie360/lib-components@0.6.8` est épinglée pour
 conserver champs/chapitres/ressources après un refus et bloquer saisies/annulation
-pendant l’attente. Ne pas considérer l’intégration comme terminée avant vérification
-de cette version exacte et du parcours de reprise desktop/mobile. Routes et DTOs
+pendant l’attente. Une mutation confirmée ferme le formulaire ; la reprise d’une
+actualisation refusée recharge uniquement le catalogue, sans répéter la mutation.
+Lorsqu’un formulaire auteur est ouvert, son alerte remplace les messages globaux
+du catalogue pour laisser accessibles reprise/annulation ; les retours du lecteur
+apprenant sont inchangés. Routes et DTOs
 existants restent inchangés ; upload/clés et avis écrits sont des travaux distincts.
 
 ## Pour développer ou exploiter ce module

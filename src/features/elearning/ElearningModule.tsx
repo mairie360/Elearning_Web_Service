@@ -111,6 +111,7 @@ export function ElearningModule() {
     >
       {mutationError && (
         <div
+          data-elearning-catalog-feedback
           className="fixed inset-x-4 bottom-4 z-[60] mx-auto max-w-[640px] rounded-md border border-[#efb9bd] bg-[#fff1f2] px-4 py-3 text-sm font-semibold text-[#a4232c] shadow-lg"
           role="alert"
         >
@@ -129,6 +130,7 @@ export function ElearningModule() {
 
       {error && !mutationError && (
         <div
+          data-elearning-catalog-feedback
           className={catalog
             ? "fixed inset-x-4 bottom-4 z-[60] mx-auto max-w-[640px] rounded-lg border border-[#efb9bd] bg-white px-4 py-3 text-center shadow-lg"
             : "mx-auto my-10 max-w-[1130px] rounded-lg border border-[#efb9bd] bg-white p-8 text-center"}
