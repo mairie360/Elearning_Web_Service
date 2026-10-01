@@ -196,7 +196,7 @@ export function ElearningModule() {
           onCreateCourse={(course) => actions.createCourse(course)}
           onUpdateCourse={(course) => actions.updateCourse(course)}
           onDeleteCourse={(course) => void actions.deleteCourse(course.id)}
-          className="elearning-catalog-shell min-h-full !px-6 !py-10 md:!px-10 lg:!px-14 xl:!px-14"
+          className="elearning-catalog-shell min-h-full !px-6 !py-8"
         />
       )}
     </AppShell>
