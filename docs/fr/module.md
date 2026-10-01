@@ -70,6 +70,20 @@ autorisés, les avis écrits et la progression durable entre sessions restent de
 dépendances non validées de MAIR-350 ; ce changement ne termine pas le ticket et
 n’ajoute aucune route non publiée.
 
+### Confirmation du formulaire de formation (MAIR-378)
+
+Les actions de création/modification retournent `false` après un refus et `true`
+après une mutation confirmée, indépendamment d’un échec ultérieur d’actualisation.
+Le composant transmet cette promesse au catalogue partagé sans l’ignorer.
+La version publiée exacte `@mairie360/lib-components@0.6.8` est épinglée pour
+conserver champs/chapitres/ressources après un refus et bloquer saisies/annulation
+pendant l’attente. Une mutation confirmée ferme le formulaire ; la reprise d’une
+actualisation refusée recharge uniquement le catalogue, sans répéter la mutation.
+Lorsqu’un formulaire auteur est ouvert, son alerte remplace les messages globaux
+du catalogue pour laisser accessibles reprise/annulation ; les retours du lecteur
+apprenant sont inchangés. Routes et DTOs
+existants restent inchangés ; upload/clés et avis écrits sont des travaux distincts.
+
 ## Pour développer ou exploiter ce module
 
 Le [guide technique](technical.md) détaille architecture, configuration, routes, session, persistance, tests et CI/CD. Il décrit les sources de vérité et les étapes de synchronisation des contrats avec les dépôts associés.

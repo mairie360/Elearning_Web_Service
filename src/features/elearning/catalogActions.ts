@@ -103,8 +103,12 @@ export function createCatalogActions(
     try {
       await mutation();
       await loadCatalog();
+      // loadCatalog reports refresh failures separately. The mutation has already
+      // been confirmed, so a retained form must not resend it on a refresh retry.
+      return true;
     } catch (error) {
       await handleFailure(error, view.setMutationError);
+      return false;
     }
   }
 

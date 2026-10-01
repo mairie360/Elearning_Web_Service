@@ -228,8 +228,8 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     const { state, actions } = catalogState();
 
     // Le formulaire de lib-components type statusValue en chaîne libre : une valeur hors enum n'est pas envoyée.
-    await actions.createCourse(f.course('nouvelle-formation', { statusValue: 'brouillon' }));
-    await actions.updateCourse(f.course('nouvelle-formation', { statusValue: 'completed', title: 'Renommée' }));
+    assert.equal(await actions.createCourse(f.course('nouvelle-formation', { statusValue: 'brouillon' })), true);
+    assert.equal(await actions.updateCourse(f.course('nouvelle-formation', { statusValue: 'completed', title: 'Renommée' })), true);
     await actions.deleteCourse('nouvelle-formation');
 
     assert.deepEqual(operations(), [
@@ -250,11 +250,43 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     bffElearning.on('post', '/elearning/admin/courses', errorReply(409, 'COURSE_ALREADY_EXISTS', 'Une formation porte déjà cet identifiant.'));
     const { state, actions } = catalogState();
 
-    await actions.createCourse(f.course('doublon'));
+    assert.equal(await actions.createCourse(f.course('doublon')), false);
 
     assert.equal(state.mutationError, 'Une formation porte déjà cet identifiant.');
     assert.deepEqual(operations(), ['POST /elearning/admin/courses']);
   });
+
+  test('a rejected update stays unconfirmed, then a retry is confirmed without changing the contract', async () => {
+    bffElearning.on('patch', '/elearning/admin/courses/{courseId}', errorReply(503, 'UNAVAILABLE', 'Enregistrement indisponible.'));
+    const { state, actions } = catalogState();
+    const course = f.course('edited-course', { title: 'Saisie conservée' });
+    assert.equal(await actions.updateCourse(course), false);
+    assert.equal(state.mutationError, 'Enregistrement indisponible.');
+    assert.deepEqual(operations(), ['PATCH /elearning/admin/courses/{courseId}']);
+    bffElearning.on('patch', '/elearning/admin/courses/{courseId}', ({ body }) => ({ body: { course: body } }));
+    reloadCatalog();
+    assert.equal(await actions.updateCourse(course), true);
+    assert.equal(state.mutationError, null);
+    assert.deepEqual(bffElearning.requests[0].body, bffElearning.requests[1].body);
+    assert.deepEqual(operations(), ['PATCH /elearning/admin/courses/{courseId}', 'PATCH /elearning/admin/courses/{courseId}', 'GET /elearning/catalog']);
+  });
+
+  for (const method of ['create', 'update']) {
+    test(`${method} remains confirmed when only catalogue refresh fails; retry does not resend the saved course`, async () => {
+      const verb = method === 'create' ? 'post' : 'patch';
+      const path = method === 'create' ? '/elearning/admin/courses' : '/elearning/admin/courses/{courseId}';
+      bffElearning.on(verb, path, ({ body }) => ({ status: method === 'create' ? 201 : 200, body: { course: body } }));
+      bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Catalogue indisponible.'));
+      const { state, actions } = catalogState();
+      assert.equal(await actions[`${method}Course`](f.course('confirmed-course')), true);
+      assert.equal(state.mutationError, null);
+      assert.equal(state.error, 'Catalogue indisponible.');
+      reloadCatalog();
+      await actions.loadCatalog();
+      assert.deepEqual(operations(), [`${verb.toUpperCase()} ${path}`, 'GET /elearning/catalog', 'GET /elearning/catalog']);
+      assert.equal(state.error, null);
+    });
+  }
 
   for (const [label, reply, expected] of [
     ['a 500 ApiError', errorReply(500, 'INTERNAL_ERROR', 'Erreur interne du BFF.'), 'Erreur interne du BFF.'],

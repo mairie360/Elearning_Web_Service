@@ -111,6 +111,7 @@ export function ElearningModule() {
     >
       {mutationError && (
         <div
+          data-elearning-catalog-feedback
           className="fixed inset-x-4 bottom-4 z-[60] mx-auto max-w-[640px] rounded-md border border-[#efb9bd] bg-[#fff1f2] px-4 py-3 text-sm font-semibold text-[#a4232c] shadow-lg"
           role="alert"
         >
@@ -129,6 +130,7 @@ export function ElearningModule() {
 
       {error && !mutationError && (
         <div
+          data-elearning-catalog-feedback
           className={catalog
             ? "fixed inset-x-4 bottom-4 z-[60] mx-auto max-w-[640px] rounded-lg border border-[#efb9bd] bg-white px-4 py-3 text-center shadow-lg"
             : "mx-auto my-10 max-w-[1130px] rounded-lg border border-[#efb9bd] bg-white p-8 text-center"}
@@ -190,8 +192,8 @@ export function ElearningModule() {
           onCourseRatingSubmit={(course, rating) =>
             void actions.rateCourse(course.id, rating)
           }
-          onCreateCourse={(course) => void actions.createCourse(course)}
-          onUpdateCourse={(course) => void actions.updateCourse(course)}
+          onCreateCourse={(course) => actions.createCourse(course)}
+          onUpdateCourse={(course) => actions.updateCourse(course)}
           onDeleteCourse={(course) => void actions.deleteCourse(course.id)}
           className="elearning-catalog-shell min-h-full !px-6 !py-10 md:!px-10 lg:!px-14 xl:!px-14"
         />

@@ -47,6 +47,12 @@ body {
   color: #2f3747;
 }
 
+/* Author forms provide their own failure feedback. A catalogue toast must not
+   cover their retry/cancel controls; learner reader feedback remains visible. */
+.elearning-shell:has([data-elearning-form-scroll]) [data-elearning-catalog-feedback] {
+  display: none;
+}
+
 .elearning-shell > .flex > .flex > main {
   padding: 0;
   background: #f4f2ef;
