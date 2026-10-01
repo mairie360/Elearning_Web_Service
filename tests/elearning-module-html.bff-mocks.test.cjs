@@ -198,20 +198,48 @@ test('a BFF error is rendered as an alert with a retry button that reloads the c
   assert.doesNotMatch(html, /Réessayer/);
 });
 
-test('starting a course replaces it in the rendered catalogue without reloading', async () => {
+test('starting a course refreshes official statistics without resetting filters or the reader', async () => {
   await renderLoadedCatalog(f.catalogResponse([f.course(), f.course('accueil', { title: 'Accueil des administrés' })]));
   const started = f.course('rgpd-collectivites', { statusValue: 'in-progress', statusBadge: { label: 'En cours', variant: 'inProgress' }, progress: 10 });
   bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: started } });
+  const updated = f.catalogResponse([started, f.course('accueil', { title: 'Accueil des administrés' })]);
+  updated.catalog.stats = [{ label: 'En cours', value: 7 }];
+  bffElearning.on('get', '/elearning/catalog', { body: updated });
+  await view.act(() => view.props('ElearningSearchInput').onValueChange('RGPD'));
+  await view.act(() => view.props('ElearningFilterSelect', 0).onValueChange('Juridique'));
 
-  const [course] = view.props('ElearningCatalog').courses;
-  await view.act(() => view.props('ElearningCatalog').onCourseAction(course));
-  await view.waitFor(() => view.props('ElearningCatalog').courses[0].statusValue === 'in-progress');
+  await view.click('Commencer');
+  await view.waitFor(() => view.props('ElearningCatalog').stats[0].value === 7);
 
-  assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/start']);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/start', 'GET /elearning/catalog']);
   assert.deepEqual(bffElearning.requests[1].pathParams, { courseId: 'rgpd-collectivites' });
   assert.deepEqual(view.props('ElearningCatalog').courses.map((item) => [item.id, item.statusValue]), [['rgpd-collectivites', 'in-progress'], ['accueil', 'not-started']]);
-  assert.match(view.text(), /Accueil des administrés/);
+  assert.equal(view.props('ElearningSearchInput').value, 'RGPD');
+  assert.equal(view.props('ElearningFilterSelect', 0).value, 'Juridique');
+  assert.match(view.html, /role="dialog"/);
+  assert.match(view.text(), /En cours/);
+  assert.deepEqual(view.props('ElearningCatalog').stats, updated.catalog.stats);
   assert.doesNotMatch(view.html, /role="alert"/);
+});
+
+test('a failed start refresh keeps the confirmed reader and offers GET-only retry', async () => {
+  await renderLoadedCatalog();
+  const previousStats = view.props('ElearningCatalog').stats;
+  const started = f.course('rgpd-collectivites', { statusValue: 'in-progress', statusBadge: { label: 'En cours', variant: 'inProgress' }, progress: 10 });
+  bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: started } });
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'BFF_UNAVAILABLE', 'Actualisation indisponible'));
+  await view.click('Commencer');
+  await view.waitFor((html) => html.includes('Actualisation indisponible'));
+  assert.deepEqual(view.props('ElearningCatalog').courses, [started]);
+  assert.deepEqual(view.props('ElearningCatalog').stats, previousStats);
+  assert.match(view.html, /role="dialog"/);
+  const updated = f.catalogResponse([started]);
+  updated.catalog.stats = [{ label: 'En cours', value: 2 }];
+  bffElearning.on('get', '/elearning/catalog', { body: updated });
+  await view.click('Réessayer');
+  await view.waitFor((html) => !html.includes('role="alert"') && view.props('ElearningCatalog').stats[0].value === 2);
+  assert.match(view.html, /role="dialog"/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/start', 'GET /elearning/catalog', 'GET /elearning/catalog']);
 });
 
 test('a failed refresh after a rating keeps the catalogue visible and offers a reload-only retry', async () => {
@@ -239,6 +267,7 @@ test('a failed refresh after a rating keeps the catalogue visible and offers a r
 
 test('a refused mutation is shown as an alert above the catalogue, which stays displayed', async () => {
   await renderLoadedCatalog();
+  const initial = { courses: view.props('ElearningCatalog').courses, stats: view.props('ElearningCatalog').stats };
   bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(403, 'FORBIDDEN', 'Cette formation ne vous est pas ouverte'));
 
   await view.act(() => view.props('ElearningCatalog').onCourseAction(view.props('ElearningCatalog').courses[0]));
@@ -249,6 +278,8 @@ test('a refused mutation is shown as an alert above the catalogue, which stays d
   assert.match(html, /data-elearning-catalog-feedback/);
   assert.equal(view.find('ElearningCatalog').length, 1);
   assert.match(view.text(), /RGPD et collectivités/);
+  assert.deepEqual({ courses: view.props('ElearningCatalog').courses, stats: view.props('ElearningCatalog').stats }, initial);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/start']);
 });
 
 test('a session refused by the BFF leaves the page through the logout route', async () => {

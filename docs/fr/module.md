@@ -70,6 +70,17 @@ autorisés, les avis écrits et la progression durable entre sessions restent de
 dépendances non validées de MAIR-350 ; ce changement ne termine pas le ticket et
 n’ajoute aucune route non publiée.
 
+### Statistiques après un démarrage confirmé (MAIR-382)
+
+Le démarrage conserve immédiatement le cours confirmé par le serveur, puis lit
+le catalogue avec `no-store` pour afficher ses statistiques officielles. Aucun
+rechargement complet ni calcul de compteur métier côté front n’est nécessaire.
+Un démarrage refusé ne change rien et ne relit pas le catalogue. Si seule cette
+lecture échoue, le cours confirmé et le lecteur restent visibles ; Réessayer fait
+uniquement GET, jamais un second POST de démarrage. Recherche, catégorie et statut
+restent sélectionnés. Déconnexion sur 401 et protection contre les réponses
+anciennes restent actives ; aucun contrat ou backend n’est modifié.
+
 ### Confirmation du formulaire de formation (MAIR-378)
 
 Les actions de création/modification retournent `false` après un refus et `true`

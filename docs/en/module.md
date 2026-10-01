@@ -65,6 +65,16 @@ This is a frontend-only reliability slice. Authorized resource downloads, writte
 reviews and durable cross-session progress remain unverified dependencies of
 MAIR-350; this change does not declare that ticket complete or add unpublished routes.
 
+### Statistics after a confirmed start (MAIR-382)
+
+Starting a course retains the server-confirmed course immediately, then fetches
+the catalogue with `no-store` to display its official statistics. No full page
+reload or client-side business counter calculation is needed. A refused start
+changes nothing and does not fetch the catalogue. If only the refresh fails, the
+confirmed course and reader remain visible with GET-only retry, never a second
+start POST. Search/category/status filters remain intact. Existing 401 logout and
+stale-response protection still apply; no contract or backend change is made.
+
 ### Course form confirmation (MAIR-378)
 
 Course creation/update actions return `false` after a refused mutation and `true`

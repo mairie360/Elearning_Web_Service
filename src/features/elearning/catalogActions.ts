@@ -121,6 +121,9 @@ export function createCatalogActions(
       catalogRevision += 1;
       view.setLoading(false);
       view.setCatalogResponse((current) => replaceCatalogCourse(current, course));
+      // Start returns only the confirmed course, not the official statistics.
+      // Retain it even if this GET fails; retry must never repeat the start POST.
+      await loadCatalog();
     } catch (error) {
       await handleFailure(error, view.setMutationError);
     }
