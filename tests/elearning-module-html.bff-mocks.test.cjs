@@ -53,6 +53,8 @@ test('the first pass renders the loading state, the next one the catalogue of GE
   assert.equal(view.props('Sidebar').isAdmin, false);
   assert.equal(view.props('ElearningCatalog').currentUserRole, 'user');
   assert.match(html, /<footer/);
+  assert.match(html, /<aside\b[^]*?<footer\b[^]*?<\/footer>[^]*?<\/aside>/);
+  assert.doesNotMatch(html, /<\/main>\s*<footer\b/);
   assert.match(view.text(), /1\.0\.0/);
 });
 
