@@ -70,6 +70,19 @@ autorisés, les avis écrits et la progression durable entre sessions restent de
 dépendances non validées de MAIR-350 ; ce changement ne termine pas le ticket et
 n’ajoute aucune route non publiée.
 
+### Confirmation des actions apprenant (MAIR-350)
+
+Les callbacks de démarrage, de complétion et de note numérique transmettent leur
+résultat complet à la bibliothèque publiée `0.6.9`. Les commandes du lecteur et
+des cartes se bloquent pendant l’écriture et l’actualisation du catalogue ; des
+demandes répétées partagent la même requête. Une complétion en attente affiche
+« Enregistrement… » en gris, pas l’état vert terminé. Un refus conserve la
+progression confirmée et les étoiles choisies, avec un message et une reprise.
+Seule une réponse réussie confirme la complétion ou la note. Son DTO officiel est
+conservé même si le GET suivant échoue ; la reprise recharge uniquement ce GET.
+Aucun avis écrit ni acquittement de téléchargement n’est simulé ; cette tranche
+ne valide pas les critères restants de persistance et de changement de session.
+
 ### Statistiques après un démarrage confirmé (MAIR-382)
 
 Le démarrage conserve immédiatement le cours confirmé par le serveur, puis lit
@@ -86,7 +99,7 @@ anciennes restent actives ; aucun contrat ou backend n’est modifié.
 Les actions de création/modification retournent `false` après un refus et `true`
 après une mutation confirmée, indépendamment d’un échec ultérieur d’actualisation.
 Le composant transmet cette promesse au catalogue partagé sans l’ignorer.
-La version publiée exacte `@mairie360/lib-components@0.6.8` est épinglée pour
+La version publiée exacte `@mairie360/lib-components@0.6.9` est épinglée pour
 conserver champs/chapitres/ressources après un refus et bloquer saisies/annulation
 pendant l’attente. Une mutation confirmée ferme le formulaire ; la reprise d’une
 actualisation refusée recharge uniquement le catalogue, sans répéter la mutation.
