@@ -69,6 +69,30 @@ export function createCatalogActions(
   onUnauthorized: () => Promise<void> = logout,
 ) {
   let catalogRevision = 0;
+  let pendingLearner: { key: string; result: Promise<boolean> } | null = null;
+
+  // Share an identical in-flight result, including its catalogue refresh. React
+  // has not necessarily disabled a button before another click is dispatched.
+  function runLearnerAction(key: string, run: () => Promise<boolean>) {
+    if (pendingLearner) {
+      return pendingLearner.key === key ? pendingLearner.result : Promise.resolve(false);
+    }
+    const result = Promise.resolve().then(run).finally(() => { pendingLearner = null; });
+    pendingLearner = { key, result };
+    return result;
+  }
+
+  function updateConfirmedCourse(courseId: string, update: (course: ElearningCourse) => ElearningCourse) {
+    catalogRevision += 1;
+    view.setLoading(false);
+    view.setCatalogResponse((current) => current ? {
+      ...current,
+      catalog: {
+        ...current.catalog,
+        courses: current.catalog.courses.map((course) => course.id === courseId ? update(course) : course),
+      },
+    } : current);
+  }
 
   async function handleFailure(error: unknown, report: (message: string) => void) {
     if (error instanceof BffRequestError && error.status === 401) {
@@ -124,25 +148,58 @@ export function createCatalogActions(
       // Start returns only the confirmed course, not the official statistics.
       // Retain it even if this GET fails; retry must never repeat the start POST.
       await loadCatalog();
+      return true;
     } catch (error) {
       await handleFailure(error, view.setMutationError);
+      return false;
     }
   }
 
   return {
     loadCatalog,
-    startCourse: startCatalogCourse,
+    startCourse: (courseId: string) =>
+      runLearnerAction(`start:${courseId}`, () => startCatalogCourse(courseId)),
     completeContent: (
       courseId: string,
       chapterId: string,
       contentId: string,
       completed = true,
     ) =>
-      mutateThenReload(() =>
-        completeCourseContent(courseId, contentId, { chapterId, completed }),
+      runLearnerAction(`complete:${JSON.stringify([courseId, chapterId, contentId, completed])}`, () =>
+        mutateThenReload(async () => {
+          const response = await completeCourseContent(courseId, contentId, { chapterId, completed });
+          updateConfirmedCourse(courseId, (course) => ({
+            ...course,
+            progress: response.progress,
+            ...(course.details ? { details: {
+              ...course.details,
+              progress: response.progress,
+              completed: response.completed,
+              chapters: response.chapters,
+            } } : {}),
+          }));
+        }),
       ),
     rateCourse: (courseId: string, rating: number) =>
-      mutateThenReload(() => rateCourse(courseId, rating)),
+      runLearnerAction(`rating:${JSON.stringify([courseId, rating])}`, () =>
+        mutateThenReload(async () => {
+          const response = await rateCourse(courseId, rating);
+          updateConfirmedCourse(courseId, (course) => ({
+            ...course,
+            rating: response.rating,
+            ratingDistribution: response.ratingDistribution,
+            ...(course.details ? { details: {
+              ...course.details,
+              rating: response.rating,
+              ratingDistribution: response.ratingDistribution,
+              completionRating: {
+                ...course.details.completionRating,
+                submitted: response.submitted,
+              },
+            } } : {}),
+          }));
+        }),
+      ),
     createCourse: (course: CatalogCourseInput) =>
       mutateThenReload(() => createCourse(toContractCourse(course))),
     updateCourse: (course: CatalogCourseInput) =>
