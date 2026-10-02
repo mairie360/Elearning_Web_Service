@@ -52,6 +52,7 @@ test('the first pass renders the loading state, the next one the catalogue of GE
   assert.match(view.html, /<span[^>]*>Alice Martin<\/span>/);
   assert.equal(view.props('Sidebar').isAdmin, false);
   assert.equal(view.props('ElearningCatalog').currentUserRole, 'user');
+  assert.equal(view.props('ElearningCatalog').allowRatingEdits, true);
   assert.equal(view.props('ElearningCatalog').className, 'elearning-catalog-shell min-h-full !px-6 !py-8');
   assert.match(html, /<footer/);
   assert.match(html, /<aside\b[^]*?<footer\b[^]*?<\/footer>[^]*?<\/aside>/);

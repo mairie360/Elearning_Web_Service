@@ -70,10 +70,23 @@ autorisés, les avis écrits et la progression durable entre sessions restent de
 dépendances non validées de MAIR-350 ; ce changement ne termine pas le ticket et
 n’ajoute aucune route non publiée.
 
+### Modification d’une note numérique confirmée (MAIR-350)
+
+Après confirmation d’une note numérique, **Modifier ma note** ouvre explicitement
+la modification. Choisir les étoiles puis **Enregistrer ma note** envoie le POST
+de notation existant. Pendant la requête, étoiles, enregistrement et annulation
+sont verrouillés. Un refus conserve le brouillon pour une nouvelle tentative
+explicite ; seul un succès confirme la modification. **Annuler la modification**
+restaure la dernière note personnelle confirmée, sans écriture. Celle-ci reste
+distincte de la moyenne renvoyée par le serveur ; le front n’incrémente pas le
+nombre de votes et ne remplace pas la distribution officielle des notes.
+Ce parcours n’implémente ni avis écrit attribué ni sa modification : le contrat
+publié ne fournit toujours que l’opération de notation numérique.
+
 ### Confirmation des actions apprenant (MAIR-350)
 
 Les callbacks de démarrage, de complétion et de note numérique transmettent leur
-résultat complet à la bibliothèque publiée `0.6.9`. Les commandes du lecteur et
+résultat complet à la bibliothèque publiée `0.6.10`. Les commandes du lecteur et
 des cartes se bloquent pendant l’écriture et l’actualisation du catalogue ; des
 demandes répétées partagent la même requête. Une complétion en attente affiche
 « Enregistrement… » en gris, pas l’état vert terminé. Un refus conserve la
@@ -99,7 +112,7 @@ anciennes restent actives ; aucun contrat ou backend n’est modifié.
 Les actions de création/modification retournent `false` après un refus et `true`
 après une mutation confirmée, indépendamment d’un échec ultérieur d’actualisation.
 Le composant transmet cette promesse au catalogue partagé sans l’ignorer.
-La version publiée exacte `@mairie360/lib-components@0.6.9` est épinglée pour
+La version publiée exacte `@mairie360/lib-components@0.6.10` est épinglée pour
 conserver champs/chapitres/ressources après un refus et bloquer saisies/annulation
 pendant l’attente. Une mutation confirmée ferme le formulaire ; la reprise d’une
 actualisation refusée recharge uniquement le catalogue, sans répéter la mutation.

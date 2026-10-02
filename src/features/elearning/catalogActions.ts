@@ -195,6 +195,7 @@ export function createCatalogActions(
               completionRating: {
                 ...course.details.completionRating,
                 submitted: response.submitted,
+                initialValue: rating,
               },
             } } : {}),
           }));

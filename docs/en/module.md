@@ -65,10 +65,22 @@ This is a frontend-only reliability slice. Authorized resource downloads, writte
 reviews and durable cross-session progress remain unverified dependencies of
 MAIR-350; this change does not declare that ticket complete or add unpublished routes.
 
+### Editing a confirmed numeric rating (MAIR-350)
+
+After a numeric rating is confirmed, **Modifier ma note** explicitly opens editing.
+Select stars and use **Enregistrer ma note** to send the existing rating POST.
+While it is pending, stars, saving and cancellation are locked. A refusal keeps
+the draft available for an explicit retry; only success confirms the change.
+**Annuler la modification** restores the last confirmed own note without a write.
+The submitted own note is separate from the server's aggregate rating; the front
+does not increment vote counts or replace the official rating distribution.
+This does not implement an attributed written review or its editing: the
+published contract still supplies only the numeric rating operation.
+
 ### Learner action confirmation (MAIR-350)
 
 Start, content completion and numeric-rating callbacks forward their full result
-to the published shared UI `0.6.9`. The reader/card controls lock while a write
+to the published shared UI `0.6.10`. The reader/card controls lock while a write
 and its catalogue refresh are pending; repeated dispatches share the same request.
 Pending completion uses neutral “Enregistrement…” styling, not the green completed
 state. A refusal keeps the confirmed progress and selected stars, with retry feedback.
@@ -92,7 +104,7 @@ stale-response protection still apply; no contract or backend change is made.
 Course creation/update actions return `false` after a refused mutation and `true`
 after a confirmed mutation, independently of a later catalogue refresh failure.
 The component forwards that promise to the shared catalogue instead of discarding
-it. The exact published `@mairie360/lib-components@0.6.9` release is pinned for the
+it. The exact published `@mairie360/lib-components@0.6.10` release is pinned for the
 form to retain fields/chapters/resources after refusal and freeze edits/cancellation
 while pending. A confirmed mutation closes the form; retrying a failed catalogue
 refresh only reloads the catalogue and does not repeat the mutation. While an author
