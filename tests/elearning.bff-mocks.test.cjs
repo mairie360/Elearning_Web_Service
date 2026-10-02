@@ -76,7 +76,113 @@ async function withDelayedCatalog(run) {
   finally { release(); global.fetch = originalFetch; }
 }
 
+// Keep the first real learner response pending while the same action is
+// submitted again; every request still traverses the unchanged contract routes.
+async function withDelayedLearnerResponse(pathname, run) {
+  const originalFetch = global.fetch;
+  let release;
+  let received;
+  const held = new Promise((resolve) => { release = resolve; });
+  const ready = new Promise((resolve) => { received = resolve; });
+  let first = true;
+  global.fetch = async (...args) => {
+    const hold = args[0] === pathname && args[1]?.method === 'POST' && first;
+    if (hold) first = false;
+    const response = await originalFetch(...args);
+    if (hold) { received(); await held; }
+    return response;
+  };
+  try { await run({ ready, release }); }
+  finally { release(); global.fetch = originalFetch; }
+}
+
 describe('catalog actions against the contract-driven BFF E-learning', () => {
+  for (const kind of ['start', 'complete', 'rating']) {
+    test(`a repeated pending learner ${kind} dispatch performs only one write`, async () => {
+      const courseId = 'rgpd-collectivites';
+      const pathname = kind === 'complete'
+        ? `/elearning/courses/${courseId}/contents/video-1/complete`
+        : `/elearning/courses/${courseId}/${kind}`;
+      const template = kind === 'complete'
+        ? '/elearning/courses/{courseId}/contents/{contentId}/complete'
+        : `/elearning/courses/{courseId}/${kind}`;
+      // Use the same valid responses as the existing operation recipes.
+      if (kind === 'start') bffElearning.on('post', template, { body: { course: f.course(courseId) } });
+      else bffElearning.on('post', template, { body: kind === 'complete' ? f.contentCompleteResponse() : f.ratingResponse(5) });
+      reloadCatalog();
+      const { actions } = catalogState(f.catalogResponse());
+      const dispatch = () => kind === 'start' ? actions.startCourse(courseId)
+        : kind === 'complete' ? actions.completeContent(courseId, 'chapter-1', 'video-1')
+        : actions.rateCourse(courseId, 5);
+      await withDelayedLearnerResponse(pathname, async ({ ready, release }) => {
+        const first = dispatch();
+        await ready;
+        const second = dispatch();
+        release();
+        await Promise.all([first, second]);
+        assert.equal(operations().filter((operation) => operation === `POST ${template}`).length, 1,
+          'pending repeated submissions must not emit duplicate learner writes');
+      });
+    });
+  }
+
+  test('a different learner action does not run while starting, and a refused start can be retried', async () => {
+    const courseId = 'rgpd-collectivites';
+    bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(503, 'UNAVAILABLE', 'Démarrage refusé'));
+    const initial = f.catalogResponse();
+    const { state, actions } = catalogState(initial);
+    await withDelayedLearnerResponse(`/elearning/courses/${courseId}/start`, async ({ ready, release }) => {
+      const first = actions.startCourse(courseId);
+      await ready;
+      assert.equal(await actions.rateCourse(courseId, 5), false);
+      assert.equal(actions.startCourse(courseId), first);
+      assert.equal(state.catalogResponse, initial);
+      release();
+      assert.equal(await first, false);
+    });
+    assert.equal(state.mutationError, 'Démarrage refusé');
+    bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: f.course(courseId) } });
+    reloadCatalog();
+    assert.equal(await actions.startCourse(courseId), true);
+    assert.equal(state.mutationError, null);
+    assert.deepEqual(operations(), [
+      'POST /elearning/courses/{courseId}/start',
+      'POST /elearning/courses/{courseId}/start', 'GET /elearning/catalog',
+    ]);
+  });
+
+  for (const kind of ['complete', 'rating']) {
+    test(`a confirmed ${kind} survives failed refresh without resending on GET retry`, async () => {
+      const courseId = 'rgpd-collectivites';
+      const response = kind === 'complete' ? f.contentCompleteResponse() : f.ratingResponse(5);
+      const template = kind === 'complete'
+        ? '/elearning/courses/{courseId}/contents/{contentId}/complete'
+        : '/elearning/courses/{courseId}/rating';
+      bffElearning.on('post', template, { body: response });
+      bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Actualisation refusée'));
+      const { state, actions } = catalogState(f.catalogResponse());
+      const confirmed = kind === 'complete'
+        ? await actions.completeContent(courseId, response.chapter.id, response.content.id)
+        : await actions.rateCourse(courseId, 5);
+      assert.equal(confirmed, true);
+      assert.equal(state.mutationError, null);
+      assert.equal(state.error, 'Actualisation refusée');
+      const course = state.catalogResponse.catalog.courses[0];
+      if (kind === 'complete') {
+        assert.equal(course.progress, 100);
+        assert.equal(course.details.completed, true);
+        assert.deepEqual(course.details.chapters, response.chapters);
+      } else {
+        assert.deepEqual(course.ratingDistribution, response.ratingDistribution);
+        assert.equal(course.details.completionRating.submitted, true);
+      }
+      bffElearning.on('get', '/elearning/catalog', { body: state.catalogResponse });
+      await actions.loadCatalog();
+      assert.equal(state.error, null);
+      assert.deepEqual(operations(), [`POST ${template}`, 'GET /elearning/catalog', 'GET /elearning/catalog']);
+    });
+  }
+
   test('an older catalogue response cannot overwrite a newer refresh', async () => {
     const old = f.catalogResponse([f.course('old', { title: 'Ancien catalogue' })]);
     const current = f.catalogResponse([f.course('current', { title: 'Catalogue récent' })]);

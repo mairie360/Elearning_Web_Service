@@ -122,6 +122,35 @@ for (const mode of ['create', 'update']) {
   });
 }
 
+for (const mode of ['start', 'complete', 'rating']) {
+  test(`the rendered learner catalogue forwards ${mode} refusal and confirmation promises`, async () => {
+    await renderLoadedCatalog();
+    const path = mode === 'complete'
+      ? '/elearning/courses/{courseId}/contents/{contentId}/complete'
+      : `/elearning/courses/{courseId}/${mode}`;
+    const payload = f.contentCompleteResponse();
+    const dispatch = () => {
+      const props = view.props('ElearningCatalog');
+      const course = props.courses[0];
+      return mode === 'start' ? props.onCourseAction(course)
+        : mode === 'complete' ? props.onCourseContentComplete(course, payload)
+        : props.onCourseRatingSubmit(course, 5);
+    };
+    bffElearning.on('post', path, errorReply(503, 'UNAVAILABLE', 'Écriture apprenant refusée'));
+    const refused = await view.act(() => {
+      const result = dispatch();
+      assert.equal(typeof result?.then, 'function');
+      return result;
+    });
+    assert.equal(refused, false);
+    assert.match(view.text(), /Écriture apprenant refusée/);
+    bffElearning.on('post', path, { body: mode === 'start'
+      ? { course: f.course() } : mode === 'complete' ? payload : f.ratingResponse(5) });
+    assert.equal(await view.act(dispatch), true);
+    assert.deepEqual(operations(), ['GET /elearning/catalog', `POST ${path}`, `POST ${path}`, 'GET /elearning/catalog']);
+  });
+}
+
 test('the catalog marks the real BFF statistic count for the responsive layout', async () => {
   const threeStats = f.catalogResponse();
   threeStats.catalog.stats = [

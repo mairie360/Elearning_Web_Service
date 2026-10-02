@@ -64,7 +64,7 @@ export function ElearningModule() {
     course: CatalogCourse,
     payload: ContentCompletePayload,
   ) => {
-    void actions.completeContent(
+    return actions.completeContent(
       course.id,
       payload.chapter.id,
       payload.content.id,
@@ -188,10 +188,10 @@ export function ElearningModule() {
           currentUserRole={
             user?.isAdmin ? "administrator" : "user"
           }
-          onCourseAction={(course) => void actions.startCourse(course.id)}
+          onCourseAction={(course) => actions.startCourse(course.id)}
           onCourseContentComplete={handleContentComplete}
           onCourseRatingSubmit={(course, rating) =>
-            void actions.rateCourse(course.id, rating)
+            actions.rateCourse(course.id, rating)
           }
           onCreateCourse={(course) => actions.createCourse(course)}
           onUpdateCourse={(course) => actions.updateCourse(course)}
