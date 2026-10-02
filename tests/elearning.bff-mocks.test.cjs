@@ -97,6 +97,33 @@ async function withDelayedLearnerResponse(pathname, run) {
 }
 
 describe('catalog actions against the contract-driven BFF E-learning', () => {
+  test('editing a submitted numeric note preserves the last confirmation on refusal and trusts the server distribution', async () => {
+    const initialCourse = f.course();
+    initialCourse.details.completionRating = { initialValue: 4, submitted: true };
+    const { state, actions } = catalogState(f.catalogResponse([initialCourse]));
+    const previousDistribution = initialCourse.ratingDistribution;
+    const template = '/elearning/courses/{courseId}/rating';
+    bffElearning.on('post', template, errorReply(503, 'UNAVAILABLE', 'Modification refusée'));
+    assert.equal(await actions.rateCourse(initialCourse.id, 3), false);
+    assert.equal(state.catalogResponse.catalog.courses[0].details.completionRating.initialValue, 4);
+    assert.deepEqual(state.catalogResponse.catalog.courses[0].ratingDistribution, previousDistribution);
+    assert.deepEqual(operations(), [`POST ${template}`]);
+
+    const response = { rating: 3.5, ratingCount: 2, ratingDistribution: { 3: 1, 4: 1 }, submitted: true };
+    bffElearning.on('post', template, { body: response });
+    bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Actualisation refusée'));
+    assert.equal(await actions.rateCourse(initialCourse.id, 3), true);
+    const confirmed = state.catalogResponse.catalog.courses[0];
+    assert.equal(confirmed.details.completionRating.initialValue, 3);
+    assert.equal(confirmed.details.completionRating.submitted, true);
+    assert.equal(confirmed.rating, 3.5);
+    assert.deepEqual(confirmed.ratingDistribution, response.ratingDistribution);
+    assert.equal(state.error, 'Actualisation refusée');
+    assert.equal(state.mutationError, null);
+    assert.deepEqual(bffElearning.requests.filter(request => request.method === 'POST').map(request => request.body), [{ rating: 3 }, { rating: 3 }]);
+    assert.deepEqual(operations(), [`POST ${template}`, `POST ${template}`, 'GET /elearning/catalog']);
+  });
+
   for (const kind of ['start', 'complete', 'rating']) {
     test(`a repeated pending learner ${kind} dispatch performs only one write`, async () => {
       const courseId = 'rgpd-collectivites';
@@ -175,6 +202,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
       } else {
         assert.deepEqual(course.ratingDistribution, response.ratingDistribution);
         assert.equal(course.details.completionRating.submitted, true);
+        assert.equal(course.details.completionRating.initialValue, 5);
       }
       bffElearning.on('get', '/elearning/catalog', { body: state.catalogResponse });
       await actions.loadCatalog();

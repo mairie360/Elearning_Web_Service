@@ -193,6 +193,7 @@ export function ElearningModule() {
           onCourseRatingSubmit={(course, rating) =>
             actions.rateCourse(course.id, rating)
           }
+          allowRatingEdits
           onCreateCourse={(course) => actions.createCourse(course)}
           onUpdateCourse={(course) => actions.updateCourse(course)}
           onDeleteCourse={(course) => void actions.deleteCourse(course.id)}
