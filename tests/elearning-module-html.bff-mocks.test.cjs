@@ -284,7 +284,7 @@ test('a failed refresh after a rating keeps the catalogue visible and offers a r
 
   assert.match(html, /Actualisation indisponible/);
   assert.match(html, /class="fixed inset-x-4 bottom-4 z-\[60\]/);
-  assert.match(view.text(), /Le catalogue affiché est la dernière version chargée/);
+  assert.match(view.text(), /Les dernières données confirmées restent affichées/);
   assert.equal(view.find('ElearningCatalog').length, 1);
   assert.match(view.text(), /RGPD et collectivités/);
 
@@ -311,6 +311,67 @@ test('a refused mutation is shown as an alert above the catalogue, which stays d
   assert.match(view.text(), /RGPD et collectivités/);
   assert.deepEqual({ courses: view.props('ElearningCatalog').courses, stats: view.props('ElearningCatalog').stats }, initial);
   assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/start']);
+});
+
+async function confirmedCourseWithFailedRead() {
+  const initial = f.catalogResponse([f.course()], f.currentUser({ isAdmin: true }));
+  await renderLoadedCatalog(initial);
+  const confirmed = f.course('rgpd-collectivites', { title: 'Formation confirmée' });
+  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { course: confirmed } });
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Lecture refusée'));
+  assert.equal(await view.act(() => view.props('ElearningCatalog').onUpdateCourse(confirmed)), true);
+  assert.match(view.text(), /Formation confirmée/);
+  return { initial, confirmed };
+}
+
+test('a refused write does not hide catalogue read recovery; GET success clears only its read error', async () => {
+  const { initial, confirmed } = await confirmedCourseWithFailedRead();
+  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', errorReply(403, 'FORBIDDEN', 'Écriture refusée'));
+  assert.equal(await view.act(() => view.props('ElearningCatalog').onUpdateCourse(f.course())), false);
+  assert.match(view.text(), /Écriture refusée/);
+  assert.match(view.text(), /Lecture refusée/);
+  assert.match(view.html, />Réessayer<\/button>/);
+  assert.deepEqual(view.props('ElearningCatalog').courses, [confirmed]);
+  assert.deepEqual(view.props('ElearningCatalog').stats, initial.catalog.stats);
+  assert.match(view.html, /data-elearning-feedback-stack/);
+  assert.equal((view.html.match(/class="fixed inset-x-4 bottom-4/g) ?? []).length, 1, 'feedback occupies one non-overlapping stack');
+  bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse([confirmed], initial.user) });
+  await view.click('Réessayer');
+  await view.waitFor(html => !html.includes('Lecture refusée'));
+  assert.match(view.text(), /Écriture refusée/);
+  assert.deepEqual(view.props('ElearningCatalog').courses, [confirmed]);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}', 'GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}', 'GET /elearning/catalog']);
+});
+
+test('read retry keeps its failure and disabled pending control until the catalogue confirms recovery', async () => {
+  await confirmedCourseWithFailedRead();
+  const originalFetch = global.fetch;
+  let release;
+  let received;
+  const held = new Promise(resolve => { release = resolve; });
+  const ready = new Promise(resolve => { received = resolve; });
+  bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse() });
+  global.fetch = async (...args) => {
+    const response = await originalFetch(...args);
+    if (args[0] === '/elearning/catalog') { received(); await held; }
+    return response;
+  };
+  try {
+    await view.click('Réessayer');
+    await ready;
+    await view.settle();
+    assert.match(view.text(), /Lecture refusée/);
+    assert.match(view.html, /<button[^>]*disabled=""[^>]*aria-busy="true"[^>]*type="button">Réessayer<\/button>/);
+    assert.match(view.html, /role="status"[^>]*>Actualisation des formations…/);
+    assert.match(view.text(), /Formation confirmée/);
+    release();
+    await view.waitFor(html => !html.includes('Lecture refusée') && !html.includes('role="status"'));
+    assert.match(view.text(), /RGPD et collectivités/);
+    assert.deepEqual(operations(), ['GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}', 'GET /elearning/catalog', 'GET /elearning/catalog']);
+  } finally {
+    release();
+    global.fetch = originalFetch;
+  }
 });
 
 test('a session refused by the BFF leaves the page through the logout route', async () => {

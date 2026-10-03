@@ -21,6 +21,8 @@ Administrator creation and updates retain the course returned by the existing se
 
 `tests/catalog-admin-confirmation.test.cjs` exercises the real consumer actions through the unchanged contract-bound HTTP path, including refused writes, refused refreshes, late reads, duplicate IDs and unconfirmed deletion. This frontend behavior does not implement the separate upload/key or resource/download requirements, change API/BFF contracts, or approve a deployment.
 
+Read recovery remains available when another write is refused: both failures share a single feedback stack instead of overlapping or hiding Retry. A pending retry retains the previous read failure and confirmed courses, disables the button and announces the refresh. Only a successful latest catalogue read clears its own error; it neither clears the refused-write message nor repeats that write. HTML consumer regressions cover these independent recovery states.
+
 ## Contracts and background / Contrats et compléments
 
 - [BFF.md](BFF.md)

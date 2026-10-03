@@ -110,16 +110,6 @@ export function ElearningModule() {
       }
       className="elearning-shell"
     >
-      {mutationError && (
-        <div
-          data-elearning-catalog-feedback
-          className="fixed inset-x-4 bottom-4 z-[60] mx-auto max-w-[640px] rounded-md border border-[#efb9bd] bg-[#fff1f2] px-4 py-3 text-sm font-semibold text-[#a4232c] shadow-lg"
-          role="alert"
-        >
-          {mutationError}
-        </div>
-      )}
-
       {loading && !catalog && (
         <div
           className="mx-auto my-10 max-w-[1130px] rounded-lg border border-[#d8d2ca] bg-white p-8 text-center text-sm text-[#5f6470]"
@@ -129,28 +119,48 @@ export function ElearningModule() {
         </div>
       )}
 
-      {error && !mutationError && (
+      {(error || mutationError) && (
         <div
-          data-elearning-catalog-feedback
+          data-elearning-feedback-stack
           className={catalog
-            ? "fixed inset-x-4 bottom-4 z-[60] mx-auto max-w-[640px] rounded-lg border border-[#efb9bd] bg-white px-4 py-3 text-center shadow-lg"
-            : "mx-auto my-10 max-w-[1130px] rounded-lg border border-[#efb9bd] bg-white p-8 text-center"}
-          role="alert"
+            ? "fixed inset-x-4 bottom-4 z-[60] mx-auto flex max-h-[calc(100dvh-2rem)] max-w-[640px] flex-col gap-3 overflow-y-auto"
+            : "mx-auto my-10 max-w-[1130px] space-y-3"}
         >
-          <p className="text-sm font-semibold text-[#a4232c]">{error}</p>
-          {catalog && (
-            <p className="mt-2 text-sm text-[#5f6470]">
-              Le catalogue affiché est la dernière version chargée. Réessayez pour actualiser les formations.
-            </p>
+          {mutationError && (
+            <div
+              data-elearning-catalog-feedback
+              className="rounded-md border border-[#efb9bd] bg-[#fff1f2] px-4 py-3 text-sm font-semibold text-[#a4232c] shadow-lg"
+              role="alert"
+            >
+              {mutationError}
+            </div>
           )}
-          <button
-            className="mt-4 rounded-md bg-[#1256a6] px-4 py-2 text-sm font-semibold text-white"
-            disabled={loading}
-            onClick={() => void actions.loadCatalog()}
-            type="button"
-          >
-            Réessayer
-          </button>
+          {error && (
+            <div
+              data-elearning-catalog-feedback
+              className="rounded-lg border border-[#efb9bd] bg-white px-4 py-3 text-center shadow-lg"
+              role="alert"
+            >
+              <p className="text-sm font-semibold text-[#a4232c]">{error}</p>
+              {catalog && (
+                <p className="mt-2 text-sm text-[#5f6470]">
+                  Les dernières données confirmées restent affichées. Réessayez pour actualiser les formations.
+                </p>
+              )}
+              {loading && catalog && (
+                <p className="mt-2 text-sm text-[#5f6470]" role="status">Actualisation des formations…</p>
+              )}
+              <button
+                className="mt-4 rounded-md bg-[#1256a6] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                disabled={loading}
+                aria-busy={loading}
+                onClick={() => void actions.loadCatalog()}
+                type="button"
+              >
+                Réessayer
+              </button>
+            </div>
+          )}
         </div>
       )}
 

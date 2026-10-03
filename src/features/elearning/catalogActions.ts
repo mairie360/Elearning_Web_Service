@@ -112,11 +112,13 @@ export function createCatalogActions(
   async function loadCatalog() {
     const revision = ++catalogRevision;
     view.setLoading(true);
-    view.setError(null);
 
     try {
       const response = await getCatalog({ cache: "no-store" });
-      if (revision === catalogRevision) view.setCatalogResponse(() => response);
+      if (revision === catalogRevision) {
+        view.setCatalogResponse(() => response);
+        view.setError(null);
+      }
     } catch (error) {
       // Session rejection must still leave the page, even for a superseded request.
       if (revision === catalogRevision || (error instanceof BffRequestError && error.status === 401)) {
