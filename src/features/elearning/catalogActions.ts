@@ -82,16 +82,22 @@ export function createCatalogActions(
     return result;
   }
 
-  function updateConfirmedCourse(courseId: string, update: (course: ElearningCourse) => ElearningCourse) {
+  function updateConfirmedCatalogCourses(update: (courses: ElearningCourse[]) => ElearningCourse[]) {
     catalogRevision += 1;
     view.setLoading(false);
     view.setCatalogResponse((current) => current ? {
       ...current,
       catalog: {
         ...current.catalog,
-        courses: current.catalog.courses.map((course) => course.id === courseId ? update(course) : course),
+        courses: update(current.catalog.courses),
       },
     } : current);
+  }
+
+  function updateConfirmedCourse(courseId: string, update: (course: ElearningCourse) => ElearningCourse) {
+    updateConfirmedCatalogCourses((courses) =>
+      courses.map((course) => course.id === courseId ? update(course) : course),
+    );
   }
 
   async function handleFailure(error: unknown, report: (message: string) => void) {
@@ -202,11 +208,28 @@ export function createCatalogActions(
         }),
       ),
     createCourse: (course: CatalogCourseInput) =>
-      mutateThenReload(() => createCourse(toContractCourse(course))),
+      mutateThenReload(async () => {
+        const response = await createCourse(toContractCourse(course));
+        // Keep server-confirmed data, never the submitted draft or invented counters.
+        updateConfirmedCatalogCourses((courses) =>
+          courses.some((current) => current.id === response.course.id)
+            ? courses.map((current) => current.id === response.course.id ? response.course : current)
+            : [...courses, response.course],
+        );
+      }),
     updateCourse: (course: CatalogCourseInput) =>
-      mutateThenReload(() => updateCourse(toContractCourse(course))),
+      mutateThenReload(async () => {
+        const response = await updateCourse(toContractCourse(course));
+        updateConfirmedCourse(response.course.id, () => response.course);
+      }),
     deleteCourse: (courseId: string) =>
-      mutateThenReload(() => deleteCourse(courseId)),
+      mutateThenReload(async () => {
+        const response = await deleteCourse(courseId);
+        if (!response.deleted || response.courseId !== courseId) {
+          throw new Error("Course deletion was not confirmed.");
+        }
+        updateConfirmedCatalogCourses((courses) => courses.filter((course) => course.id !== courseId));
+      }),
   };
 }
 

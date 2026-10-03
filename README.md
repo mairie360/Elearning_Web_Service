@@ -15,6 +15,12 @@ The guides describe the implemented module, its current limitations, local setup
 
 Les guides décrivent le module implémenté, ses limites actuelles, le démarrage local, les routes, les données, les vérifications et la CI/CD.
 
+## Confirmed catalog changes (MAIR-452)
+
+Administrator creation and updates retain the course returned by the existing service. Deletion removes a course only after a matching positive confirmation. If the subsequent catalog read fails, these confirmed changes remain visible while the existing refresh error and GET-only retry remain available. Earlier reads cannot overwrite a newer confirmation; unrelated courses, profile data and official statistics are retained until a successful catalog response replaces them. Submitted drafts and fabricated statistics are never used as confirmation.
+
+`tests/catalog-admin-confirmation.test.cjs` exercises the real consumer actions through the unchanged contract-bound HTTP path, including refused writes, refused refreshes, late reads, duplicate IDs and unconfirmed deletion. This frontend behavior does not implement the separate upload/key or resource/download requirements, change API/BFF contracts, or approve a deployment.
+
 ## Contracts and background / Contrats et compléments
 
 - [BFF.md](BFF.md)
