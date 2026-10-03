@@ -42,8 +42,8 @@ test('npm resolution keeps the seven-day window except for the internal UI packa
 });
 
 test('CI uses Node 24 and the test toolchain supports npm release-age policy', () => {
-  assert.match(read('.github/workflows/cicd.yml'), /node_version:\s*"24"/);
-  assert.match(read('.github/workflows/contracts.yml'), /node-version:\s*'24'/);
+  assert.match(read('.github/workflows/cicd.yml'), /node_version:\s*"24\.21\.0"/);
+  assert.match(read('.github/workflows/contracts.yml'), /node-version:\s*'24\.21\.0'/);
   const version = execFileSync('npm', ['--version'], { cwd: root, encoding: 'utf8' }).trim();
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
   assert.ok(match, 'npm must report a stable version');
