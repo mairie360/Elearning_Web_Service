@@ -123,6 +123,44 @@ for (const mode of ['create', 'update']) {
   });
 }
 
+test('repeating the visible Delete action while pending sends one write; refusal keeps the course for retry', async () => {
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+  const originalFetch = global.fetch;
+  let release;
+  let received;
+  const held = new Promise(resolve => { release = resolve; });
+  const ready = new Promise(resolve => { received = resolve; });
+  let first = true;
+  bffElearning.on('delete', '/elearning/admin/courses/{courseId}', errorReply(403, 'FORBIDDEN', 'Suppression refusée'));
+  global.fetch = async (...args) => {
+    const hold = first && args[1]?.method === 'DELETE';
+    if (hold) first = false;
+    const response = await originalFetch(...args);
+    if (hold) { received(); await held; }
+    return response;
+  };
+  try {
+    const remove = props => props['aria-label'] === 'Supprimer RGPD et collectivités';
+    await view.click(remove);
+    await ready;
+    assert.match(view.text(), /RGPD et collectivités/);
+    await view.click(remove);
+    release();
+    await view.waitFor(html => html.includes('Suppression refusée'));
+    assert.match(view.text(), /RGPD et collectivités/);
+    assert.deepEqual(operations(), ['GET /elearning/catalog', 'DELETE /elearning/admin/courses/{courseId}']);
+    bffElearning.on('delete', '/elearning/admin/courses/{courseId}', { body: { deleted: true, courseId: 'rgpd-collectivites' } });
+    bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Relecture refusée'));
+    await view.click(remove);
+    await view.waitFor(html => html.includes('Relecture refusée'));
+    assert.doesNotMatch(view.text(), /RGPD et collectivités|Suppression refusée/);
+    assert.deepEqual(operations(), ['GET /elearning/catalog', 'DELETE /elearning/admin/courses/{courseId}', 'DELETE /elearning/admin/courses/{courseId}', 'GET /elearning/catalog']);
+  } finally {
+    release();
+    global.fetch = originalFetch;
+  }
+});
+
 for (const mode of ['start', 'complete', 'rating']) {
   test(`the rendered learner catalogue forwards ${mode} refusal and confirmation promises`, async () => {
     await renderLoadedCatalog();

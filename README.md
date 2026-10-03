@@ -23,6 +23,10 @@ Administrator creation and updates retain the course returned by the existing se
 
 Read recovery remains available when another write is refused: both failures share a single feedback stack instead of overlapping or hiding Retry. A pending retry retains the previous read failure and confirmed courses, disables the button and announces the refresh. Only a successful latest catalogue read clears its own error; it neither clears the refused-write message nor repeats that write. HTML consumer regressions cover these independent recovery states.
 
+Repeated deletion of the same course shares the existing in-flight operation, including its subsequent catalogue read. It sends only one DELETE, does not remove a pending or refused course, and releases the guard after settlement so an explicit retry remains possible. Different course identifiers remain independent. The current public library still displays the Delete button while pending; the frontend action prevents duplicate requests rather than claiming a disabled-control state. Contract-backed action and rendered-consumer regressions cover these paths without changing the network contract or shared library.
+
+La suppression répétée d’une même formation partage l’opération déjà en attente, relecture du catalogue comprise. Un seul DELETE est envoyé ; une réponse en attente ou refusée ne supprime pas la formation. Après règlement, une tentative explicite reste possible, et les autres identifiants restent indépendants. Le bouton de la bibliothèque reste visible pendant l’attente : la protection est portée par l’action frontend, sans prétendre désactiver ce contrôle. Aucun BFF/API, contrat ou bibliothèque partagée n’est modifié.
+
 ## Contracts and background / Contrats et compléments
 
 - [BFF.md](BFF.md)

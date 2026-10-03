@@ -70,6 +70,7 @@ export function createCatalogActions(
 ) {
   let catalogRevision = 0;
   let pendingLearner: { key: string; result: Promise<boolean> } | null = null;
+  const pendingDeletions = new Map<string, Promise<boolean>>();
 
   // Share an identical in-flight result, including its catalogue refresh. React
   // has not necessarily disabled a button before another click is dispatched.
@@ -224,14 +225,21 @@ export function createCatalogActions(
         const response = await updateCourse(toContractCourse(course));
         updateConfirmedCourse(response.course.id, () => response.course);
       }),
-    deleteCourse: (courseId: string) =>
-      mutateThenReload(async () => {
+    deleteCourse: (courseId: string) => {
+      const pending = pendingDeletions.get(courseId);
+      if (pending) return pending;
+      // Keep this flight through its refresh: repeated clicks must not replay a
+      // destructive request while its confirmation is still being consumed.
+      const result = Promise.resolve().then(() => mutateThenReload(async () => {
         const response = await deleteCourse(courseId);
         if (!response.deleted || response.courseId !== courseId) {
           throw new Error("Course deletion was not confirmed.");
         }
         updateConfirmedCatalogCourses((courses) => courses.filter((course) => course.id !== courseId));
-      }),
+      })).finally(() => { pendingDeletions.delete(courseId); });
+      pendingDeletions.set(courseId, result);
+      return result;
+    },
   };
 }
 

@@ -20,6 +20,53 @@ function stateFor(initial) {
   return { state, actions };
 }
 
+for (const confirmed of [false, true]) {
+  test(`delete: repeated pending dispatch shares one confirmation and permits a later retry (${confirmed})`, async () => {
+    const initial = f.catalogResponse([f.course('existing'), f.course('unrelated')]);
+    const { state, actions } = stateFor(initial);
+    const template = '/elearning/admin/courses/{courseId}';
+    bffElearning.on('delete', template, confirmed
+      ? { body: { deleted: true, courseId: 'existing' } }
+      : errorReply(403, 'FORBIDDEN', 'Deletion refused'));
+    bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Read refused'));
+    const originalFetch = global.fetch;
+    let release;
+    let received;
+    const held = new Promise(resolve => { release = resolve; });
+    const ready = new Promise(resolve => { received = resolve; });
+    let first = true;
+    global.fetch = async (...args) => {
+      const hold = first && args[0] === '/elearning/admin/courses/existing' && args[1]?.method === 'DELETE';
+      if (hold) first = false;
+      const response = await originalFetch(...args);
+      if (hold) { received(); await held; }
+      return response;
+    };
+    const pending = [];
+    try {
+      pending.push(actions.deleteCourse('existing'));
+      await ready;
+      assert.deepEqual(state.catalog, initial, 'a pending response is not confirmation');
+      pending.push(actions.deleteCourse('existing'));
+      release();
+      assert.deepEqual(await Promise.all(pending), [confirmed, confirmed]);
+      assert.deepEqual(operations(), confirmed ? [`DELETE ${template}`, 'GET /elearning/catalog'] : [`DELETE ${template}`]);
+      assert.deepEqual(state.catalog.catalog.courses.map(course => course.id), confirmed ? ['unrelated'] : ['existing', 'unrelated']);
+      if (!confirmed) {
+        assert.equal(state.mutationError, 'Deletion refused');
+        bffElearning.on('delete', template, { body: { deleted: true, courseId: 'existing' } });
+        assert.equal(await actions.deleteCourse('existing'), true);
+        assert.deepEqual(operations(), [`DELETE ${template}`, `DELETE ${template}`, 'GET /elearning/catalog']);
+        assert.deepEqual(state.catalog.catalog.courses.map(course => course.id), ['unrelated']);
+      }
+    } finally {
+      release();
+      await Promise.allSettled(pending);
+      global.fetch = originalFetch;
+    }
+  });
+}
+
 test('create: an already-received server ID is updated without a duplicate or submitted draft', async () => {
   const initial = f.catalogResponse([f.course('existing'), f.course('unrelated')]);
   const { state, actions } = stateFor(initial);
@@ -29,6 +76,69 @@ test('create: an already-received server ID is updated without a duplicate or su
   assert.equal(await actions.createCourse(f.course('draft-id')), true);
   assert.deepEqual(state.catalog.catalog.courses, [confirmed, initial.catalog.courses[1]]);
   assert.deepEqual(state.catalog.catalog.stats, initial.catalog.stats);
+});
+
+test('delete: different course identifiers remain independent while one deletion is pending', async () => {
+  const initial = f.catalogResponse([f.course('held'), f.course('other')]);
+  const { state, actions } = stateFor(initial);
+  bffElearning.on('delete', '/elearning/admin/courses/{courseId}', ({ pathParams }) => ({ body: { deleted: true, courseId: pathParams.courseId } }));
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Read refused'));
+  const originalFetch = global.fetch;
+  let release;
+  let received;
+  const held = new Promise(resolve => { release = resolve; });
+  const ready = new Promise(resolve => { received = resolve; });
+  global.fetch = async (...args) => {
+    const response = await originalFetch(...args);
+    if (args[0] === '/elearning/admin/courses/held' && args[1]?.method === 'DELETE') { received(); await held; }
+    return response;
+  };
+  let pending;
+  try {
+    pending = actions.deleteCourse('held');
+    await ready;
+    assert.equal(await actions.deleteCourse('other'), true);
+    assert.deepEqual(state.catalog.catalog.courses.map(course => course.id), ['held']);
+    release();
+    assert.equal(await pending, true);
+    assert.deepEqual(state.catalog.catalog.courses, []);
+    assert.deepEqual(operations(), ['DELETE /elearning/admin/courses/{courseId}', 'DELETE /elearning/admin/courses/{courseId}', 'GET /elearning/catalog', 'GET /elearning/catalog']);
+  } finally {
+    release();
+    if (pending) await pending;
+    global.fetch = originalFetch;
+  }
+});
+
+test('delete: the same flight also covers its pending post-confirmation catalogue read', async () => {
+  const { state, actions } = stateFor(f.catalogResponse([f.course('existing')]));
+  bffElearning.on('delete', '/elearning/admin/courses/{courseId}', { body: { deleted: true, courseId: 'existing' } });
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Read refused'));
+  const originalFetch = global.fetch;
+  let release;
+  let received;
+  const held = new Promise(resolve => { release = resolve; });
+  const ready = new Promise(resolve => { received = resolve; });
+  global.fetch = async (...args) => {
+    const response = await originalFetch(...args);
+    if (args[0] === '/elearning/catalog') { received(); await held; }
+    return response;
+  };
+  const pending = [];
+  try {
+    pending.push(actions.deleteCourse('existing'));
+    await ready;
+    assert.deepEqual(state.catalog.catalog.courses, []);
+    pending.push(actions.deleteCourse('existing'));
+    release();
+    assert.deepEqual(await Promise.all(pending), [true, true]);
+    assert.deepEqual(operations(), ['DELETE /elearning/admin/courses/{courseId}', 'GET /elearning/catalog']);
+    assert.equal(state.error, 'Read refused');
+  } finally {
+    release();
+    await Promise.allSettled(pending);
+    global.fetch = originalFetch;
+  }
 });
 
 for (const response of [{ deleted: false, courseId: 'existing' }, { deleted: true, courseId: 'unrelated' }]) {
