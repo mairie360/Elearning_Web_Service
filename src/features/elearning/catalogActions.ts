@@ -70,6 +70,7 @@ export function createCatalogActions(
 ) {
   let catalogRevision = 0;
   let pendingLearner: { key: string; result: Promise<boolean> } | null = null;
+  const pendingDeletions = new Map<string, Promise<boolean>>();
 
   // Share an identical in-flight result, including its catalogue refresh. React
   // has not necessarily disabled a button before another click is dispatched.
@@ -82,16 +83,22 @@ export function createCatalogActions(
     return result;
   }
 
-  function updateConfirmedCourse(courseId: string, update: (course: ElearningCourse) => ElearningCourse) {
+  function updateConfirmedCatalogCourses(update: (courses: ElearningCourse[]) => ElearningCourse[]) {
     catalogRevision += 1;
     view.setLoading(false);
     view.setCatalogResponse((current) => current ? {
       ...current,
       catalog: {
         ...current.catalog,
-        courses: current.catalog.courses.map((course) => course.id === courseId ? update(course) : course),
+        courses: update(current.catalog.courses),
       },
     } : current);
+  }
+
+  function updateConfirmedCourse(courseId: string, update: (course: ElearningCourse) => ElearningCourse) {
+    updateConfirmedCatalogCourses((courses) =>
+      courses.map((course) => course.id === courseId ? update(course) : course),
+    );
   }
 
   async function handleFailure(error: unknown, report: (message: string) => void) {
@@ -106,11 +113,13 @@ export function createCatalogActions(
   async function loadCatalog() {
     const revision = ++catalogRevision;
     view.setLoading(true);
-    view.setError(null);
 
     try {
       const response = await getCatalog({ cache: "no-store" });
-      if (revision === catalogRevision) view.setCatalogResponse(() => response);
+      if (revision === catalogRevision) {
+        view.setCatalogResponse(() => response);
+        view.setError(null);
+      }
     } catch (error) {
       // Session rejection must still leave the page, even for a superseded request.
       if (revision === catalogRevision || (error instanceof BffRequestError && error.status === 401)) {
@@ -202,11 +211,35 @@ export function createCatalogActions(
         }),
       ),
     createCourse: (course: CatalogCourseInput) =>
-      mutateThenReload(() => createCourse(toContractCourse(course))),
+      mutateThenReload(async () => {
+        const response = await createCourse(toContractCourse(course));
+        // Keep server-confirmed data, never the submitted draft or invented counters.
+        updateConfirmedCatalogCourses((courses) =>
+          courses.some((current) => current.id === response.course.id)
+            ? courses.map((current) => current.id === response.course.id ? response.course : current)
+            : [...courses, response.course],
+        );
+      }),
     updateCourse: (course: CatalogCourseInput) =>
-      mutateThenReload(() => updateCourse(toContractCourse(course))),
-    deleteCourse: (courseId: string) =>
-      mutateThenReload(() => deleteCourse(courseId)),
+      mutateThenReload(async () => {
+        const response = await updateCourse(toContractCourse(course));
+        updateConfirmedCourse(response.course.id, () => response.course);
+      }),
+    deleteCourse: (courseId: string) => {
+      const pending = pendingDeletions.get(courseId);
+      if (pending) return pending;
+      // Keep this flight through its refresh: repeated clicks must not replay a
+      // destructive request while its confirmation is still being consumed.
+      const result = Promise.resolve().then(() => mutateThenReload(async () => {
+        const response = await deleteCourse(courseId);
+        if (!response.deleted || response.courseId !== courseId) {
+          throw new Error("Course deletion was not confirmed.");
+        }
+        updateConfirmedCatalogCourses((courses) => courses.filter((course) => course.id !== courseId));
+      })).finally(() => { pendingDeletions.delete(courseId); });
+      pendingDeletions.set(courseId, result);
+      return result;
+    },
   };
 }
 
