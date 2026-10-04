@@ -448,6 +448,75 @@ test('read retry keeps its failure and disabled pending control until the catalo
   }
 });
 
+test('composed status reset retains filters and independent write refusal through confirmed empty read recovery', async () => {
+  const course = f.course('legal', { title: 'Parcours juridique' });
+  const initial = f.catalogResponse([course, f.course('welcome', { title: 'Parcours accueil', category: 'Accueil' })], f.currentUser({ isAdmin: true }));
+  initial.catalog.statuses = [{ label: 'Terminées', value: 'completed' }, { label: 'Tout reçu', value: 'all', disabled: true }, { label: 'Doublon', value: 'all' }];
+  await renderLoadedCatalog(initial);
+  await view.act(() => view.props('ElearningSearchInput').onValueChange('Parcours'));
+  await view.act(() => view.props('ElearningFilterSelect', 0).onValueChange('Juridique'));
+  await view.act(() => view.props('ElearningFilterSelect', 1).onValueChange('completed'));
+  assert.match(view.text(), /Aucune formation/);
+  const resets = view.props('ElearningFilterSelect', 1).options.filter(option => option.value === 'all');
+  assert.equal(resets.length, 1);
+  assert.notEqual(resets[0].disabled, true);
+  await view.act(() => view.props('ElearningFilterSelect', 1).onValueChange('all'));
+  assert.match(view.text(), /Parcours juridique/);
+  assert.doesNotMatch(view.text(), /Parcours accueil/);
+  const confirmed = { ...course, title: 'Parcours confirmé' };
+  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { course: confirmed } });
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Lecture composée refusée'));
+  assert.equal(await view.act(() => view.props('ElearningCatalog').onUpdateCourse(confirmed)), true);
+  bffElearning.on('delete', '/elearning/admin/courses/{courseId}', errorReply(403, 'FORBIDDEN', 'Suppression composée refusée'));
+  await view.act(() => view.props('ElearningCatalog').onDeleteCourse(confirmed));
+  await view.waitFor(html => html.includes('Suppression composée refusée'));
+  assert.match(view.text(), /Parcours confirmé/);
+  assert.match(view.text(), /Lecture composée refusée/);
+  assert.deepEqual(view.props('ElearningCatalog').stats, initial.catalog.stats);
+  await view.act(() => view.props('ElearningFilterSelect', 1).onValueChange('completed'));
+  assert.match(view.text(), /Aucune formation/);
+  await view.act(() => view.props('ElearningFilterSelect', 1).onValueChange('all'));
+  assert.match(view.text(), /Parcours confirmé/);
+  assert.equal(view.props('ElearningSearchInput').value, 'Parcours');
+  assert.equal(view.props('ElearningFilterSelect', 0).value, 'Juridique');
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}', 'GET /elearning/catalog', 'DELETE /elearning/admin/courses/{courseId}']);
+  const empty = f.catalogResponse([], initial.user);
+  empty.catalog.statuses = [];
+  bffElearning.on('get', '/elearning/catalog', { body: empty });
+  await view.click('Réessayer');
+  await view.waitFor(html => !html.includes('Lecture composée refusée'));
+  assert.match(view.text(), /Suppression composée refusée/);
+  assert.match(view.text(), /Aucune formation/);
+  assert.doesNotMatch(view.text(), /Parcours confirmé/);
+  assert.equal(view.props('ElearningSearchInput').value, 'Parcours');
+  assert.equal(view.props('ElearningFilterSelect', 0).value, 'Juridique');
+  assert.equal(view.props('ElearningFilterSelect', 1).value, 'all');
+  assert.deepEqual(view.props('ElearningFilterSelect', 1).options, [{ label: 'Tous les statuts', value: 'all' }]);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}', 'GET /elearning/catalog', 'DELETE /elearning/admin/courses/{courseId}', 'GET /elearning/catalog']);
+});
+
+test('composed status reset never restores a confirmed deletion after a failed read', async () => {
+  const target = f.course('legal', { title: 'Parcours supprimé' });
+  const body = f.catalogResponse([target, f.course('welcome', { title: 'Parcours accueil', category: 'Accueil' })], f.currentUser({ isAdmin: true }));
+  body.catalog.statuses = [{ label: 'Terminées', value: 'completed' }];
+  await renderLoadedCatalog(body);
+  await view.act(() => view.props('ElearningSearchInput').onValueChange('Parcours'));
+  await view.act(() => view.props('ElearningFilterSelect', 0).onValueChange('Juridique'));
+  bffElearning.on('delete', '/elearning/admin/courses/{courseId}', { body: { deleted: true, courseId: target.id } });
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Lecture après suppression refusée'));
+  await view.act(() => view.props('ElearningCatalog').onDeleteCourse(target));
+  await view.waitFor(html => html.includes('Lecture après suppression refusée'));
+  await view.act(() => view.props('ElearningFilterSelect', 1).onValueChange('completed'));
+  await view.act(() => view.props('ElearningFilterSelect', 1).onValueChange('all'));
+  assert.match(view.text(), /Aucune formation/);
+  assert.doesNotMatch(view.text(), /Parcours supprimé/);
+  assert.deepEqual(view.props('ElearningCatalog').courses.map(course => course.id), ['welcome']);
+  assert.deepEqual(view.props('ElearningCatalog').stats, body.catalog.stats);
+  assert.equal(view.props('ElearningSearchInput').value, 'Parcours');
+  assert.equal(view.props('ElearningFilterSelect', 0).value, 'Juridique');
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'DELETE /elearning/admin/courses/{courseId}', 'GET /elearning/catalog']);
+});
+
 test('a session refused by the BFF leaves the page through the logout route', async () => {
   bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
   view = mount(React.createElement(Home));

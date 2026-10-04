@@ -132,6 +132,20 @@ choix des formations reçues comme auparavant. La réinitialisation conserve la
 recherche et le statut, sans nouvel appel réseau. Bibliothèque publiée, contrat
 BFF et environnement restent inchangés.
 
+### Retour à tous les statuts et confirmations administrateur (MAIR-458 / MAIR-452)
+
+Le sélecteur de statut propose exactement un choix neutre `all` utilisable, même
+si la liste reçue est vide, sans ce choix, avec ce choix désactivé ou dupliqué.
+Libellés, ordre et droits des statuts métier sont conservés, sans en inventer.
+Le retour reste local et conserve recherche/catégorie, y compris après un refus
+de lecture. Création/modification utilisent seulement le cours retourné ; une
+suppression exige une confirmation positive correspondante. Ces confirmations
+survivent au refus du GET ; le filtre ne restaure pas une suppression ni ne rejoue
+une écriture. Réessayer fait seulement GET et efface uniquement son erreur après
+la dernière réponse confirmée, conservant refus d'écriture et filtres indépendants.
+Les compteurs officiels attendent un nouveau GET. Téléchargements protégés, avis
+écrits, upload et clés d'accès restent des besoins distincts non fournis ici.
+
 ## Pour développer ou exploiter ce module
 
 ### Présentation conservée du catalogue et du lecteur (MAIR-384)

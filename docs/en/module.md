@@ -122,6 +122,19 @@ disabled. When options are absent, the shared component derives them from receiv
 courses as before. Resetting preserves search/status filters and makes no additional
 network request. The published library, BFF contract and environment are unchanged.
 
+### Status reset and confirmed administration recovery (MAIR-458 / MAIR-452)
+
+The status selector always offers exactly one usable neutral `all` reset, including
+received empty, missing-reset, disabled-reset or duplicate-reset lists. Business
+labels, order and disabled flags are preserved without adding business statuses.
+Resetting stays local and retains search/category, including after a refused read.
+Create/update use only the returned server course; deletion requires matching
+positive confirmation. Confirmed changes survive a refused catalogue refresh;
+the reset never restores a confirmed deletion or resends a write. GET-only retry
+clears only its read error after a confirmed latest response, preserving independent
+write refusal and filters. Official statistics remain unchanged until a new GET.
+This does not supply protected downloads, written reviews or upload/access keys.
+
 ## Developing or operating this module
 
 ### Preserved catalogue and reader presentation (MAIR-384)

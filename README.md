@@ -33,7 +33,12 @@ The catalog's category and status filters retain one usable `all` reset even whe
 the supplied list omits it, duplicates it or disables it. This reset is a local
 UI operation: it preserves search and the other filter, performs no request and
 does not invent or enable any business option. Status reset recovery is tracked
-by MAIR-458; catalogue administration confirmations remain a separate PR.
+by MAIR-458. The composed candidate brings this reset together with MAIR-452
+confirmed administration recovery and reviewed MAIR-436 packaging. Cross-flow
+tests cover resetting from empty results after refused reads/writes, retaining
+independent write errors through a confirmed empty GET, and never restoring a
+confirmed deletion. Integration still requires genuine green CI; this composition
+does not approve a deployment or implement the separate backend-dependent flows.
 
 - [BFF.md](BFF.md)
 - [BACKEND.md](BACKEND.md)
