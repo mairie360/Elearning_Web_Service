@@ -1,5 +1,15 @@
 # Elearning_Web_Service — Présentation du module
 
+## Présentation de la sidebar de référence (MAIR-180)
+
+La navigation partagée conserve les cibles de 44px minimum et l'ombre mesurées
+dans le prototype, sans copie locale de navigation. Dans le tiroir mobile, la
+sidebar reste sous la commande Fermer publiée ; clic, clavier et retour de focus
+doivent être vérifiés avec le catalogue, les filtres et le lecteur. Les données
+publiées, droits et actions apprenant ne changent pas. La requête détail/avis
+non publiée et la version statique du footer ancien ne sont pas réintroduites.
+Cette tranche ne valide ni les téléchargements ni la persistance déployée.
+
 ## Navigation des modules actifs
 
 Les menus ordinateur et mobile ne proposent plus les modules archivés E-mails

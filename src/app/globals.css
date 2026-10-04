@@ -93,6 +93,23 @@ body {
   color: #2f3747;
 }
 
+/* Restore the measured prototype navigation without copying the shared shell. */
+.elearning-shell aside[aria-label="Navigation principale"] {
+  position: relative;
+  z-index: 20;
+  box-shadow: 8px 0 24px rgb(12 28 48 / 28%);
+}
+
+.elearning-shell aside[aria-label="Navigation principale"] > nav button {
+  min-height: 44px;
+  flex-shrink: 0;
+}
+
+/* The published mobile close button is z-10; keep the sidebar below it. */
+.elearning-shell [role="dialog"][aria-label="Navigation mobile"] aside[aria-label="Navigation principale"] {
+  z-index: 0;
+}
+
 /* Author forms provide their own failure feedback. A catalogue toast must not
    cover their retry/cancel controls; learner reader feedback remains visible. */
 .elearning-shell:has([data-elearning-form-scroll]) [data-elearning-catalog-feedback] {

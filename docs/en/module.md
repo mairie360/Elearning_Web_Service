@@ -1,5 +1,15 @@
 # Elearning_Web_Service — Module overview
 
+## Reference sidebar presentation (MAIR-180)
+
+The shared navigation keeps the measured prototype's 44px minimum targets and
+sidebar shadow, without a local navigation copy. In the mobile drawer, the
+sidebar is below the published close control; click, keyboard and focus-return
+checks are required alongside catalogue/filter/reader checks. Published data,
+permissions and learner actions remain unchanged. The prototype's unsupported
+detail/review request and static footer version are not reintroduced. This
+presentation slice does not validate resource downloads or deployed persistence.
+
 ## Active-module navigation
 
 Desktop and mobile menus omit the archived E-mails and Files modules, matching

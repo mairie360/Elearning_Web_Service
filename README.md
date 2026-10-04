@@ -55,3 +55,11 @@ MAIR-436 / #155 pins production and development to the official Node 24.21.0 Boo
 The exact legacy security status required by this repository executes real blocking Semgrep and redacted Gitleaks using reviewed immutable shared actions, full frontend history and read-only contents access. The shared 4.0.2 audit remains enabled. `tests/packaging-policy.test.cjs` and `tests/ci-policy.test.cjs` guard these consumer changes, not actual image publication. This slice does not complete MAIR-436's global permissions, push filters, dependency criteria or other fronts, and does not change product code, APIs/BFFs, contracts, business/demo data, cluster pins or Staging/Prod approvals. Complete image/scanner/signature and isolated ZAP/k6 outcomes must be verified before closing #155.
 
 La tranche MAIR-436 / #155 corrige uniquement le packaging consommateur Elearning : version Node exacte/digest officiel, installation reproductible avec secret temporaire requis et politique npm en lecture seule, aucun jeton d'installation au runtime. Le contrôle requis exécute réellement les scanners bloquants sans affaiblir les protections. Les critères globaux restent ouverts ; cette correction ne valide ni les contrats manquants téléchargement/avis/clés d'accès (#125/#107), ni l'authentification et la persistance déployées, ni la parité fonctionnelle/visuelle complète avec l'ancien prototype.
+# Reference navigation presentation (MAIR-180)
+
+The consumer retains the published AppShell and restores the measured 44px
+minimum navigation targets and sidebar shadow. Its mobile sidebar stays below
+the shared close button. Catalogue/filter/reader behavior and BFF-supplied data
+are unchanged; no prototype identity, notifications or static version is copied.
+Native responsive evidence and green CI/integration remain separate acceptance
+gates. See [issue #161](https://github.com/mairie360/Elearning_Web_Service/issues/161).
