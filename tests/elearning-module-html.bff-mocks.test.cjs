@@ -100,6 +100,42 @@ for (const supplied of [undefined, [], [{ label: 'Juridique', value: 'Juridique'
   });
 }
 
+for (const supplied of [[], [{ label: 'En cours reçu', value: 'in-progress' }], [
+  { label: 'En cours reçu', value: 'in-progress' }, { label: 'Tout', value: 'all', disabled: true },
+  { label: 'Tout en double', value: 'all' },
+]]) {
+  test(`visible status reset preserves category/search and recovers an empty result (${JSON.stringify(supplied)})`, async () => {
+    const body = f.catalogResponse([
+      f.course('waiting', { title: 'Parcours non commencé' }),
+      f.course('learning', { title: 'Parcours en cours', statusValue: 'in-progress' }),
+      f.course('other-category', { title: 'Parcours ailleurs', category: 'Accueil', statusValue: 'in-progress' }),
+      f.course('other-search', { title: 'Autre formation', statusValue: 'in-progress' }),
+    ]);
+    body.catalog.statuses = supplied;
+    await renderLoadedCatalog(body);
+    await view.act(() => view.props('ElearningSearchInput').onValueChange('Parcours non'));
+    await view.act(() => view.props('ElearningFilterSelect', 0).onValueChange('Juridique'));
+    if (supplied.length) {
+      await view.click(props => props['aria-label'] === 'Tous les statuts');
+      await view.click((props, text) => props.role === 'option' && text === 'En cours reçu');
+      assert.match(view.text(), /Aucune formation/);
+      assert.doesNotMatch(view.html, /<article/);
+    }
+    await view.click(props => props['aria-label'] === 'Tous les statuts');
+    const options = view.props('ElearningFilterSelect', 1).options;
+    const resets = options.filter(option => option.value === 'all');
+    assert.equal(resets.length, 1, 'there must be one visible way back to all statuses');
+    assert.notEqual(resets[0].disabled, true);
+    await view.click((props, text) => props.role === 'option' && text === resets[0].label);
+    assert.equal(view.props('ElearningFilterSelect', 1).value, 'all');
+    assert.equal(view.props('ElearningFilterSelect', 0).value, 'Juridique');
+    assert.equal(view.props('ElearningSearchInput').value, 'Parcours non');
+    assert.match(view.html, /Parcours non commencé/);
+    assert.doesNotMatch(view.html, /Parcours en cours|Parcours ailleurs|Autre formation/);
+    assert.deepEqual(operations(), ['GET /elearning/catalog']);
+  });
+}
+
 for (const mode of ['create', 'update']) {
   test(`the rendered administrator catalogue forwards ${mode} refusal and confirmation promises`, async () => {
     await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));

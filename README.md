@@ -17,6 +17,12 @@ Les guides décrivent le module implémenté, ses limites actuelles, le démarra
 
 ## Contracts and background / Contrats et compléments
 
+The catalog's category and status filters retain one usable `all` reset even when
+the supplied list omits it, duplicates it or disables it. This reset is a local
+UI operation: it preserves search and the other filter, performs no request and
+does not invent or enable any business option. Status reset recovery is tracked
+by MAIR-458; catalogue administration confirmations remain a separate PR.
+
 - [BFF.md](BFF.md)
 - [BACKEND.md](BACKEND.md)
 - [contracts/openapi.json](contracts/openapi.json)
