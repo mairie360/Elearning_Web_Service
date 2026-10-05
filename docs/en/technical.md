@@ -13,21 +13,25 @@ is tracked in [shared issue #387](https://github.com/mairie360/lib-components/is
 ## CI supply-chain policy — MAIR-230 frontend slice
 
 Third-party checkout, Node setup and Renovate auto-approval actions use full
-official commit SHAs. The shared frontend workflow remains at v3.1.1 and receives
+official commit SHAs. The shared frontend workflow uses v4.0.3 and receives
 only its declared CODECOV_TOKEN and N8N_WEBHOOK_SECRET references; no secret value
 is stored or read. Existing permissions and Semgrep rules/verdicts are unchanged.
 
-Both CI workflows use Node 24. Tests require npm >=11.10, which supports the
-committed `min-release-age=7` policy, without package exclusions. This is a
+Both CI workflows pin Node 24.21.0. Tests require npm >=11.10, which supports the
+committed `min-release-age=7` policy, with only the previously authorized internal
+`@mairie360/lib-components` exclusion. This is a
 seven-day window for **new dependency resolution**, not a scan or rewriting of
 the existing lockfile used by `npm ci`. See the [npm config documentation](https://docs.npmjs.com/cli/v11/using-npm/config/#min-release-age).
 Use the same Node/npm toolchain for local dependency updates and tests.
 `tests/ci-policy.test.cjs` checks immutable action references, the explicit secret
 map, release-age configuration and the npm version actually running the tests.
 
-Docker runtime/build versions and their locked install remain unchanged; no new
-runtime environment variable, secret, API/BFF contract or shared-CICD edit is
-part of this slice. These CI checks do not certify a deployed environment.
+MAIR-436 pins production/development Docker to the same official Node 24.21.0
+Bookworm-slim digest and installs the lockfile using a required ephemeral BuildKit
+secret. The follow-up merge of the independently updated main workflow retains
+the exact Node version and both real blocking required scanners. No audit gate,
+runtime variable, API/BFF contract or shared-CICD source is changed by that merge.
+These CI checks do not certify a deployed environment.
 
 ## Shared application shell — MAIR-180
 
@@ -205,9 +209,9 @@ The type generator is pinned to `openapi-typescript@7.10.1` in `scripts/contract
 
 The `contracts.yml` job uses Node.js 24 and commit-pinned checkout/setup-node actions (v7). It runs on pushes, pull requests and manual dispatch; it installs with `npm ci`, checks contracts and runs the associated tests.
 
-`cicd.yml` calls `mairie360/CICD/.github/workflows/frontend-cicd.yml@v3.1.1`, with `cicd_version: v3.1.1` and `node_version: "24"`. Only CODECOV_TOKEN and N8N_WEBHOOK_SECRET are passed explicitly. Reusable steps and GitHub environments determine actual checks, publications and deployments.
+`cicd.yml` calls `mairie360/CICD/.github/workflows/frontend-cicd.yml@v4.0.3`, with `cicd_version: v4.0.3` and `node_version: "24.21.0"`. Only CODECOV_TOKEN and N8N_WEBHOOK_SECRET are passed explicitly. The required legacy status runs real blocking Semgrep and Gitleaks scans. Reusable steps and GitHub environments determine actual checks, publications and deployments.
 
-The Dockerfile defaults to `NODE_VERSION=23.10.0` and the Next.js `standalone` build; the image command is `["node", "server.js"]`. Image ports and Compose mappings can differ from the local port suggested above.
+The Dockerfile defaults to `NODE_VERSION=24.21.0`, pins the official Bookworm-slim digest and uses the Next.js `standalone` build with a non-root runtime; the image command is `["node", "server.js"]`. The locked install requires an ephemeral BuildKit secret, not a credential build argument. Image ports and Compose mappings can differ from the local port suggested above. This source-level policy does not certify a built or deployed image.
 
 Before running Docker, check service variables, build secrets and networks in the repository files. Green CI validates its jobs; it does not prove business-service availability in a remote environment.
 

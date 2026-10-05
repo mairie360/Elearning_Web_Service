@@ -72,9 +72,9 @@ Then move `BFF_ELEARNING_IMAGE` defaults in every `docker-compose*.yml` to `X.Y.
 
 ## CI/CD
 
-- `.github/workflows/cicd.yml` calls `mairie360/CICD/.github/workflows/frontend-cicd.yml@v2.3.1` (`package_name: elearning-front`, `node_version: "23"`, `cicd_version: "v2.3.1"`, `secrets: inherit`). The `@ref` pin and `cicd_version` must stay equal; Renovate bumps both together (`renovate.json`). Up to the dev release it runs: `npm ci` → `npm run lint` + `npm audit --audit-level=high` (high/critical advisories block) → `npm run build` → `npm test --if-present` (uploads `coverage/lcov.info` to Codecov) → on `main`, builds `Dockerfile` with `NODE_AUTH_TOKEN` as build-arg and pushes `ghcr.io/mairie360/elearning-front:dev-<sha>` / `dev-latest`. Some jobs set up Node without a registry, so the committed `.npmrc` must keep the `@mairie360` registry + `${NODE_AUTH_TOKEN}` lines.
-- `.github/workflows/contracts.yml` (Node 22) runs `contracts:check` and `test:contracts` on every push/PR.
-- `Dockerfile`: two-stage `node:<ver>-bookworm-slim` build, standalone output, non-root `nextjs` user, `PORT=5006`, `CMD node server.js`.
+- `.github/workflows/cicd.yml` calls `mairie360/CICD/.github/workflows/frontend-cicd.yml@v4.0.3` (`package_name: elearning-front`, `node_version: "24.21.0"`, `cicd_version: "v4.0.3"`). The `@ref` pin and `cicd_version` must stay equal; Renovate bumps both together (`renovate.json`). Pass only the declared CODECOV_TOKEN and N8N_WEBHOOK_SECRET references. Preserve the real blocking required Semgrep/Gitleaks job and the shared high/critical npm audit gate when reconciling main; a failed audit is not a waiver. Check actual run/job outcomes before claiming build, publication or deployment. Keep the committed scoped registry/npm policy; never read or publish credential values.
+- `.github/workflows/contracts.yml` (exact Node 24.21.0) runs `contracts:check` and `test:contracts` on every push/PR.
+- `Dockerfile`: exact official Node 24.21.0 Bookworm-slim digest, locked install using a required ephemeral BuildKit secret and readonly npm-policy mount (never a token build argument), standalone output, non-root `nextjs` user, `PORT=5006`, `CMD node server.js`.
 - `.releaserc.json`: semantic-release on `main` only, producing a GitHub release. Nothing is published to npm.
 
 ## Docker dev stack
