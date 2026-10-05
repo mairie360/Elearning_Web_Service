@@ -102,6 +102,15 @@ published contract still supplies only the numeric rating operation.
 
 ### Learner action confirmation (MAIR-350)
 
+The installed `0.6.10` reader keeps a supplied empty chapter visible but does not
+create a fallback video, resource link, completion button or progress percentage.
+Absent course details or chapter lists similarly show an honest unavailable/empty
+content state. Five HTTP/HTML regressions verify these four absence cases and
+actual chapter selection followed by a completion response and refused refresh:
+the reader keeps the selected chapter and the returned percentage, not a local
+calculated percentage. This verification does not establish download eligibility,
+written reviews, media playback, native layout or cross-session persistence.
+
 Start, content completion and numeric-rating callbacks forward their full result
 to the published shared UI `0.6.10`. The reader/card controls lock while a write
 and its catalogue refresh are pending; repeated dispatches share the same request.

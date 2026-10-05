@@ -109,6 +109,15 @@ publié ne fournit toujours que l’opération de notation numérique.
 
 ### Confirmation des actions apprenant (MAIR-350)
 
+Le lecteur installé `0.6.10` conserve un chapitre fourni vide sans créer de vidéo
+de remplacement, de lien, de bouton de complétion ni de pourcentage. Les détails
+ou chapitres absents affichent également un état vide honnête. Cinq régressions
+HTTP/HTML vérifient ces quatre absences et la sélection réelle d'un chapitre,
+puis sa complétion confirmée suivie d'un GET refusé : le chapitre sélectionné et
+le pourcentage renvoyé restent affichés, sans calcul local de remplacement.
+Ce contrôle ne certifie ni éligibilité au téléchargement, avis écrit, lecture
+média, rendu natif ni persistance intersession.
+
 Les callbacks de démarrage, de complétion et de note numérique transmettent leur
 résultat complet à la bibliothèque publiée `0.6.10`. Les commandes du lecteur et
 des cartes se bloquent pendant l’écriture et l’actualisation du catalogue ; des

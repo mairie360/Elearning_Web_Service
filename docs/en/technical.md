@@ -1,8 +1,19 @@
 # Elearning_Web_Service — Technical documentation
 
+## Reader test scope — MAIR-350
+
+The HTTP/HTML runner now recursively collects elements in nested child arrays
+(including `[null, chapters.map(...)]`), without copying ordinary DTO arrays.
+Two harness regressions protect real host event dispatch and DTO reference
+identity. Five consumer tests cover absent reader data and real chapter selection
+with server-confirmed progress retained after a refused GET. These are not browser
+layout, resource download, deployed authorization or persistence proofs. Product
+source, SDK `0.4.0`, dependency lock and security/release workflows are unchanged.
+
 ## Shared footer — MAIR-180
 
-The package is pinned to published `@mairie360/lib-components@0.6.5` from
+The package is now pinned to published `@mairie360/lib-components@0.6.10` and
+retains the sidebar-footer change first delivered in `0.6.5` by
 [lib-components #388](https://github.com/mairie360/lib-components/pull/388).
 AppShell now places copyright in the dark sidebar, outside scrolling navigation.
 The mobile drawer retains focus management. No content-footer band reduces the

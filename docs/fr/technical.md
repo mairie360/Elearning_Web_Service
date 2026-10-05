@@ -1,8 +1,20 @@
 # Elearning_Web_Service — Documentation technique
 
+## Périmètre des tests du lecteur — MAIR-350
+
+Le harnais HTTP/HTML collecte récursivement les éléments dans les tableaux
+enfants imbriqués (`[null, chapters.map(...)]` inclus), sans recopier les tableaux
+DTO ordinaires. Deux régressions protègent l'actionnement réel des contrôles et
+l'identité des DTO. Cinq tests consommateur couvrent les données absentes et la
+sélection réelle d'un chapitre, puis sa progression officielle conservée après
+GET refusé. Ils ne prouvent ni rendu navigateur, téléchargement, autorisation
+déployée ni persistance. Sources produit, SDK `0.4.0`, lock des dépendances et
+workflows de sécurité/publication inchangés.
+
 ## Pied de page partagé — MAIR-180
 
-Le paquet est épinglé à `@mairie360/lib-components@0.6.5`, publié par
+Le paquet est maintenant épinglé à `@mairie360/lib-components@0.6.10` et conserve
+le changement de pied de page livré initialement en `0.6.5` par
 [lib-components #388](https://github.com/mairie360/lib-components/pull/388).
 L’AppShell affiche désormais le copyright dans la sidebar sombre, hors de la
 navigation défilante. Le tiroir mobile conserve sa gestion du focus. Aucun bandeau

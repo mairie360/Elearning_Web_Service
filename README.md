@@ -1,5 +1,32 @@
 # Elearning_Web_Service
 
+## Reader comparison / Comparaison du lecteur (MAIR-350)
+
+The preserved local prototype adds download eligibility and attributed written
+reviews through demonstration-only routes. Published contract `0.4.0` does not
+provide those operations: opening a supplied resource link or confirming content
+completion is not evidence of a persisted download acknowledgement or review.
+The current published reader does not invent content or a percentage when
+details, chapters or supports are absent. Contract-backed HTML tests now exercise
+actual nested chapter controls and verify that the selected chapter and the
+server-returned percentage survive a refused catalogue refresh. The test runner
+collects nested React child arrays without changing ordinary DTO arrays.
+This is source/HTTP/HTML evidence, not a fresh native visual, mobile, media,
+authorization or cross-session persistence certification. No product code,
+API/BFF, contract, dependency or workflow changed in this verification slice.
+
+Le prototype conservé ajoute l'éligibilité au téléchargement et les avis écrits
+attribués par des routes de démonstration uniquement. Le contrat publié `0.4.0`
+ne fournit pas ces opérations : ouvrir un lien fourni ou confirmer la complétion
+ne prouve pas un téléchargement acquitté ni un avis persisté. Le lecteur publié
+n'invente ni support ni pourcentage en l'absence de détails, chapitres ou contenus.
+Les tests HTTP/HTML actionnent maintenant les vrais contrôles de chapitres
+imbriqués et vérifient la conservation du chapitre sélectionné et du pourcentage
+officiel après refus du GET. Le harnais collecte les tableaux React imbriqués
+sans modifier les tableaux DTO ordinaires. Ce n'est pas une nouvelle recette
+native/mobile/média ni une preuve d'autorisation ou de persistance intersession.
+Aucun code produit, API/BFF, contrat, dépendance ou workflow modifié ici.
+
 Present the training catalogue and let staff track their learning. The interface consumes BFF Elearning routes and exposes administrator functions according to context.
 
 Présenter le catalogue de formations et permettre aux agents de suivre leur apprentissage. L’interface consomme les routes de BFF Elearning et expose les fonctions administrateur selon le contexte.

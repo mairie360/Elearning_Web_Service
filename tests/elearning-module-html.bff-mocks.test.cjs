@@ -285,6 +285,78 @@ test('an unavailable course link reports the missing course without inventing da
   assert.doesNotMatch(view.html, /role="alert"/);
 });
 
+for (const supplied of ['no-details', 'no-chapters', 'no-contents', 'empty-contents']) {
+  test(`the actual reader does not invent resources or progression (${supplied})`, async () => {
+    const course = f.course();
+    delete course.progress;
+    delete course.details.progress;
+    delete course.details.completed;
+    if (supplied === 'no-details') delete course.details;
+    else if (supplied === 'no-chapters') course.details.chapters = [];
+    else {
+      const chapter = course.details.chapters[0];
+      delete chapter.completed;
+      delete chapter.active;
+      if (supplied === 'no-contents') delete chapter.contents;
+      else chapter.contents = [];
+    }
+    front.window().location.href = `https://elearning.test.example/?course=${course.id}`;
+    await renderLoadedCatalog(f.catalogResponse([course]));
+
+    assert.match(view.html, /role="dialog"/);
+    assert.match(view.text(), /Aucun contenu disponible pour cette formation/);
+    assert.doesNotMatch(view.text(), /Progression totale|Marquer.*comme terminé|Noter cette formation/);
+    const reader = view.props('ElearningCourseDetailsModal');
+    assert.equal(reader.optimisticUpdates, false);
+    assert.equal(reader.progress, undefined);
+    assert.equal(reader.chapters.length, supplied === 'no-details' || supplied === 'no-chapters' ? 0 : 1);
+    if (reader.chapters.length) {
+      assert.equal(view.props('ElearningCourseDetailsModal').chapters[0].title, course.details.chapters[0].title);
+      assert.match(view.text(), /0 contenu/);
+    } else assert.match(view.text(), /Aucun chapitre disponible/);
+    assert.equal(view.find('ElearningCourseRating').length, 0);
+    assert.deepEqual(operations(), ['GET /elearning/catalog']);
+  });
+}
+
+test('the real chapter controls retain the selected reader and server progression after a refused refresh', async () => {
+  const first = f.chapter('first', [f.content('first-content', { type: 'document' })]);
+  const second = f.chapter('second', [f.content('second-content', {
+    type: 'pdf', title: 'Support officiel', href: '/documents/support.pdf', fileName: 'support.pdf',
+  })]);
+  const course = f.course('reader-course', {
+    progress: 12,
+    details: { title: 'Lecteur fourni', description: 'Description fournie', progress: 12, chapters: [first, second] },
+  });
+  front.window().location.href = `https://elearning.test.example/?course=${course.id}`;
+  await renderLoadedCatalog(f.catalogResponse([course]));
+  assert.match(view.html, /Chapitre second/);
+  await view.click((props, _text, tag) => tag === 'button' && props['aria-pressed'] === false);
+  assert.match(view.html, /href="\/documents\/support\.pdf"/);
+  assert.match(view.text(), /Support officiel/);
+  assert.match(view.text(), /Progression totale\s+12%/);
+
+  const confirmedSecond = { ...second, contents: [{ ...second.contents[0], completed: true }], completed: true };
+  const response = {
+    progress: 37, completedRequiredContents: 1, totalRequiredContents: 2,
+    completedChapters: 1, totalChapters: 2, completed: false,
+    chapters: [first, confirmedSecond], chapter: confirmedSecond, content: confirmedSecond.contents[0],
+  };
+  bffElearning.on('post', '/elearning/courses/{courseId}/contents/{contentId}/complete', { body: response });
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Relecture du parcours refusée'));
+  await view.click(props => props['aria-label'] === 'Marquer Support officiel comme terminé');
+  await view.waitFor(html => html.includes('Relecture du parcours refusée'));
+
+  assert.match(view.html, /role="dialog"/);
+  assert.match(view.text(), /Progression totale\s+37%/);
+  assert.match(view.html, /aria-label="Support officiel terminé"[^>]*disabled=""/);
+  assert.match(view.html, /<button[^>]*aria-pressed="true"[^>]*>(?:(?!<\/button>)[\s\S])*Chapitre second/);
+  assert.deepEqual(view.props('ElearningCatalog').courses[0].details.chapters, response.chapters);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/contents/{contentId}/complete', 'GET /elearning/catalog']);
+  assert.deepEqual(bffElearning.requests[1].pathParams, { courseId: course.id, contentId: 'second-content' });
+  assert.deepEqual(bffElearning.requests[1].body, { chapterId: 'second', completed: true });
+});
+
 test('a BFF error is rendered as an alert with a retry button that reloads the catalogue', async () => {
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'BFF_UNAVAILABLE', 'Le service de formation est indisponible'));
   view = mount(React.createElement(Home));
