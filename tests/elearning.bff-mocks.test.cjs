@@ -295,13 +295,13 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.deepEqual(runtime.upstreamCalls.map(({ url, route }) => [url.origin, route]), [[new URL(bffElearning.url).origin, 'src/app/[...path]/route.ts']]);
   });
 
-  test('a JWT stored in localStorage is sent instead of the cookie session', async () => {
+  test('a JWT stored in localStorage does not replace the current cookie session', async () => {
     front.window().localStorage.setItem('mairie360.auth.jwt', 'stored-jwt');
     reloadCatalog();
 
     await catalogState().actions.loadCatalog();
 
-    assert.equal(bffElearning.requests[0].headers.authorization, 'Bearer stored-jwt');
+    assert.equal(bffElearning.requests[0].headers.authorization, `Bearer ${runtime.accessToken}`);
   });
 
   test('startCourse retains the confirmed course and refreshes official catalogue statistics', async () => {

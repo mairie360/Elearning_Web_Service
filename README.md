@@ -4,6 +4,25 @@ Present the training catalogue and let staff track their learning. The interface
 
 Présenter le catalogue de formations et permettre aux agents de suivre leur apprentissage. L’interface consomme les routes de BFF Elearning et expose les fonctions administrateur selon le contexte.
 
+## Current cookie session / Session cookie courante (MAIR-410)
+
+Ordinary catalogue, learner and administrator requests no longer read, migrate
+or inject JWTs from browser localStorage. The unchanged same-origin proxy uses
+the current `accessToken` cookie; an explicitly supplied Authorization header
+remains supported. A missing cookie or a service refusal is not a successful
+session. Logout still removes only known token keys, preserving unrelated data.
+Contract-backed regressions cover these paths. This frontend slice does not fix
+server revocation, GET logout policy, expired-fetch redirects or persistence,
+and does not complete the mixed audit ticket before genuine CI and integration.
+
+Les requêtes ordinaires catalogue, apprenant et administrateur ne lisent,
+ne migrent et n'injectent plus les anciens JWT du localStorage. Le proxy inchangé
+utilise le cookie `accessToken` courant ; un Authorization explicitement fourni
+reste accepté. Une session absente ou refusée n'est pas simulée comme réussie.
+La déconnexion retire seulement les clés d'authentification connues. Cette
+tranche frontend ne corrige ni révocation serveur, ni déconnexion en GET, ni
+redirections des fetch expirés, ni persistance. L'audit global reste ouvert.
+
 ## Documentation
 
 | Language / Langue | Module | Technical / Technique |

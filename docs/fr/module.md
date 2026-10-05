@@ -10,6 +10,16 @@ publiées, droits et actions apprenant ne changent pas. La requête détail/avis
 non publiée et la version statique du footer ancien ne sont pas réintroduites.
 Cette tranche ne valide ni les téléchargements ni la persistance déployée.
 
+## Session cookie courante (MAIR-410)
+
+Les lectures catalogue et actions apprenant/administrateur utilisent la session
+cookie courante via le proxy same-origin inchangé, sans lire ni migrer les anciens
+JWT du navigateur (MAIR-410). Les valeurs localStorage principale ou héritée ne
+peuvent plus la remplacer. Un refus réel provoque toujours la déconnexion ; seules
+les clés de jeton connues sont retirées, sans perdre les préférences sans rapport.
+Révocation serveur, déconnexion en GET, redirections des fetch expirés et
+persistance durable restent des constats d'audit distincts non résolus.
+
 ## Navigation des modules actifs
 
 Les menus ordinateur et mobile ne proposent plus les modules archivés E-mails

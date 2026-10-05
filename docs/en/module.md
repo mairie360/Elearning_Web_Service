@@ -10,6 +10,15 @@ permissions and learner actions remain unchanged. The prototype's unsupported
 detail/review request and static footer version are not reintroduced. This
 presentation slice does not validate resource downloads or deployed persistence.
 
+## Current cookie session (MAIR-410)
+
+Catalogue reads and learner/administrator actions use the current cookie session
+through the existing same-origin proxy, without reading or migrating old browser
+JWTs (MAIR-410). Stale primary or legacy localStorage values cannot override it.
+Real service refusals still log out; only known token keys are removed, preserving
+unrelated preferences. Server revocation, GET logout policy, expired data-fetch
+redirects and durable persistence remain separate unresolved audit findings.
+
 ## Active-module navigation
 
 Desktop and mobile menus omit the archived E-mails and Files modules, matching
