@@ -16,8 +16,12 @@ Catalogue reads and learner/administrator actions use the current cookie session
 through the existing same-origin proxy, without reading or migrating old browser
 JWTs (MAIR-410). Stale primary or legacy localStorage values cannot override it.
 Real service refusals still log out; only known token keys are removed, preserving
-unrelated preferences. Server revocation, GET logout policy, expired data-fetch
-redirects and durable persistence remain separate unresolved audit findings.
+unrelated preferences. When a data call instead receives a middleware redirect,
+the current protected page reloads once with its path/query preserved for Login.
+Cancelled calls do not navigate and refused mutations are never replayed.
+400/403/503 feedback remains distinct. Server revocation, GET logout policy and
+durable persistence remain separate unresolved audit findings; integration and
+deployed session validation are not implied by local checks.
 
 ## Active-module navigation
 

@@ -125,9 +125,22 @@ export class FrontRuntime {
     if (middlewareApplies(url.pathname)) {
       const response = middleware(request);
       if (response.headers.get('x-middleware-next') !== '1') {
-        // Le navigateur suit la redirection vers Login, autre origine sans CORS : le fetch échoue.
+        // Manual fetch redirects expose only an opaque response in a real browser.
+        // Follow-mode retains the previous cross-origin/CORS failure reproduction.
         call.status = response.status;
         call.redirectedTo = response.headers.get('location') ?? undefined;
+        if (init.redirect === 'manual' && call.redirectedTo) {
+          return new Proxy(new Response(null), {
+            get(target, property) {
+              if (property === 'type') return 'opaqueredirect';
+              if (property === 'status') return 0;
+              if (property === 'ok') return false;
+              if (property === 'headers') return new Headers();
+              const value = Reflect.get(target, property, target);
+              return typeof value === 'function' ? value.bind(target) : value;
+            },
+          });
+        }
         throw new TypeError('Failed to fetch');
       }
       const overridden = new Headers();

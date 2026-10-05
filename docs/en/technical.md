@@ -171,7 +171,17 @@ These data paths are exposed at the same origin through the proxy; Next.js pages
 
 ## Session, permissions and errors
 
-The front reaches a single service, BFF_Elearning, which resolves the session (through BFF User) on every `/elearning/*` route; the current user comes from its responses (`user`). On a 401, or on logout, the front removes only the known primary/legacy JWT storage keys and navigates to `/logout`, preserving unrelated browser data. The BFF's published contract has no logout route (see `BFF.md`), so the session is not revoked server-side before it expires. Ordinary `requestBff` calls neither read nor migrate localStorage JWTs (MAIR-410). The unchanged generic proxy uses an explicit caller Bearer header or, when absent, the current `accessToken` cookie. Missing cookies and real service refusals are not turned into successes. Business permissions remain those of the BFF and its sources. GET logout and the separate expired-fetch middleware finding are not changed by this frontend slice.
+The front reaches a single service, BFF_Elearning, which resolves the session (through BFF User) on every `/elearning/*` route; the current user comes from its responses (`user`). On a 401, or on logout, the front removes only the known primary/legacy JWT storage keys and navigates to `/logout`, preserving unrelated browser data. The BFF's published contract has no logout route (see `BFF.md`), so the session is not revoked server-side before it expires. Ordinary `requestBff` calls neither read nor migrate localStorage JWTs (MAIR-410). The unchanged generic proxy uses an explicit caller Bearer header or, when absent, the current `accessToken` cookie. Missing cookies and real service refusals are not turned into successes. Business permissions remain those of the BFF and its sources. GET logout remains unchanged.
+
+`requestBff` uses `redirect: "manual"`. An `opaqueredirect` is handled before
+accessing status, headers or body: reload the current document once per Location
+object, never the data endpoint. The existing middleware constructs the Login
+URL and public return path/query. The original call rejects with a typed307,
+without retry/replay. AbortSignal is checked before/after fetch and body parsing;
+real401 remains available to the existing catalogue action logout handler,
+400/403/503 remain typed errors. Tests model opaque redirects only for manual
+fetches that actually encounter the real middleware, preserving follow-mode
+CORS failures and the published contract allowlist. No server-auth certification.
 
 The generic proxy returns 400 for an invalid path, 404 for a path outside the contract, 405 for a disallowed method and 502 when the service is unreachable or times out. Upstream responses are preserved, including empty 204/205/304 bodies.
 

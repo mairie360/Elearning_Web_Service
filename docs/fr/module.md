@@ -17,8 +17,12 @@ cookie courante via le proxy same-origin inchangé, sans lire ni migrer les anci
 JWT du navigateur (MAIR-410). Les valeurs localStorage principale ou héritée ne
 peuvent plus la remplacer. Un refus réel provoque toujours la déconnexion ; seules
 les clés de jeton connues sont retirées, sans perdre les préférences sans rapport.
-Révocation serveur, déconnexion en GET, redirections des fetch expirés et
-persistance durable restent des constats d'audit distincts non résolus.
+Si un appel reçoit plutôt une redirection middleware, la page protégée courante
+se recharge une fois, chemin/query conservés pour Login. Une requête annulée ne
+navigue pas et une mutation refusée n'est jamais rejouée. Les erreurs400/403/503
+restent distinctes. Révocation serveur, déconnexion en GET et persistance durable
+restent des constats d'audit non résolus ; les contrôles locaux ne prouvent pas
+l'intégration ni la validation de session déployée.
 
 ## Navigation des modules actifs
 

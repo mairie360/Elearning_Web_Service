@@ -114,10 +114,11 @@ test('stored JWTs cannot replace a missing cookie or bypass the existing middlew
   front.window().localStorage.setItem(legacyKey, 'stale-legacy-token');
   let reads = 0;
   front.window().localStorage.getItem = () => { reads += 1; return 'stale-primary-token'; };
-  await assert.rejects(requestBff('/elearning/catalog'), /Failed to fetch/);
+  await assert.rejects(requestBff('/elearning/catalog'), /Redirection vers la connexion/);
   assert.equal(reads, 0);
   assert.equal(runtime.frontCalls[0].status, 307);
   assert.equal(bffElearning.requests.length, 0);
+  assert.deepEqual(front.window().location.assigned, [front.window().location.href]);
   assert.equal(runtime.upstreamCalls.length, 0);
 });
 

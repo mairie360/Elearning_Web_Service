@@ -550,10 +550,11 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
 
     await actions.loadCatalog();
 
-    assert.equal(state.error, 'Une erreur inattendue est survenue.');
+    assert.equal(state.error, 'Redirection vers la connexion en cours.');
     assert.equal(runtime.frontCalls[0].status, 307);
     assert.match(runtime.frontCalls[0].redirectedTo, /^https:\/\/login\.mairie\.test\//);
     assert.equal(runtime.upstreamCalls.length, 0);
+    assert.deepEqual(front.window().location.assigned, [front.window().location.href]);
   });
 
   test('same-origin paths absent from the contract never reach the BFF', async () => {

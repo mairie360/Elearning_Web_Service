@@ -12,7 +12,7 @@ the current `accessToken` cookie; an explicitly supplied Authorization header
 remains supported. A missing cookie or a service refusal is not a successful
 session. Logout still removes only known token keys, preserving unrelated data.
 Contract-backed regressions cover these paths. This frontend slice does not fix
-server revocation, GET logout policy, expired-fetch redirects or persistence,
+server revocation, GET logout policy or persistence,
 and does not complete the mixed audit ticket before genuine CI and integration.
 
 Les requêtes ordinaires catalogue, apprenant et administrateur ne lisent,
@@ -21,7 +21,21 @@ utilise le cookie `accessToken` courant ; un Authorization explicitement fourni
 reste accepté. Une session absente ou refusée n'est pas simulée comme réussie.
 La déconnexion retire seulement les clés d'authentification connues. Cette
 tranche frontend ne corrige ni révocation serveur, ni déconnexion en GET, ni
-redirections des fetch expirés, ni persistance. L'audit global reste ouvert.
+persistance. L'audit global reste ouvert.
+
+Expired data-fetch redirects are captured in manual mode. The client reloads
+the current protected document once, preserving its path/query so the existing
+middleware chooses Login and its return destination. It never reads opaque
+redirect headers/body or replays a refused mutation. Cancelled requests cannot
+trigger recovery; real service401 retains the existing logout flow, while
+400/403/503 remain separate typed refusals. No middleware/proxy/BFF change.
+
+Une redirection pendant un fetch expiré est interceptée en mode manuel. Le
+client recharge une fois la page protégée courante, chemin/query conservés ;
+le middleware existant choisit Login et la destination de retour. Aucun accès
+aux en-têtes/corps opaques ni replay d'écriture refusée. Une requête annulée
+ne déclenche pas de navigation ; le vrai401 conserve le logout existant et les
+400/403/503 restent distincts. Middleware/proxy/BFF inchangés.
 
 ## Documentation
 
