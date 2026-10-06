@@ -27,6 +27,7 @@ export function ElearningModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  const [mutationSuccess, setMutationSuccess] = useState<string | null>(null);
   const [requestedCourseId, setRequestedCourseId] = useState<string | null>(null);
 
   const actions = useMemo(
@@ -36,6 +37,7 @@ export function ElearningModule() {
         setLoading,
         setError,
         setMutationError,
+        setMutationSuccess,
       }),
     [],
   );
@@ -119,13 +121,31 @@ export function ElearningModule() {
         </div>
       )}
 
-      {(error || mutationError) && (
+      {(error || mutationError || mutationSuccess) && (
         <div
           data-elearning-feedback-stack
           className={catalog
             ? "fixed inset-x-4 bottom-4 z-[60] mx-auto flex max-h-[calc(100dvh-2rem)] max-w-[640px] flex-col gap-3 overflow-y-auto"
             : "mx-auto my-10 max-w-[1130px] space-y-3"}
         >
+          {mutationSuccess && (
+            <div
+              data-elearning-catalog-feedback
+              className="flex items-start justify-between gap-3 rounded-md border border-[#b9dfc8] bg-[#eefaf3] px-4 py-3 text-sm font-semibold text-[#167544] shadow-lg"
+              role="status"
+              aria-label="Confirmation de la formation"
+            >
+              <p className="min-w-0 break-words [overflow-wrap:anywhere]">{mutationSuccess}</p>
+              <button
+                type="button"
+                aria-label="Fermer la confirmation"
+                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md border border-[#b9dfc8] bg-white px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#167544]"
+                onClick={() => setMutationSuccess(null)}
+              >
+                Fermer
+              </button>
+            </div>
+          )}
           {mutationError && (
             <div
               data-elearning-catalog-feedback

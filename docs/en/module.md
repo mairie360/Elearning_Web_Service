@@ -1,5 +1,20 @@
 # Elearning_Web_Service — Module overview
 
+## Confirmed administration feedback (MAIR-452)
+
+Creation and editing announce success with the canonical title returned by the
+existing POST/PATCH response. Deletion announces success only when `deleted` is
+true and the response identifies the requested course. Pending/refused writes
+never show this success. A later failed catalogue read keeps the confirmation
+beside its separate read error; Retry sends GET only. The next mutation clears
+the preceding success, while Close dismisses the message without a request or
+timer. Keyboard-accessible feedback does not cover author-form retry/cancel controls.
+
+This restores the prototype's visible return, not its optimistic confirmation
+before a server response. No data, business counters, backend operation, shared
+library, dependency or environment is invented or changed. Resource downloads,
+written reviews, uploads, keys and deployed persistence remain separate scopes.
+
 ## Reference sidebar presentation (MAIR-180)
 
 The shared navigation keeps the measured prototype's 44px minimum targets and

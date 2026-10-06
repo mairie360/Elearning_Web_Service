@@ -22,6 +22,7 @@ export type CatalogView = {
   setLoading: (loading: boolean) => void;
   setError: (message: string | null) => void;
   setMutationError: (message: string | null) => void;
+  setMutationSuccess?: (message: string | null) => void;
 };
 
 /** Cours tel que produit par le formulaire de lib-components (`statusValue` y est une chaîne libre). */
@@ -132,6 +133,7 @@ export function createCatalogActions(
 
   async function mutateThenReload(mutation: () => Promise<unknown>) {
     view.setMutationError(null);
+    view.setMutationSuccess?.(null);
 
     try {
       await mutation();
@@ -147,6 +149,7 @@ export function createCatalogActions(
 
   async function startCatalogCourse(courseId: string) {
     view.setMutationError(null);
+    view.setMutationSuccess?.(null);
 
     try {
       const { course } = await startCourse(courseId);
@@ -219,11 +222,13 @@ export function createCatalogActions(
             ? courses.map((current) => current.id === response.course.id ? response.course : current)
             : [...courses, response.course],
         );
+        view.setMutationSuccess?.(`Formation "${response.course.title}" créée.`);
       }),
     updateCourse: (course: CatalogCourseInput) =>
       mutateThenReload(async () => {
         const response = await updateCourse(toContractCourse(course));
         updateConfirmedCourse(response.course.id, () => response.course);
+        view.setMutationSuccess?.(`Formation "${response.course.title}" mise à jour.`);
       }),
     deleteCourse: (courseId: string) => {
       const pending = pendingDeletions.get(courseId);
@@ -236,6 +241,7 @@ export function createCatalogActions(
           throw new Error("Course deletion was not confirmed.");
         }
         updateConfirmedCatalogCourses((courses) => courses.filter((course) => course.id !== courseId));
+        view.setMutationSuccess?.('Formation supprimée.');
       })).finally(() => { pendingDeletions.delete(courseId); });
       pendingDeletions.set(courseId, result);
       return result;

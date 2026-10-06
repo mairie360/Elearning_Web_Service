@@ -1,5 +1,21 @@
 # Elearning_Web_Service — Présentation du module
 
+## Retour des actions d’administration confirmées (MAIR-452)
+
+Création et modification annoncent leur réussite avec le titre canonique renvoyé
+par le POST/PATCH existant. La suppression n’annonce la réussite que si `deleted`
+est vrai et que l’identifiant reçu correspond à la formation demandée. Une attente
+ou un refus n’affiche aucun succès. Un refus ultérieur de lecture du catalogue
+conserve cette confirmation à côté de son erreur distincte ; Réessayer fait
+seulement GET. La mutation suivante efface l’ancienne réussite ; Fermer retire
+le message sans requête ni minuterie. Le retour accessible au clavier ne couvre
+pas les commandes de reprise/annulation du formulaire auteur.
+
+Le retour visible du prototype est rétabli, pas sa confirmation optimiste avant
+réponse serveur. Aucun contenu, compteur métier, opération backend, bibliothèque,
+dépendance ou environnement n’est inventé ou modifié. Téléchargements, avis écrits,
+uploads, clés et persistance déployée restent des périmètres distincts.
+
 ## Présentation de la sidebar de référence (MAIR-180)
 
 La navigation partagée conserve les cibles de 44px minimum et l'ombre mesurées

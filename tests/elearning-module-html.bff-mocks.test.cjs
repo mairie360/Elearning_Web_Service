@@ -25,6 +25,89 @@ afterEach(() => {
 
 const operations = () => bffElearning.requests.map((request) => `${request.method} ${request.template}`);
 
+for (const mode of ['create', 'update']) {
+  test(`confirmed admin ${mode} announces the canonical response despite a refused GET and dismissal never writes`, async () => {
+    await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+    const method = mode === 'create' ? 'post' : 'patch';
+    const path = mode === 'create' ? '/elearning/admin/courses' : '/elearning/admin/courses/{courseId}';
+    const callback = mode === 'create' ? 'onCreateCourse' : 'onUpdateCourse';
+    const canonical = f.course('rgpd-collectivites', { title: 'Titre canonique du serveur' });
+    const draft = { ...canonical, title: 'Titre du brouillon' };
+    bffElearning.on(method, path, { status: mode === 'create' ? 201 : 200, body: { course: canonical } });
+    bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Catalogue après confirmation refusé'));
+    assert.equal(await view.act(() => view.props('ElearningCatalog')[callback](draft)), true);
+    assert.match(view.html, /role="status"[^>]*aria-label="Confirmation de la formation"/);
+    assert.match(view.text(), new RegExp(`Formation "Titre canonique du serveur" ${mode === 'create' ? 'créée' : 'mise à jour'}\\.`));
+    assert.doesNotMatch(view.text(), /Titre du brouillon/);
+    assert.match(view.text(), /Catalogue après confirmation refusé/);
+    const beforeDismiss = operations();
+    await view.click(props => props['aria-label'] === 'Fermer la confirmation');
+    assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
+    assert.deepEqual(operations(), beforeDismiss);
+    bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse([canonical], f.currentUser({ isAdmin: true })) });
+    await view.click('Réessayer');
+    await view.waitFor(html => !html.includes('Catalogue après confirmation refusé'));
+    assert.deepEqual(operations(), ['GET /elearning/catalog', `${method.toUpperCase()} ${path}`, 'GET /elearning/catalog', 'GET /elearning/catalog']);
+  });
+}
+
+test('a confirmed deletion has truthful status and a subsequent refused write clears that old confirmation', async () => {
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+  bffElearning.on('delete', '/elearning/admin/courses/{courseId}', { body: { deleted: true, courseId: 'rgpd-collectivites' } });
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Catalogue après suppression refusé'));
+  await view.act(() => view.props('ElearningCatalog').onDeleteCourse(f.course()));
+  await view.waitFor(html => html.includes('Catalogue après suppression refusé'));
+  assert.match(view.text(), /Formation supprimée\./);
+  assert.match(view.html, /aria-label="Confirmation de la formation"/);
+  bffElearning.on('post', '/elearning/admin/courses', errorReply(403, 'FORBIDDEN', 'Création refusée'));
+  assert.equal(await view.act(() => view.props('ElearningCatalog').onCreateCourse(f.course())), false);
+  assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
+  assert.match(view.text(), /Création refusée/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'DELETE /elearning/admin/courses/{courseId}', 'GET /elearning/catalog', 'POST /elearning/admin/courses']);
+});
+
+test('GET-only recovery retains the undismissed canonical success without repeating an admin write', async () => {
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+  const canonical = f.course('rgpd-collectivites', { title: 'Titre confirmé conservé' });
+  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { course: canonical } });
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Lecture de récupération refusée'));
+  assert.equal(await view.act(() => view.props('ElearningCatalog').onUpdateCourse(canonical)), true);
+  assert.match(view.text(), /Formation "Titre confirmé conservé" mise à jour\./);
+  bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse([canonical], f.currentUser({ isAdmin: true })) });
+  await view.click('Réessayer');
+  await view.waitFor(html => !html.includes('Lecture de récupération refusée') && !html.includes('Actualisation des formations…'));
+  assert.match(view.html, /aria-label="Confirmation de la formation"/);
+  assert.match(view.text(), /Formation "Titre confirmé conservé" mise à jour\./);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}', 'GET /elearning/catalog', 'GET /elearning/catalog']);
+});
+
+test('a pending write and a contract-shaped unconfirmed deletion never announce success', async (t) => {
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  t.after(() => release());
+  const originalFetch = global.fetch;
+  t.mock.method(global, 'fetch', async (...args) => {
+    const response = await originalFetch(...args);
+    if (args[1]?.method === 'PATCH') await gate;
+    return response;
+  });
+  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', errorReply(503, 'UNAVAILABLE', 'Modification refusée'));
+  let pending;
+  await view.act(() => { pending = view.props('ElearningCatalog').onUpdateCourse(f.course()); });
+  await view.waitFor(() => bffElearning.requests.length === 2);
+  assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
+  release();
+  assert.equal(await pending, false);
+  await view.settle();
+  assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
+  bffElearning.on('delete', '/elearning/admin/courses/{courseId}', { body: { deleted: false, courseId: 'rgpd-collectivites' } });
+  await view.act(() => view.props('ElearningCatalog').onDeleteCourse(f.course()));
+  await view.waitFor(html => html.includes('Une erreur inattendue est survenue'));
+  assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
+  assert.equal(view.props('ElearningCatalog').courses.length, 1);
+});
+
 async function renderLoadedCatalog(body = f.catalogResponse()) {
   bffElearning.on('get', '/elearning/catalog', { body });
   view = mount(React.createElement(Home));
@@ -511,7 +594,7 @@ test('read retry keeps its failure and disabled pending control until the catalo
     assert.match(view.html, /role="status"[^>]*>Actualisation des formations…/);
     assert.match(view.text(), /Formation confirmée/);
     release();
-    await view.waitFor(html => !html.includes('Lecture refusée') && !html.includes('role="status"'));
+    await view.waitFor(html => !html.includes('Lecture refusée') && !html.includes('Actualisation des formations…'));
     assert.match(view.text(), /RGPD et collectivités/);
     assert.deepEqual(operations(), ['GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}', 'GET /elearning/catalog', 'GET /elearning/catalog']);
   } finally {
