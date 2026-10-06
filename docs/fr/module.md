@@ -120,6 +120,10 @@ explicite ; seul un succès confirme la modification. **Annuler la modification*
 restaure la dernière note personnelle confirmée, sans écriture. Celle-ci reste
 distincte de la moyenne renvoyée par le serveur ; le front n’incrémente pas le
 nombre de votes et ne remplace pas la distribution officielle des notes.
+Le succès HTTP seul ne confirme rien : la réponse de notation existante doit avoir
+`submitted: true`. Un acquittement négatif conserve tous les champs confirmés et
+transmet le refus au lecteur, sans GET automatique ni nouveau POST. Le brouillon
+sélectionné reste disponible pour une reprise explicite ou une annulation.
 Ce parcours n’implémente ni avis écrit attribué ni sa modification : le contrat
 publié ne fournit toujours que l’opération de notation numérique.
 

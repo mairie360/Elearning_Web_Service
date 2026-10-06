@@ -112,6 +112,10 @@ the draft available for an explicit retry; only success confirms the change.
 **Annuler la modification** restores the last confirmed own note without a write.
 The submitted own note is separate from the server's aggregate rating; the front
 does not increment vote counts or replace the official rating distribution.
+HTTP success alone is not confirmation: the existing rating response must have
+`submitted: true`. A negative acknowledgement preserves every last confirmed
+field and returns refusal to the reader, without an automatic GET or another POST.
+The selected draft stays available for an explicit retry or cancellation.
 This does not implement an attributed written review or its editing: the
 published contract still supplies only the numeric rating operation.
 

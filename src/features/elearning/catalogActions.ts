@@ -43,8 +43,14 @@ export function toContractCourse({ statusValue, ...course }: CatalogCourseInput)
   return isCourseStatus(statusValue) ? { ...course, statusValue } : course;
 }
 
+class RatingNotConfirmedError extends Error {
+  constructor() {
+    super("La note n’a pas été enregistrée. Votre sélection est conservée ; réessayez.");
+  }
+}
+
 export function getErrorMessage(error: unknown) {
-  if (error instanceof BffRequestError) return error.message;
+  if (error instanceof BffRequestError || error instanceof RatingNotConfirmedError) return error.message;
   return "Une erreur inattendue est survenue.";
 }
 
@@ -196,6 +202,9 @@ export function createCatalogActions(
       runLearnerAction(`rating:${JSON.stringify([courseId, rating])}`, () =>
         mutateThenReload(async () => {
           const response = await rateCourse(courseId, rating);
+          // A 2xx response alone does not acknowledge the learner's note. Keep
+          // the previous confirmation and return false to the shared reader.
+          if (!response.submitted) throw new RatingNotConfirmedError();
           updateConfirmedCourse(courseId, (course) => ({
             ...course,
             rating: response.rating,

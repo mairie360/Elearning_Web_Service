@@ -440,6 +440,43 @@ test('the real chapter controls retain the selected reader and server progressio
   assert.deepEqual(bffElearning.requests[1].body, { chapterId: 'second', completed: true });
 });
 
+for (const previouslySubmitted of [false, true]) {
+  test(`the published rating control retains selection and cancellation after a negative acknowledgement (prior=${previouslySubmitted})`, async () => {
+    const course = f.course();
+    course.progress = 100;
+    course.details.progress = 100;
+    course.details.completed = true;
+    course.details.chapters = course.details.chapters.map(chapter => ({
+      ...chapter, completed: true,
+      contents: chapter.contents.map(content => ({ ...content, completed: true })),
+    }));
+    course.details.completionRating = previouslySubmitted
+      ? { initialValue: 4, submitted: true } : { submitted: false };
+    front.window().location.href = `https://elearning.test.example/?course=${course.id}`;
+    await renderLoadedCatalog(f.catalogResponse([course]));
+    if (previouslySubmitted) await view.click('Modifier ma note');
+    await view.click(props => props['aria-label'] === 'Donner la note 3 sur 5');
+    bffElearning.on('post', '/elearning/courses/{courseId}/rating', {
+      body: { rating: 1, ratingCount: 99, ratingDistribution: { 1: 99 }, submitted: false },
+    });
+    await view.click(previouslySubmitted ? 'Enregistrer ma note' : 'Envoyer la note');
+    await view.waitFor(html => html.includes('Votre sélection est conservée'));
+    assert.match(view.html, /role="alert"/);
+    assert.match(view.html, /aria-label="Donner la note 3 sur 5"[^>]*aria-pressed="true"/);
+    assert.deepEqual(view.props('ElearningCatalog').courses[0], course);
+    assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/rating']);
+    if (previouslySubmitted) {
+      await view.click('Annuler la modification');
+      assert.match(view.html, /aria-label="Donner la note 4 sur 5"[^>]*aria-pressed="true"/);
+      assert.match(view.text(), /Modifier ma note/);
+      assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/rating']);
+    } else {
+      assert.doesNotMatch(view.text(), /Merci, votre note a bien été enregistrée/);
+      assert.match(view.text(), /Envoyer la note/);
+    }
+  });
+}
+
 test('a BFF error is rendered as an alert with a retry button that reloads the catalogue', async () => {
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'BFF_UNAVAILABLE', 'Le service de formation est indisponible'));
   view = mount(React.createElement(Home));
