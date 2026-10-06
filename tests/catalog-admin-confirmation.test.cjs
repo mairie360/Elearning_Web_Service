@@ -10,15 +10,87 @@ const { bffElearning } = useMockedFront({ before, after, beforeEach, afterEach }
 const operations = () => bffElearning.requests.map(({ method, template }) => `${method} ${template}`);
 
 function stateFor(initial) {
-  const state = { catalog: initial, loading: false, error: null, mutationError: null };
+  const state = { catalog: initial, loading: false, error: null, mutationError: null, mutationSuccess: null };
   const actions = createCatalogActions({
     setCatalogResponse: update => { state.catalog = update(state.catalog); },
     setLoading: value => { state.loading = value; },
     setError: value => { state.error = value; },
     setMutationError: value => { state.mutationError = value; },
+    setMutationSuccess: value => { state.mutationSuccess = value; },
   }, async () => { throw new Error('Unexpected authorization rejection'); });
   return { state, actions };
 }
+
+for (const returnedId of ['unrelated', 'foreign-new', ' ', '']) {
+  test(`update: mismatched receipt identity ${JSON.stringify(returnedId)} retains every confirmed field and never reports success`, async () => {
+    const initial = f.catalogResponse([f.course('existing'), f.course('unrelated')]);
+    const { state, actions } = stateFor(initial);
+    state.mutationSuccess = 'Earlier success';
+    bffElearning.on('patch', '/elearning/admin/courses/{courseId}', {
+      body: { course: f.course(returnedId, { title: 'Foreign canonical title' }) },
+    });
+    assert.equal(await actions.updateCourse(f.course('existing', { title: 'Retained draft' })), false);
+    assert.equal(state.catalog, initial);
+    assert.equal(state.error, null);
+    assert.equal(state.mutationSuccess, null);
+    assert.match(state.mutationError, /modification.*confirmée/);
+    assert.deepEqual(operations(), ['PATCH /elearning/admin/courses/{courseId}']);
+    assert.equal(bffElearning.requests[0].pathParams.courseId, 'existing');
+  });
+}
+
+test('update: an explicit coherent retry confirms only its course and a refused refresh recovers with GET only', async () => {
+  const initial = f.catalogResponse([f.course('existing'), f.course('unrelated')]);
+  const { state, actions } = stateFor(initial);
+  const draft = f.course('existing', { title: 'Retained draft' });
+  const path = '/elearning/admin/courses/{courseId}';
+  bffElearning.on('patch', path, { body: { course: f.course('unrelated') } });
+  assert.equal(await actions.updateCourse(draft), false);
+  const canonical = f.course('existing', { title: 'Canonical received title' });
+  bffElearning.on('patch', path, { body: { course: canonical } });
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Refresh refused'));
+  assert.equal(await actions.updateCourse(draft), true);
+  assert.deepEqual(state.catalog.catalog.courses, [canonical, initial.catalog.courses[1]]);
+  assert.deepEqual(state.catalog.catalog.stats, initial.catalog.stats);
+  assert.equal(state.mutationSuccess, 'Formation "Canonical received title" mise à jour.');
+  assert.equal(state.error, 'Refresh refused');
+  assert.equal(state.mutationError, null);
+  bffElearning.on('get', '/elearning/catalog', { body: state.catalog });
+  await actions.loadCatalog();
+  assert.deepEqual(operations(), [`PATCH ${path}`, `PATCH ${path}`, 'GET /elearning/catalog', 'GET /elearning/catalog']);
+  assert.equal(state.error, null);
+});
+
+test('update: the requested identity is captured before awaiting its receipt, not read from a mutable draft afterwards', async () => {
+  const initial = f.catalogResponse([f.course('existing'), f.course('unrelated')]);
+  const { state, actions } = stateFor(initial);
+  const draft = f.course('existing', { title: 'Original request' });
+  const canonical = f.course('existing', { title: 'Canonical confirmation' });
+  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { course: canonical } });
+  bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Read refused'));
+  const originalFetch = global.fetch;
+  let release, received, pending;
+  const held = new Promise(resolve => { release = resolve; });
+  const ready = new Promise(resolve => { received = resolve; });
+  global.fetch = async (...args) => {
+    const response = await originalFetch(...args);
+    if (args[1]?.method === 'PATCH') { received(); await held; }
+    return response;
+  };
+  try {
+    pending = actions.updateCourse(draft);
+    await ready;
+    draft.id = 'unrelated';
+    release();
+    assert.equal(await pending, true);
+    assert.equal(bffElearning.requests[0].pathParams.courseId, 'existing');
+    assert.deepEqual(state.catalog.catalog.courses, [canonical, initial.catalog.courses[1]]);
+  } finally {
+    release();
+    if (pending) await pending;
+    global.fetch = originalFetch;
+  }
+});
 
 for (const confirmed of [false, true]) {
   test(`delete: repeated pending dispatch shares one confirmation and permits a later retry (${confirmed})`, async () => {

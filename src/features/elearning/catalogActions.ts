@@ -51,6 +51,12 @@ class RatingNotConfirmedError extends Error {
 
 class LearnerNotConfirmedError extends Error {}
 
+class CourseUpdateNotConfirmedError extends Error {
+  constructor() {
+    super("La modification n’a pas été confirmée pour cette formation. Vos saisies et les dernières données confirmées sont conservées.");
+  }
+}
+
 function confirmsContent(
   response: Awaited<ReturnType<typeof completeCourseContent>>,
   chapterId: string,
@@ -68,7 +74,7 @@ function confirmsContent(
 
 export function getErrorMessage(error: unknown) {
   if (error instanceof BffRequestError || error instanceof RatingNotConfirmedError ||
-      error instanceof LearnerNotConfirmedError) return error.message;
+      error instanceof LearnerNotConfirmedError || error instanceof CourseUpdateNotConfirmedError) return error.message;
   return "Une erreur inattendue est survenue.";
 }
 
@@ -261,8 +267,12 @@ export function createCatalogActions(
       }),
     updateCourse: (course: CatalogCourseInput) =>
       mutateThenReload(async () => {
+        const courseId = course.id;
         const response = await updateCourse(toContractCourse(course));
-        updateConfirmedCourse(response.course.id, () => response.course);
+        // PATCH addresses an existing resource. Unlike creation, its receipt
+        // cannot rename its identity or confirm another catalogue course.
+        if (!courseId.trim() || response.course.id !== courseId) throw new CourseUpdateNotConfirmedError();
+        updateConfirmedCourse(courseId, () => response.course);
         view.setMutationSuccess?.(`Formation "${response.course.title}" mise à jour.`);
       }),
     deleteCourse: (courseId: string) => {

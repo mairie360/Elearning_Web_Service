@@ -25,6 +25,42 @@ afterEach(() => {
 
 const operations = () => bffElearning.requests.map((request) => `${request.method} ${request.template}`);
 
+for (const returnedId of ['unrelated', ' ']) {
+  test(`the actual admin form keeps all edits after an uncorrelated receipt ${JSON.stringify(returnedId)}`, async () => {
+    const initial = f.catalogResponse([f.course(), f.course('unrelated', { title: 'Independent course' })], f.currentUser({ isAdmin: true }));
+    await renderLoadedCatalog(initial);
+    const course = initial.catalog.courses[0];
+    const chapter = course.details.chapters[0];
+    const content = chapter.contents[0];
+    await view.click(props => props['aria-label'] === `Modifier ${course.title}`);
+    const edits = {
+      'elearning-course-title': 'Retained title draft',
+      'elearning-course-description': 'Retained description draft',
+      [`chapter-title-${chapter.id}`]: 'Retained chapter draft',
+      [`content-title-${content.id}`]: 'Retained resource draft',
+      [`content-resource-${content.id}`]: 'retained-support.pdf',
+    };
+    for (const [id, value] of Object.entries(edits)) {
+      await view.fire(props => props.id === id, 'onChange', { target: { value } });
+    }
+    bffElearning.on('patch', '/elearning/admin/courses/{courseId}', {
+      body: { course: f.course(returnedId, { title: 'Foreign course replacement' }) },
+    });
+    await view.fire((props, _text, tag) => tag === 'form' && props.role === 'dialog', 'onSubmit');
+    await view.waitFor(html => html.includes('La modification n’a pas été confirmée'));
+    assert.equal(view.props('ElearningCourseFormModal').isOpen, true);
+    assert.deepEqual(view.props('ElearningCatalog').courses, initial.catalog.courses);
+    for (const [id, value] of Object.entries(edits)) {
+      assert.equal(view.hostElements(props => props.id === id)[0].props.value, value);
+    }
+    assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
+    assert.deepEqual(operations(), ['GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}']);
+    await view.click('Annuler');
+    assert.equal(view.props('ElearningCourseFormModal').isOpen, false);
+    assert.deepEqual(operations(), ['GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}']);
+  });
+}
+
 test('a foreign start receipt keeps the selected reader and unrelated catalogue course unchanged', async () => {
   const courses = [f.course(), f.course('independent', { title: 'Formation indépendante' })];
   await renderLoadedCatalog(f.catalogResponse(courses));

@@ -14,6 +14,16 @@ cette vérification ne l’invente pas et ne prouve aucune persistance durable.
 
 ## Retour des actions d’administration confirmées (MAIR-452)
 
+Une édition capture l’identifiant demandé avant d’attendre PATCH. Seul un reçu
+avec cette même identité non vide remplace la formation et annonce sa réussite.
+Un reçu étranger ou blanc conserve le catalogue et les champs du vrai formulaire
+(formation, chapitres, ressources), renvoie un refus et ne déclenche aucune lecture
+ou écriture automatique. Une reprise cohérente explicite reste possible ; ses
+données canoniques restent après GET refusé et la récupération est GET seule.
+Un reçu non corrélé ne prouve pas l’absence d’écriture côté service. La création
+peut recevoir un nouvel ID canonique : la règle d’identité d’édition ne lui est
+volontairement pas appliquée.
+
 Création et modification annoncent leur réussite avec le titre canonique renvoyé
 par le POST/PATCH existant. La suppression n’annonce la réussite que si `deleted`
 est vrai et que l’identifiant reçu correspond à la formation demandée. Une attente

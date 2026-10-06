@@ -15,6 +15,15 @@ this check does not invent course correlation or prove durable persistence.
 
 ## Confirmed administration feedback (MAIR-452)
 
+An edit captures its requested course ID before awaiting PATCH. Only a receipt
+with that same nonblank identity can replace the course or announce success.
+A foreign or blank receipt retains every catalogue entry and the actual form's
+course/chapter/resource drafts, returns refusal, and starts no automatic read or
+write. A deliberate coherent retry remains possible; its confirmed canonical
+data survive a refused refresh and GET-only recovery. Uncorrelated confirmation
+does not prove that the service made no write. Creation may return a new canonical
+ID and is deliberately not subjected to an edit's identity rule.
+
 Creation and editing announce success with the canonical title returned by the
 existing POST/PATCH response. Deletion announces success only when `deleted` is
 true and the response identifies the requested course. Pending/refused writes
