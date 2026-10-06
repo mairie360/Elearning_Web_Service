@@ -1,0 +1,183 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mairie360/CICD/main/tests/a11y/rgaa.schema.json
+# RGAA 4.1.2 scope of the elearning front (MAIR-316), checked by the RGAA job of mairie360/CICD
+# frontend-cicd.yml in release-prod, on the staging-<sha> image (format: CICD README, "RGAA scope").
+version: 1
+target: http://elearning-front:5006
+
+# Same JWT_SECRET as the services of docker-compose-accessibility.yml: the engine signs an
+# accessToken for the user of the state (as:), the front relays it to bff-elearning, which resolves
+# the user (and its role, from the database) through bff-user and core-api.
+session:
+  jwt_secret: b"secret"
+
+# bff-elearning 0.4.0 keeps the catalogue in memory per user id: a state that writes only changes
+# the catalogue of its own user, hence one user per writing state.
+users:
+  # Seed user of init-test.sql (role User): the learner view.
+  agent:
+    id: 2
+    role: user
+  # init-accessibility.sql (role Admin): "Nouvelle formation", edit and delete controls.
+  admin:
+    id: 3
+    role: admin
+  # init-accessibility.sql (role User), only for course-content-completed.
+  progress:
+    id: 4
+    role: user
+  # init-accessibility.sql (role User), only for course-rated.
+  rater:
+    id: 5
+    role: user
+
+criteria:
+  # Images: the logo and the icons of the shell, the cards and the dialogs.
+  - "1.1"
+  - "1.2"
+  - "1.3"
+  # 1.4-1.9: no CAPTCHA, chart, image of text or figure caption.
+  # 2.x: no frame. 4.x: no media element (course contents are titles, not players).
+  # 5.x: no table.
+  - "3.1"
+  - "3.2"
+  - "3.3"
+  # Links: the navigation of the shell (lib-components AppShell) and the content links.
+  - "6.1"
+  - "6.2"
+  # Scripts: filter listboxes, course and form dialogs (focus kept inside), status messages.
+  - "7.1"
+  - "7.3"
+  - "7.5"
+  # 7.2: no script with an alternative; 7.4: no change of context (filters only filter the list).
+  - "8.1"
+  - "8.2"
+  - "8.3"
+  - "8.4"
+  - "8.5"
+  - "8.6"
+  - "8.9"
+  # 8.7, 8.8: no text in another language; 8.10: no right-to-left text.
+  - "9.1"
+  - "9.2"
+  - "9.3"
+  # 9.4: no quotation.
+  - "10.1"
+  - "10.2"
+  - "10.3"
+  - "10.4"
+  - "10.5"
+  - "10.6"
+  - "10.7"
+  - "10.8"
+  - "10.9"
+  - "10.10"
+  - "10.11"
+  - "10.12"
+  # 10.13, 10.14: no content shown on hover or focus only.
+  # Search field, course form of the administrators (fieldsets, select lists), rating.
+  - "11.1"
+  - "11.2"
+  - "11.3"
+  - "11.4"
+  - "11.5"
+  - "11.6"
+  - "11.7"
+  - "11.8"
+  - "11.9"
+  - "11.10"
+  - "11.11"
+  - "11.12"
+  - "11.13"
+  # 12.1-12.5: one page; navigation, site map and search across fronts belong to the shell
+  # (lib-components). 12.10: no keyboard shortcut; 12.11: no content shown on hover.
+  - "12.6"
+  - "12.7"
+  - "12.8"
+  - "12.9"
+  # 13.1: no time limit; 13.2: no new window; 13.3, 13.4: no downloadable document (file names are
+  # plain text); 13.5-13.8: no cryptic or moving content.
+  - "13.9"
+  - "13.11"
+  # 13.10, 13.12: no complex gesture nor device motion.
+
+states:
+  - id: catalog
+    as: agent
+    route: /
+    steps:
+      - wait_for: { role: button, name: Ouvrir la formation Accueil des nouveaux agents }
+  - id: catalog-empty
+    description: Search without result (empty state)
+    as: agent
+    route: /
+    steps:
+      - wait_for: { role: button, name: Ouvrir la formation Accueil des nouveaux agents }
+      - fill: { selector: 'input[type="search"]', value: zzz introuvable }
+      - wait_for: { text: Aucune formation ne correspond }
+  - id: category-filter-open
+    description: Category filter listbox opened
+    as: agent
+    route: /
+    steps:
+      - click: { role: button, name: Toutes les catégories }
+      - wait_for: { role: listbox }
+  - id: status-filter-open
+    description: Status filter listbox opened
+    as: agent
+    route: /
+    steps:
+      - click: { role: button, name: Tous les statuts }
+      - wait_for: { role: listbox }
+  - id: course-details
+    description: Details dialog of a course in progress, opened from the URL (no start request)
+    as: agent
+    route: /?course=accueil-agents
+    steps:
+      - wait_for: { role: dialog }
+  - id: course-details-completed
+    description: Details dialog of a completed course, with its rating form
+    as: agent
+    route: /?course=relation-usager
+    steps:
+      - wait_for: { role: button, name: Donner la note 5 sur 5 }
+  - id: course-missing
+    description: Link to a course that does not exist any more
+    as: agent
+    route: /?course=999
+    steps:
+      - wait_for: { text: Cette formation n’est plus disponible }
+  - id: admin-catalog
+    description: Catalogue of an administrator (statistics, create, edit and delete controls)
+    as: admin
+    route: /
+    steps:
+      - wait_for: { role: button, name: Nouvelle formation }
+  - id: admin-course-create-form
+    description: Course creation dialog (stops before saving)
+    as: admin
+    route: /
+    steps:
+      - click: { role: button, name: Nouvelle formation }
+      - wait_for: { role: dialog }
+  - id: admin-course-edit-form
+    description: Course edition dialog (stops before saving)
+    as: admin
+    route: /
+    steps:
+      - click: { role: button, name: Modifier Accueil des nouveaux agents }
+      - wait_for: { role: dialog }
+  - id: course-content-completed
+    description: A content marked as done (progress updated in the dialog)
+    as: progress
+    route: /?course=accueil-agents
+    steps:
+      - click: { role: button, name: Marquer Verifier ses premiers acquis comme terminé }
+      - wait_for: { role: button, name: Verifier ses premiers acquis terminé }
+  - id: course-rated
+    description: Rating sent for a completed course (confirmation message)
+    as: rater
+    route: /?course=relation-usager
+    steps:
+      - click: { role: button, name: Donner la note 4 sur 5 }
+      - click: { role: button, name: Envoyer la note }
+      - wait_for: { text: "Merci, votre note a bien été enregistrée." }

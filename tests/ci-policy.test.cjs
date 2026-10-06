@@ -26,6 +26,8 @@ test('the reusable frontend workflow receives only its declared named secrets', 
   assert.deepEqual(mappings.map(([, name, source]) => [name, source]), [
     ['CODECOV_TOKEN', 'CODECOV_TOKEN'],
     ['N8N_WEBHOOK_SECRET', 'N8N_WEBHOOK_SECRET'],
+    // AI pre-audit of the RGAA check (release-prod), MAIR-320.
+    ['ANTHROPIC_API_KEY', 'ANTHROPIC_API_KEY'],
   ]);
   assert.doesNotMatch(workflow, /semgrep_fail_on_findings:\s*false|semgrep_config:|continue-on-error:/);
 });
@@ -49,4 +51,34 @@ test('CI uses Node 24 and the test toolchain supports npm release-age policy', (
   assert.ok(match, 'npm must report a stable version');
   assert.ok(Number(match[1]) > 11 || (Number(match[1]) === 11 && Number(match[2]) >= 10),
     'npm >=11.10 is required for min-release-age; use the documented Node 24 toolchain');
+});
+
+test('isolated test stacks run the published image, the scripts build it with a secret only', () => {
+  const stacks = {
+    'docker-compose-security.yml': 'security_test.sh',
+    'docker-compose-performance.yml': 'performance_test.sh',
+    'docker-compose-accessibility.yml': 'accessibility_test.sh',
+  };
+  for (const [file, script] of Object.entries(stacks)) {
+    const compose = read(file);
+    const frontend = compose.split('  elearning-front:\n')[1]?.split('\n  security-scan:')[0]?.split('\n  k6-perf-test:')[0]?.split('\n  a11y:')[0];
+    assert.ok(frontend, `${file} must keep the isolated frontend service`);
+    // The CI exports IMAGE_REF (dev-<sha> for ZAP / k6, staging-<sha> for RGAA): never rebuilt.
+    assert.match(frontend, /image: \$\{IMAGE_REF:\?/);
+    assert.doesNotMatch(frontend, /build:|args:|NODE_AUTH_TOKEN|\/run\/secrets/);
+    const code = compose.split('\n').filter((line) => !line.trimStart().startsWith('#')).join('\n');
+    assert.doesNotMatch(code, /NODE_AUTH_TOKEN|\bbuild-arg\b/);
+    const shell = read(script);
+    assert.match(shell, /docker build -t elearning-front:local --secret id=node_auth_token,env=NODE_AUTH_TOKEN \./);
+    assert.doesNotMatch(shell, /--build-arg|up -d --build/);
+  }
+});
+
+test('the accessibility stack seeds its own users after the shared seed, and ignores its files in the image', () => {
+  const compose = read('docker-compose-accessibility.yml');
+  assert.match(compose, /\n  seeder-a11y:\n[\s\S]*?\.\/init-accessibility\.sql:\/init-accessibility\.sql:ro/);
+  assert.match(compose.split('\n  seeder-a11y:\n')[1].split('\n  redis:\n')[0], /seeder:\n        condition: service_completed_successfully/);
+  for (const ignored of ['accessibility_test.sh', 'init-accessibility.sql', 'rgaa.yaml', 'rgaa-report', '.rgaa-ai-cache', 'cicd-repo']) {
+    assert.ok(read('.dockerignore').split(/\r?\n/).includes(ignored), `${ignored} must stay out of the image`);
+  }
 });
