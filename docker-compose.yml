@@ -112,7 +112,7 @@ services:
   core-api:
     profiles: ["legacy-stack"]
     container_name: core-api-elearning-front-developpement
-    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:1.2.0}
+    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:2.0.0}
     ports:
       - "3000:3000"
     networks:
