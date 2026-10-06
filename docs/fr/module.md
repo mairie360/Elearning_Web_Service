@@ -1,5 +1,17 @@
 # Elearning_Web_Service — Présentation du module
 
+## Identité des reçus apprenant (MAIR-350)
+
+Le reçu de démarrage confirme uniquement l’identifiant non vide demandé. Le reçu
+de complétion doit reprendre le chapitre, le contenu et l’état completed demandés,
+avec une seule entrée correspondante dans la liste de chapitres et contenus.
+Un reçu étranger, négatif ou ambigu conserve les dernières données confirmées et
+renvoie un refus au lecteur publié, sans actualisation ou écriture automatique.
+Une reprise cohérente reste explicitement possible. Les pourcentages et compteurs
+viennent du serveur, sans recalcul local ; la récupération après refus de lecture
+est GET seule. Le DTO de complétion ne contient pas d’identifiant de formation :
+cette vérification ne l’invente pas et ne prouve aucune persistance durable.
+
 ## Retour des actions d’administration confirmées (MAIR-452)
 
 Création et modification annoncent leur réussite avec le titre canonique renvoyé

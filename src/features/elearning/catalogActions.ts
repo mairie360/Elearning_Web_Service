@@ -49,8 +49,26 @@ class RatingNotConfirmedError extends Error {
   }
 }
 
+class LearnerNotConfirmedError extends Error {}
+
+function confirmsContent(
+  response: Awaited<ReturnType<typeof completeCourseContent>>,
+  chapterId: string,
+  contentId: string,
+  completed: boolean,
+) {
+  if (!chapterId.trim() || !contentId.trim() || response.chapter.id !== chapterId ||
+      response.content.id !== contentId || response.content.completed !== completed) return false;
+
+  const chapters = response.chapters.filter((chapter) => chapter.id === chapterId);
+  if (chapters.length !== 1) return false;
+  const contents = chapters[0].contents?.filter((content) => content.id === contentId) ?? [];
+  return contents.length === 1 && contents[0].completed === completed;
+}
+
 export function getErrorMessage(error: unknown) {
-  if (error instanceof BffRequestError || error instanceof RatingNotConfirmedError) return error.message;
+  if (error instanceof BffRequestError || error instanceof RatingNotConfirmedError ||
+      error instanceof LearnerNotConfirmedError) return error.message;
   return "Une erreur inattendue est survenue.";
 }
 
@@ -159,6 +177,9 @@ export function createCatalogActions(
 
     try {
       const { course } = await startCourse(courseId);
+      if (!courseId.trim() || course.id !== courseId) {
+        throw new LearnerNotConfirmedError("Le démarrage n’a pas été confirmé. Les dernières données de votre formation restent affichées.");
+      }
       // A catalogue request started before this confirmed mutation is now stale.
       catalogRevision += 1;
       view.setLoading(false);
@@ -186,6 +207,11 @@ export function createCatalogActions(
       runLearnerAction(`complete:${JSON.stringify([courseId, chapterId, contentId, completed])}`, () =>
         mutateThenReload(async () => {
           const response = await completeCourseContent(courseId, contentId, { chapterId, completed });
+          // The published receipt repeats both target identities and its final
+          // content state. A 2xx alone must not tick another learner resource.
+          if (!confirmsContent(response, chapterId, contentId, completed)) {
+            throw new LearnerNotConfirmedError("La progression n’a pas été confirmée. Les derniers contenus et états confirmés restent affichés.");
+          }
           updateConfirmedCourse(courseId, (course) => ({
             ...course,
             progress: response.progress,

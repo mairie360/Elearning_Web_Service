@@ -25,6 +25,45 @@ afterEach(() => {
 
 const operations = () => bffElearning.requests.map((request) => `${request.method} ${request.template}`);
 
+test('a foreign start receipt keeps the selected reader and unrelated catalogue course unchanged', async () => {
+  const courses = [f.course(), f.course('independent', { title: 'Formation indépendante' })];
+  await renderLoadedCatalog(f.catalogResponse(courses));
+  bffElearning.on('post', '/elearning/courses/{courseId}/start', {
+    body: { course: f.course('independent', { title: 'Remplacement étranger', progress: 100 }) },
+  });
+  await view.click('Commencer');
+  await view.waitFor(html => html.includes('Le démarrage n’a pas été confirmé'));
+  assert.deepEqual(view.props('ElearningCatalog').courses, courses);
+  assert.match(view.html, /role="dialog"/);
+  assert.match(view.text(), /Progression totale\s+0%/);
+  assert.doesNotMatch(view.text(), /Remplacement étranger/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/start']);
+});
+
+for (const scenario of ['foreign-content', 'negative-completion']) {
+  test(`the real reader does not tick content or replace its progress after ${scenario}`, async () => {
+    const course = f.course();
+    course.progress = course.details.progress = 12;
+    front.window().location.href = `https://elearning.test.example/?course=${course.id}`;
+    await renderLoadedCatalog(f.catalogResponse([course]));
+    const content = course.details.chapters[0].contents[0];
+    const response = f.contentCompleteResponse();
+    response.content = scenario === 'foreign-content'
+      ? { ...response.content, id: 'foreign' }
+      : { ...response.content, completed: false };
+    bffElearning.on('post', '/elearning/courses/{courseId}/contents/{contentId}/complete', { body: response });
+    await view.click(props => props['aria-label'] === `Marquer ${content.title} comme terminé`);
+    await view.waitFor(html => html.includes('La progression n’a pas été confirmée'));
+    assert.match(view.text(), /Progression totale\s+12%/);
+    assert.deepEqual(view.props('ElearningCatalog').courses, [course]);
+    assert.equal(view.find('ElearningCourseRating').length, 0);
+    assert.match(view.html, /role="dialog"/);
+    assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/contents/{contentId}/complete']);
+    assert.match(view.html, new RegExp(`aria-label="Marquer ${content.title} comme terminé"`));
+    assert.equal(view.hostElements(props => props['aria-label'] === `Marquer ${content.title} comme terminé`)[0].props.disabled, false);
+  });
+}
+
 for (const mode of ['create', 'update']) {
   test(`confirmed admin ${mode} announces the canonical response despite a refused GET and dismissal never writes`, async () => {
     await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));

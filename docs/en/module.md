@@ -1,5 +1,18 @@
 # Elearning_Web_Service — Module overview
 
+## Learner receipt identity (MAIR-350)
+
+A course-start receipt confirms only its requested nonblank course identifier.
+A completion receipt must repeat the requested chapter/content identifiers and
+the explicitly requested completed state, with exactly one matching chapter and
+content in its returned chapter list. Foreign, negative or ambiguous receipts
+retain every last confirmed course and return refusal to the published reader;
+they do not trigger a refresh or automatically repeat the write. An explicit
+coherent retry remains possible. Confirmed progress and counters are supplied by
+the server, never recomputed from content counts; recovery after a failed refresh
+is GET-only. The existing completion DTO does not echo a course identifier, so
+this check does not invent course correlation or prove durable persistence.
+
 ## Confirmed administration feedback (MAIR-452)
 
 Creation and editing announce success with the canonical title returned by the
