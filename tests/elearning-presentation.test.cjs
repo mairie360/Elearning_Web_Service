@@ -15,6 +15,14 @@ test('catalog presentation retains the measured prototype typography and shadows
   assert.match(css, /\.elearning-catalog-shell article > button:first-child\s*\{\s*background:\s*#eff6ff;/);
 });
 
+test('the shared sidebar retains reference target size and shadow without covering mobile close', () => {
+  assert.match(css, /\.elearning-shell aside\[aria-label="Navigation principale"\]\s*\{[^}]*position:\s*relative;[^}]*z-index:\s*20;[^}]*box-shadow:\s*8px 0 24px rgb\(12 28 48 \/ 28%\);/);
+  assert.match(css, /\.elearning-shell aside\[aria-label="Navigation principale"\] > nav button\s*\{[^}]*min-height:\s*44px;[^}]*flex-shrink:\s*0;/);
+  assert.match(css, /\.elearning-shell \[role="dialog"\]\[aria-label="Navigation mobile"\] aside\[aria-label="Navigation principale"\]\s*\{\s*z-index:\s*0;/);
+  // DOM/style guards alone do not establish mobile hit-testing or focus return;
+  // native desktop/mobile interaction evidence is required before acceptance.
+});
+
 test('the installed reader keeps the semantic chapter aside targeted by the scoped sticky header', () => {
   const html = renderToStaticMarkup(React.createElement(ElearningCourseDetailsModal, {
     open: true, title: 'Reader presentation check', description: '', chapters: [], onClose() {},

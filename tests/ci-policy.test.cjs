@@ -7,6 +7,20 @@ const { test } = require('node:test');
 const root = join(__dirname, '..');
 const read = (path) => readFileSync(join(root, path), 'utf8');
 
+test('composed CI keeps matching release pins and the real blocking required scanners', () => {
+  const workflow = read('.github/workflows/cicd.yml');
+  const reference = /uses: mairie360\/CICD\/\.github\/workflows\/frontend-cicd\.yml@(v\d+\.\d+\.\d+)/.exec(workflow);
+  const input = /cicd_version:\s*"(v\d+\.\d+\.\d+)"/.exec(workflow);
+  assert.ok(reference);
+  assert.ok(input);
+  assert.equal(reference[1], input[1]);
+  assert.match(workflow, /required_security_scan:\s*\n\s+name: CICD \/ Code Security Audit \(Semgrep\)/);
+  assert.match(workflow, /uses: \.\/cicd-repo\/actions\/semgrep/);
+  assert.match(workflow, /uses: \.\/cicd-repo\/actions\/gitleaks/);
+  assert.equal([...workflow.matchAll(/fail_on_findings:\s*"true"/g)].length, 2);
+  assert.doesNotMatch(workflow, /continue-on-error:|fail_on_findings:\s*"?false/);
+});
+
 test('third-party workflow actions use immutable commits', () => {
   const workflows = ['contracts.yml', 'auto-approve.yml'];
   const actions = workflows.flatMap((file) => [...read(`.github/workflows/${file}`)
@@ -42,8 +56,8 @@ test('npm resolution keeps the seven-day window except for the internal UI packa
 });
 
 test('CI uses Node 24 and the test toolchain supports npm release-age policy', () => {
-  assert.match(read('.github/workflows/cicd.yml'), /node_version:\s*"24"/);
-  assert.match(read('.github/workflows/contracts.yml'), /node-version:\s*'24'/);
+  assert.match(read('.github/workflows/cicd.yml'), /node_version:\s*"24\.21\.0"/);
+  assert.match(read('.github/workflows/contracts.yml'), /node-version:\s*'24\.21\.0'/);
   const version = execFileSync('npm', ['--version'], { cwd: root, encoding: 'utf8' }).trim();
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
   assert.ok(match, 'npm must report a stable version');

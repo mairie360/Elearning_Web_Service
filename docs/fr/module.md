@@ -1,5 +1,67 @@
 # Elearning_Web_Service — Présentation du module
 
+## Identité des reçus apprenant (MAIR-350)
+
+Le reçu de démarrage confirme uniquement l’identifiant non vide demandé. Le reçu
+de complétion doit reprendre le chapitre, le contenu et l’état completed demandés,
+avec une seule entrée correspondante dans la liste de chapitres et contenus.
+Un reçu étranger, négatif ou ambigu conserve les dernières données confirmées et
+renvoie un refus au lecteur publié, sans actualisation ou écriture automatique.
+Une reprise cohérente reste explicitement possible. Les pourcentages et compteurs
+viennent du serveur, sans recalcul local ; la récupération après refus de lecture
+est GET seule. Le DTO de complétion ne contient pas d’identifiant de formation :
+cette vérification ne l’invente pas et ne prouve aucune persistance durable.
+
+## Retour des actions d’administration confirmées (MAIR-452)
+
+Une édition capture l’identifiant demandé avant d’attendre PATCH. Seul un reçu
+avec cette même identité non vide remplace la formation et annonce sa réussite.
+Un reçu étranger ou blanc conserve le catalogue et les champs du vrai formulaire
+(formation, chapitres, ressources), renvoie un refus et ne déclenche aucune lecture
+ou écriture automatique. Une reprise cohérente explicite reste possible ; ses
+données canoniques restent après GET refusé et la récupération est GET seule.
+Un reçu non corrélé ne prouve pas l’absence d’écriture côté service. La création
+peut recevoir un nouvel ID canonique : la règle d’identité d’édition ne lui est
+volontairement pas appliquée.
+
+Création et modification annoncent leur réussite avec le titre canonique renvoyé
+par le POST/PATCH existant. La suppression n’annonce la réussite que si `deleted`
+est vrai et que l’identifiant reçu correspond à la formation demandée. Une attente
+ou un refus n’affiche aucun succès. Un refus ultérieur de lecture du catalogue
+conserve cette confirmation à côté de son erreur distincte ; Réessayer fait
+seulement GET. La mutation suivante efface l’ancienne réussite ; Fermer retire
+le message sans requête ni minuterie. Le retour accessible au clavier ne couvre
+pas les commandes de reprise/annulation du formulaire auteur.
+
+Le retour visible du prototype est rétabli, pas sa confirmation optimiste avant
+réponse serveur. Aucun contenu, compteur métier, opération backend, bibliothèque,
+dépendance ou environnement n’est inventé ou modifié. Téléchargements, avis écrits,
+uploads, clés et persistance déployée restent des périmètres distincts.
+
+## Présentation de la sidebar de référence (MAIR-180)
+
+La navigation partagée conserve les cibles de 44px minimum et l'ombre mesurées
+dans le prototype, sans copie locale de navigation. Dans le tiroir mobile, la
+sidebar reste sous la commande Fermer publiée ; clic, clavier et retour de focus
+doivent être vérifiés avec le catalogue, les filtres et le lecteur. Les données
+publiées, droits et actions apprenant ne changent pas. La requête détail/avis
+non publiée et la version statique du footer ancien ne sont pas réintroduites.
+Cette tranche ne valide ni les téléchargements ni la persistance déployée.
+
+## Session cookie courante (MAIR-410)
+
+Les lectures catalogue et actions apprenant/administrateur utilisent la session
+cookie courante via le proxy same-origin inchangé, sans lire ni migrer les anciens
+JWT du navigateur (MAIR-410). Les valeurs localStorage principale ou héritée ne
+peuvent plus la remplacer. Un refus réel provoque toujours la déconnexion ; seules
+les clés de jeton connues sont retirées, sans perdre les préférences sans rapport.
+Si un appel reçoit plutôt une redirection middleware, la page protégée courante
+se recharge une fois, chemin/query conservés pour Login. Une requête annulée ne
+navigue pas et une mutation refusée n'est jamais rejouée. Les erreurs400/403/503
+restent distinctes. Révocation serveur, déconnexion en GET et persistance durable
+restent des constats d'audit non résolus ; les contrôles locaux ne prouvent pas
+l'intégration ni la validation de session déployée.
+
 ## Navigation des modules actifs
 
 Les menus ordinateur et mobile ne proposent plus les modules archivés E-mails
@@ -80,10 +142,23 @@ explicite ; seul un succès confirme la modification. **Annuler la modification*
 restaure la dernière note personnelle confirmée, sans écriture. Celle-ci reste
 distincte de la moyenne renvoyée par le serveur ; le front n’incrémente pas le
 nombre de votes et ne remplace pas la distribution officielle des notes.
+Le succès HTTP seul ne confirme rien : la réponse de notation existante doit avoir
+`submitted: true`. Un acquittement négatif conserve tous les champs confirmés et
+transmet le refus au lecteur, sans GET automatique ni nouveau POST. Le brouillon
+sélectionné reste disponible pour une reprise explicite ou une annulation.
 Ce parcours n’implémente ni avis écrit attribué ni sa modification : le contrat
 publié ne fournit toujours que l’opération de notation numérique.
 
 ### Confirmation des actions apprenant (MAIR-350)
+
+Le lecteur installé `0.6.10` conserve un chapitre fourni vide sans créer de vidéo
+de remplacement, de lien, de bouton de complétion ni de pourcentage. Les détails
+ou chapitres absents affichent également un état vide honnête. Cinq régressions
+HTTP/HTML vérifient ces quatre absences et la sélection réelle d'un chapitre,
+puis sa complétion confirmée suivie d'un GET refusé : le chapitre sélectionné et
+le pourcentage renvoyé restent affichés, sans calcul local de remplacement.
+Ce contrôle ne certifie ni éligibilité au téléchargement, avis écrit, lecture
+média, rendu natif ni persistance intersession.
 
 Les callbacks de démarrage, de complétion et de note numérique transmettent leur
 résultat complet à la bibliothèque publiée `0.6.10`. Les commandes du lecteur et
@@ -131,6 +206,20 @@ désactivées le restent. En l’absence de liste, le composant partagé dérive
 choix des formations reçues comme auparavant. La réinitialisation conserve la
 recherche et le statut, sans nouvel appel réseau. Bibliothèque publiée, contrat
 BFF et environnement restent inchangés.
+
+### Retour à tous les statuts et confirmations administrateur (MAIR-458 / MAIR-452)
+
+Le sélecteur de statut propose exactement un choix neutre `all` utilisable, même
+si la liste reçue est vide, sans ce choix, avec ce choix désactivé ou dupliqué.
+Libellés, ordre et droits des statuts métier sont conservés, sans en inventer.
+Le retour reste local et conserve recherche/catégorie, y compris après un refus
+de lecture. Création/modification utilisent seulement le cours retourné ; une
+suppression exige une confirmation positive correspondante. Ces confirmations
+survivent au refus du GET ; le filtre ne restaure pas une suppression ni ne rejoue
+une écriture. Réessayer fait seulement GET et efface uniquement son erreur après
+la dernière réponse confirmée, conservant refus d'écriture et filtres indépendants.
+Les compteurs officiels attendent un nouveau GET. Téléchargements protégés, avis
+écrits, upload et clés d'accès restent des besoins distincts non fournis ici.
 
 ## Pour développer ou exploiter ce module
 

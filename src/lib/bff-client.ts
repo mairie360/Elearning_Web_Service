@@ -1,5 +1,3 @@
-import { getStoredAuthorizationHeader } from "./auth-token";
-
 type BffErrorBody = {
   message?: unknown;
   error?: {
@@ -36,22 +34,40 @@ function createRequestHeaders(init: RequestInit) {
     headers.set("Content-Type", "application/json");
   }
 
-  if (!headers.has("Authorization")) {
-    const authorizationHeader = getStoredAuthorizationHeader();
-
-    if (authorizationHeader) {
-      headers.set("Authorization", authorizationHeader);
-    }
-  }
-
   return headers;
 }
 
+const pendingDocumentNavigations = new WeakSet<Location>();
+
+function recoverDocumentNavigation() {
+  if (typeof window === "undefined") return;
+  const location = window.location;
+  if (pendingDocumentNavigations.has(location)) return;
+  pendingDocumentNavigations.add(location);
+  try {
+    // Reload the protected page, keeping its query. The unchanged middleware
+    // builds the configured Login destination; never navigate to a data route
+    // or inspect a cross-origin redirect's hidden Location/body.
+    location.assign(location.href);
+  } catch (error) {
+    pendingDocumentNavigations.delete(location);
+    throw error;
+  }
+}
+
 export async function requestBff<T>(path: string, init: RequestInit = {}) {
+  init.signal?.throwIfAborted();
   const response = await fetch(path, {
     ...init,
     headers: createRequestHeaders(init),
+    redirect: "manual",
   });
+  init.signal?.throwIfAborted();
+
+  if (response.type === "opaqueredirect") {
+    recoverDocumentNavigation();
+    throw new BffRequestError(307, "Redirection vers la connexion en cours.");
+  }
 
   if (!response.ok) {
     let body: BffErrorBody | null = null;
@@ -62,10 +78,14 @@ export async function requestBff<T>(path: string, init: RequestInit = {}) {
       // La réponse peut ne pas contenir de JSON exploitable.
     }
 
+    init.signal?.throwIfAborted();
+
     throw new BffRequestError(response.status, errorMessage(body, response.status));
   }
 
   if (response.status === 204) return undefined as T;
 
-  return (await response.json()) as T;
+  const body = (await response.json()) as T;
+  init.signal?.throwIfAborted();
+  return body;
 }

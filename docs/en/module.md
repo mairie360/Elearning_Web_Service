@@ -1,5 +1,65 @@
 # Elearning_Web_Service — Module overview
 
+## Learner receipt identity (MAIR-350)
+
+A course-start receipt confirms only its requested nonblank course identifier.
+A completion receipt must repeat the requested chapter/content identifiers and
+the explicitly requested completed state, with exactly one matching chapter and
+content in its returned chapter list. Foreign, negative or ambiguous receipts
+retain every last confirmed course and return refusal to the published reader;
+they do not trigger a refresh or automatically repeat the write. An explicit
+coherent retry remains possible. Confirmed progress and counters are supplied by
+the server, never recomputed from content counts; recovery after a failed refresh
+is GET-only. The existing completion DTO does not echo a course identifier, so
+this check does not invent course correlation or prove durable persistence.
+
+## Confirmed administration feedback (MAIR-452)
+
+An edit captures its requested course ID before awaiting PATCH. Only a receipt
+with that same nonblank identity can replace the course or announce success.
+A foreign or blank receipt retains every catalogue entry and the actual form's
+course/chapter/resource drafts, returns refusal, and starts no automatic read or
+write. A deliberate coherent retry remains possible; its confirmed canonical
+data survive a refused refresh and GET-only recovery. Uncorrelated confirmation
+does not prove that the service made no write. Creation may return a new canonical
+ID and is deliberately not subjected to an edit's identity rule.
+
+Creation and editing announce success with the canonical title returned by the
+existing POST/PATCH response. Deletion announces success only when `deleted` is
+true and the response identifies the requested course. Pending/refused writes
+never show this success. A later failed catalogue read keeps the confirmation
+beside its separate read error; Retry sends GET only. The next mutation clears
+the preceding success, while Close dismisses the message without a request or
+timer. Keyboard-accessible feedback does not cover author-form retry/cancel controls.
+
+This restores the prototype's visible return, not its optimistic confirmation
+before a server response. No data, business counters, backend operation, shared
+library, dependency or environment is invented or changed. Resource downloads,
+written reviews, uploads, keys and deployed persistence remain separate scopes.
+
+## Reference sidebar presentation (MAIR-180)
+
+The shared navigation keeps the measured prototype's 44px minimum targets and
+sidebar shadow, without a local navigation copy. In the mobile drawer, the
+sidebar is below the published close control; click, keyboard and focus-return
+checks are required alongside catalogue/filter/reader checks. Published data,
+permissions and learner actions remain unchanged. The prototype's unsupported
+detail/review request and static footer version are not reintroduced. This
+presentation slice does not validate resource downloads or deployed persistence.
+
+## Current cookie session (MAIR-410)
+
+Catalogue reads and learner/administrator actions use the current cookie session
+through the existing same-origin proxy, without reading or migrating old browser
+JWTs (MAIR-410). Stale primary or legacy localStorage values cannot override it.
+Real service refusals still log out; only known token keys are removed, preserving
+unrelated preferences. When a data call instead receives a middleware redirect,
+the current protected page reloads once with its path/query preserved for Login.
+Cancelled calls do not navigate and refused mutations are never replayed.
+400/403/503 feedback remains distinct. Server revocation, GET logout policy and
+durable persistence remain separate unresolved audit findings; integration and
+deployed session validation are not implied by local checks.
+
 ## Active-module navigation
 
 Desktop and mobile menus omit the archived E-mails and Files modules, matching
@@ -74,10 +134,23 @@ the draft available for an explicit retry; only success confirms the change.
 **Annuler la modification** restores the last confirmed own note without a write.
 The submitted own note is separate from the server's aggregate rating; the front
 does not increment vote counts or replace the official rating distribution.
+HTTP success alone is not confirmation: the existing rating response must have
+`submitted: true`. A negative acknowledgement preserves every last confirmed
+field and returns refusal to the reader, without an automatic GET or another POST.
+The selected draft stays available for an explicit retry or cancellation.
 This does not implement an attributed written review or its editing: the
 published contract still supplies only the numeric rating operation.
 
 ### Learner action confirmation (MAIR-350)
+
+The installed `0.6.10` reader keeps a supplied empty chapter visible but does not
+create a fallback video, resource link, completion button or progress percentage.
+Absent course details or chapter lists similarly show an honest unavailable/empty
+content state. Five HTTP/HTML regressions verify these four absence cases and
+actual chapter selection followed by a completion response and refused refresh:
+the reader keeps the selected chapter and the returned percentage, not a local
+calculated percentage. This verification does not establish download eligibility,
+written reviews, media playback, native layout or cross-session persistence.
 
 Start, content completion and numeric-rating callbacks forward their full result
 to the published shared UI `0.6.10`. The reader/card controls lock while a write
@@ -121,6 +194,19 @@ are retained and duplicate resets removed; disabled business categories remain
 disabled. When options are absent, the shared component derives them from received
 courses as before. Resetting preserves search/status filters and makes no additional
 network request. The published library, BFF contract and environment are unchanged.
+
+### Status reset and confirmed administration recovery (MAIR-458 / MAIR-452)
+
+The status selector always offers exactly one usable neutral `all` reset, including
+received empty, missing-reset, disabled-reset or duplicate-reset lists. Business
+labels, order and disabled flags are preserved without adding business statuses.
+Resetting stays local and retains search/category, including after a refused read.
+Create/update use only the returned server course; deletion requires matching
+positive confirmation. Confirmed changes survive a refused catalogue refresh;
+the reset never restores a confirmed deletion or resends a write. GET-only retry
+clears only its read error after a confirmed latest response, preserving independent
+write refusal and filters. Official statistics remain unchanged until a new GET.
+This does not supply protected downloads, written reviews or upload/access keys.
 
 ## Developing or operating this module
 

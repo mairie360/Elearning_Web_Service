@@ -205,7 +205,7 @@ services:
       context: .
       dockerfile: development.Dockerfile
       secrets:
-        - NODE_AUTH_TOKEN
+        - node_auth_token
     ports:
       - "5006:3000" # On map le 3000 interne sur 5006 pour éviter le conflit avec 'core'
     develop:
@@ -215,8 +215,6 @@ services:
           target: /app/src
         - action: rebuild
           path: package.json
-    secrets:
-      - NODE_AUTH_TOKEN
     environment:
       <<: *common-env
       PORT: 3000
@@ -234,5 +232,5 @@ services:
       retries: 3
         
 secrets:
-  NODE_AUTH_TOKEN:
+  node_auth_token:
     environment: NODE_AUTH_TOKEN

@@ -1,8 +1,20 @@
 # Elearning_Web_Service — Documentation technique
 
+## Périmètre des tests du lecteur — MAIR-350
+
+Le harnais HTTP/HTML collecte récursivement les éléments dans les tableaux
+enfants imbriqués (`[null, chapters.map(...)]` inclus), sans recopier les tableaux
+DTO ordinaires. Deux régressions protègent l'actionnement réel des contrôles et
+l'identité des DTO. Cinq tests consommateur couvrent les données absentes et la
+sélection réelle d'un chapitre, puis sa progression officielle conservée après
+GET refusé. Ils ne prouvent ni rendu navigateur, téléchargement, autorisation
+déployée ni persistance. Sources produit, SDK `0.4.0`, lock des dépendances et
+workflows de sécurité/publication inchangés.
+
 ## Pied de page partagé — MAIR-180
 
-Le paquet est épinglé à `@mairie360/lib-components@0.6.5`, publié par
+Le paquet est maintenant épinglé à `@mairie360/lib-components@0.6.10` et conserve
+le changement de pied de page livré initialement en `0.6.5` par
 [lib-components #388](https://github.com/mairie360/lib-components/pull/388).
 L’AppShell affiche désormais le copyright dans la sidebar sombre, hors de la
 navigation défilante. Le tiroir mobile conserve sa gestion du focus. Aucun bandeau
@@ -15,22 +27,26 @@ Le suivi de l’adoption reste dans [l’issue partagée #387](https://github.co
 
 Les actions tierces checkout, setup-node et auto-approbation Renovate utilisent
 les SHA complets de leurs commits officiels. Le workflow partagé reste en
-v3.1.1 et ne reçoit que les références CODECOV_TOKEN et N8N_WEBHOOK_SECRET qu’il
+v4.0.3 et ne reçoit que les références CODECOV_TOKEN et N8N_WEBHOOK_SECRET qu’il
 déclare ; aucune valeur de secret n’est lue ni stockée. Permissions existantes,
 règles et verdicts Semgrep inchangés.
 
-Les deux workflows CI utilisent Node 24. Les tests exigent npm >=11.10, qui
-prend en charge `min-release-age=7`, sans exclusion de paquet. Cette fenêtre de
+Les deux workflows CI épinglent Node 24.21.0. Les tests exigent npm >=11.10, qui
+prend en charge `min-release-age=7`, avec la seule exclusion interne précédemment
+autorisée pour `@mairie360/lib-components`. Cette fenêtre de
 sept jours concerne les **nouvelles résolutions de dépendances**, pas une analyse
 ou réécriture du lockfile existant utilisé par `npm ci`. Voir la [documentation npm](https://docs.npmjs.com/cli/v11/using-npm/config/#min-release-age).
 Utiliser le même outillage Node/npm pour les mises à jour et tests locaux.
 `tests/ci-policy.test.cjs` vérifie les SHA des actions, les secrets explicitement
 transmis, la fenêtre d’âge et la version npm exécutant réellement les tests.
 
-Les versions de construction/runtime Docker et leur installation verrouillée
-restent inchangées ; aucune nouvelle variable runtime, aucun nouveau secret,
-contrat API/BFF ou changement du CICD partagé. Ces vérifications ne constituent
-pas une recette d’environnement déployé.
+MAIR-436 épingle les images Docker de production/développement au même digest
+officiel Node 24.21.0 Bookworm-slim et installe le lockfile avec un secret BuildKit
+éphémère obligatoire. La fusion du workflow actualisé indépendamment sur main
+conserve cette version exacte et les deux scanners requis réellement bloquants.
+Aucun audit, variable runtime, contrat API/BFF ni source du CICD partagé n’est
+modifié par cette fusion. Ces vérifications ne constituent pas une recette
+d’environnement déployé.
 
 ## Structure applicative partagée — MAIR-180
 
@@ -170,7 +186,17 @@ Ces chemins de données sont exposés à la même origine par le proxy; les page
 
 ## Session, permissions et erreurs
 
-Le front ne joint qu’un service, BFF_Elearning, qui résout la session (auprès de BFF User) pour chaque route `/elearning/*`; l’utilisateur courant provient de ses réponses (`user`). Sur un 401, ou à la déconnexion, le front vide son stockage local et navigue vers `/logout`: le contrat publié du BFF ne propose pas de route de déconnexion (voir `BFF.md`), la session n’est donc pas révoquée côté serveur avant son expiration. Le proxy générique utilise le Bearer explicite ou, en son absence, le cookie `accessToken`. Les permissions métier restent celles du BFF et de ses sources.
+Le front ne joint qu’un service, BFF_Elearning, qui résout la session (auprès de BFF User) pour chaque route `/elearning/*`; l’utilisateur courant provient de ses réponses (`user`). Sur un 401, ou à la déconnexion, le front retire seulement les clés de JWT principale/héritée connues et navigue vers `/logout`, sans effacer les données navigateur sans rapport. Le contrat publié du BFF ne propose pas de route de déconnexion (voir `BFF.md`), la session n’est donc pas révoquée côté serveur avant son expiration. Les appels ordinaires `requestBff` ne lisent ni ne migrent les JWT localStorage (MAIR-410). Le proxy générique inchangé utilise le Bearer explicitement fourni ou, en son absence, le cookie `accessToken` courant. Ni cookie absent ni refus réel du service ne sont convertis en succès. Les permissions métier restent celles du BFF et de ses sources. La déconnexion en GET reste inchangée.
+
+`requestBff` utilise `redirect: "manual"`. Un `opaqueredirect` est traité avant
+statut/en-têtes/corps : recharger une fois le document courant par objet Location,
+jamais l'endpoint de données. Le middleware existant construit Login et le chemin/
+query public de retour. L'appel initial rejette une erreur307 typée, sans retry
+ni replay. AbortSignal est vérifié avant/après fetch et lecture du corps ; le
+vrai401 reste transmis au handler logout catalogue,400/403/503 restent typés.
+Le runtime de tests simule l'opacité seulement en mode manuel face au vrai
+middleware ; échecs CORS en mode follow et allowlist du contrat conservés.
+Aucune certification de l'authentification serveur.
 
 Le proxy générique répond 400 pour un chemin invalide, 404 pour un chemin hors contrat, 405 pour une méthode interdite et 502 si le service est injoignable ou dépasse le délai. Les réponses amont sont conservées, y compris les corps vides 204/205/304.
 
@@ -208,9 +234,9 @@ Le générateur de types est fixé à `openapi-typescript@7.10.1` dans `scripts/
 
 Le job `contracts.yml` utilise Node.js 24 et checkout/setup-node figés sur leurs commits v7. Il s’exécute sur push, pull request et lancement manuel ; il installe avec `npm ci`, contrôle les contrats et lance les tests dédiés.
 
-`cicd.yml` appelle `mairie360/CICD/.github/workflows/frontend-cicd.yml@v3.1.1`, avec `cicd_version: v3.1.1` et `node_version: "24"`. Seuls CODECOV_TOKEN et N8N_WEBHOOK_SECRET sont transmis explicitement. Les étapes réutilisables et les environnements GitHub déterminent les contrôles, publications et déploiements effectifs.
+`cicd.yml` appelle `mairie360/CICD/.github/workflows/frontend-cicd.yml@v4.0.3`, avec `cicd_version: v4.0.3` et `node_version: "24.21.0"`. Seuls CODECOV_TOKEN et N8N_WEBHOOK_SECRET sont transmis explicitement. Le statut requis historique exécute réellement Semgrep et Gitleaks en mode bloquant. Les étapes réutilisables et les environnements GitHub déterminent les contrôles, publications et déploiements effectifs.
 
-Le Dockerfile utilise par défaut `NODE_VERSION=23.10.0` et le build Next.js `standalone`; la commande de l’image est `["node", "server.js"]`. Le port de l’image et les mappings Compose peuvent différer du port local proposé plus haut.
+Le Dockerfile utilise par défaut `NODE_VERSION=24.21.0`, le digest officiel Bookworm-slim et le build Next.js `standalone` avec un runtime non-root ; la commande de l’image est `["node", "server.js"]`. L’installation verrouillée exige un secret BuildKit éphémère, pas un argument de build contenant le jeton. Le port de l’image et les mappings Compose peuvent différer du port local proposé plus haut. Cette politique vérifiée dans les sources ne certifie pas une image construite ou déployée.
 
 Avant un lancement Docker, vérifier les variables de service, les secrets de build et les réseaux dans les fichiers du dépôt. Une CI verte valide ses jobs; elle ne prouve pas la disponibilité des services métier dans un environnement distant.
 
