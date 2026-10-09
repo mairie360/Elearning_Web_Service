@@ -266,3 +266,5 @@ For a proxy error, compare the path and method with the inventory, then check th
 - [docker-compose.yml](../../docker-compose.yml)
 
 Historical supplements: [BFF.md](../../BFF.md), [BACKEND.md](../../BACKEND.md). Proposed requirements must remain distinct from implemented behavior.
+
+Historical training presentation checks mount the actual page with real React hooks, published UI 0.6.12, frontend middleware/routes and contract-gated E-learning 0.4.0 catalog fixtures. They check typography, catalog/card preparation, sidebar/drawer and the published chapter reader opened by the existing course deep link and closed through its control. Parsed policies retain the scoped mobile reader header and catalog breakpoints. JSDOM leaves the card shadow var unresolved; its binding and root-token values are checked separately from native painted-shadow evidence. These tests do not start courses or mutate progress. Development-only JSDOM 30.1.1 does not compile Tailwind, evaluate media queries, measure scrolling/modal geometry or certify deployed auth, persistence or RGAA. Keep native recipes and functional start/completion tests separate.
