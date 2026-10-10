@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const composePolicy = require('./support/compose-policy.cjs');
 const { describe, test } = require('node:test');
 const { root } = require('./support/load-typescript.cjs');
 const { loadOrvalContract, resolveOrvalPackage } = require('./support/orval-contract.ts');
@@ -62,10 +63,11 @@ describe('single published BFF contract', () => {
     const files = fs.readdirSync(root).filter((file) => /^docker-compose.*\.ya?ml$/.test(file));
     assert.ok(files.length > 0);
     for (const file of files) {
-      const tags = [...read(file).matchAll(/ghcr\.io\/mairie360\/bff-elearning:([^\s}"']+)/g)].map(([, tag]) => tag);
-      assert.ok(tags.length > 0, `${file} : image bff-elearning absente`);
+      const images = composePolicy.bffImages(composePolicy.compose(file));
+      const tags = images.filter(image => image.startsWith('ghcr.io/mairie360/bff-elearning:')).map(image => image.slice(image.lastIndexOf(':') + 1));
+      assert.ok(tags.length > 0, `${file}: missing bff-elearning image`);
       assert.deepEqual([...new Set(tags)], [version], file);
-      assert.doesNotMatch(read(file), /ghcr\.io\/mairie360\/bff-(?!elearning:)[\w-]+:(?!\d+\.\d+\.\d+)/, `${file} : image BFF non publiée`);
+      assert.ok(images.filter(image => !image.startsWith('ghcr.io/mairie360/bff-elearning:')).every(image => /^\d+\.\d+\.\d+$/.test(image.slice(image.lastIndexOf(':') + 1))), `${file}: other BFF images require stable release tags`);
     }
   });
 
