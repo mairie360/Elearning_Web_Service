@@ -1,4 +1,4 @@
-import { logout } from "../../lib/auth-session";
+import { navigateToLogin } from "../../lib/auth-session";
 import { BffRequestError } from "../../lib/bff-client";
 import {
   completeCourseContent,
@@ -97,7 +97,7 @@ export function replaceCatalogCourse(
 
 export function createCatalogActions(
   view: CatalogView,
-  onUnauthorized: () => Promise<void> = logout,
+  onUnauthorized: () => Promise<void> = async () => { navigateToLogin(); },
 ) {
   let catalogRevision = 0;
   let pendingLearner: { key: string; result: Promise<boolean> } | null = null;

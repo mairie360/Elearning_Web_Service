@@ -62,36 +62,34 @@ Présenter le catalogue de formations et permettre aux agents de suivre leur app
 
 ## Current cookie session / Session cookie courante (MAIR-410)
 
-Ordinary catalogue, learner and administrator requests no longer read, migrate
-or inject JWTs from browser localStorage. The unchanged same-origin proxy uses
-the current `accessToken` cookie; an explicitly supplied Authorization header
-remains supported. A missing cookie or a service refusal is not a successful
-session. Logout still removes only known token keys, preserving unrelated data.
-Contract-backed regressions cover these paths. This frontend slice does not fix
-server revocation, GET logout policy or persistence,
-and does not complete the mixed audit ticket before genuine CI and integration.
+Business requests use same-origin `/api/bff` and the published shared session
+proxy 0.7.1. Browser bearer headers and legacy localStorage tokens cannot override
+the shared cookie. A business 401 may renew once through the existing Login
+owner and retry once; a persistent refusal returns to validated Login without
+logout. Cancelled requests cannot navigate. Documents request owner recovery
+with their canonical path/query, without changing cookies on a GET.
 
-Les requêtes ordinaires catalogue, apprenant et administrateur ne lisent,
-ne migrent et n'injectent plus les anciens JWT du localStorage. Le proxy inchangé
-utilise le cookie `accessToken` courant ; un Authorization explicitement fourni
-reste accepté. Une session absente ou refusée n'est pas simulée comme réussie.
-La déconnexion retire seulement les clés d'authentification connues. Cette
-tranche frontend ne corrige ni révocation serveur, ni déconnexion en GET, ni
-persistance. L'audit global reste ouvert.
+Explicit logout uses same-origin POST and requires a confirmed revocation
+receipt. An unconfirmed logout keeps the page, its draft and an explicit return
+choice. Only confirmed logout removes known legacy auth keys; unrelated browser
+data remains. A trusted optional HTTPS realm logout URL finishes SSO handoff.
+These frontend changes do not certify deployed User/Core/IdP authentication or
+Elearning persistence. The historical SDK 0.4.0 remains unchanged.
 
-Expired data-fetch redirects are captured in manual mode. The client reloads
-the current protected document once, preserving its path/query so the existing
-middleware chooses Login and its return destination. It never reads opaque
-redirect headers/body or replays a refused mutation. Cancelled requests cannot
-trigger recovery; real service401 retains the existing logout flow, while
-400/403/503 remain separate typed refusals. No middleware/proxy/BFF change.
+Les opérations métier passent par `/api/bff` avec le proxy partagé publié 0.7.1.
+Le bearer navigateur et les anciens JWT du localStorage ne remplacent pas le
+cookie. Un 401 peut effectuer une seule reprise auprès de Login et une seule
+nouvelle tentative ; un refus persistant ramène à la connexion sans logout.
+Les documents conservent chemin/query pour la reprise du propriétaire, sans
+mutation de cookie en GET ; une requête annulée ne provoque pas de navigation.
 
-Une redirection pendant un fetch expiré est interceptée en mode manuel. Le
-client recharge une fois la page protégée courante, chemin/query conservés ;
-le middleware existant choisit Login et la destination de retour. Aucun accès
-aux en-têtes/corps opaques ni replay d'écriture refusée. Une requête annulée
-ne déclenche pas de navigation ; le vrai401 conserve le logout existant et les
-400/403/503 restent distincts. Middleware/proxy/BFF inchangés.
+La déconnexion explicite est un POST. Sans reçu confirmant la révocation, la
+page et ses commandes restent disponibles, avec un retour explicite à Login.
+Les anciennes clés de session sont retirées seulement après confirmation ;
+les autres données locales sont conservées. L’URL SSO HTTPS optionnelle du
+propriétaire fait l’objet d’une validation avant navigation. Aucune validation
+réelle User/Core/IdP ou de persistance n’est déduite des mocks locaux. Le SDK
+historique 0.4.0 reste inchangé et l’audit global reste ouvert.
 
 ## Documentation
 

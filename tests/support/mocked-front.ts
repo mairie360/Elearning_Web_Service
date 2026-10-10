@@ -3,7 +3,8 @@ import path from 'node:path';
 import { installWindow, removeWindow, type FakeWindow } from './browser';
 import { ContractMockServer, type MockReply } from './contract-mock-server';
 import { accessToken } from './elearning-fixtures';
-import { FrontRuntime } from './front-runtime';
+import { setBrowserFrontUrls } from '../../src/lib/front-urls';
+import { FrontRuntime, FRONT_ORIGIN } from './front-runtime';
 import { OpenApiContract } from './openapi-contract';
 import { loadOrvalContract } from './orval-contract';
 
@@ -57,11 +58,14 @@ export function useMockedFront({ before, after, beforeEach, afterEach }: NodeTes
   beforeEach(() => {
     bffElearning.reset();
     runtime.reset();
+    runtime.owner = undefined;
     offline.length = 0;
     // Relue à chaque requête par src/lib/bff-proxy.ts.
     process.env.BFF_ELEARNING_BASE_URL = bffElearning.url;
     runtime.accessToken = accessToken();
+    process.env.ELEARNING_FRONT_URL = FRONT_ORIGIN;
     fakeWindow = installWindow();
+    setBrowserFrontUrls({ ELEARNING_FRONT_URL: FRONT_ORIGIN, LOGIN_FRONT_URL: 'https://login.mairie.test/' });
   });
   afterEach(() => {
     bffElearning.requests.forEach((request) => elearningOperations.add(`${request.method} ${request.template}`));

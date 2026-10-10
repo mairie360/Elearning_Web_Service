@@ -9,7 +9,6 @@ import { readFrontUrlsFromEnv } from "./lib/front-urls";
 import { settingsProfileUrl } from "./lib/settings-profile";
 
 const ACCESS_TOKEN_COOKIE = "accessToken";
-const LOGOUT_PATH = "/logout";
 
 type JwtPayload = {
   exp?: unknown;
@@ -18,8 +17,8 @@ type JwtPayload = {
 function isExpiredJwt(token: string) {
   const segments = token.split(".");
 
-  if (segments.length !== 3) {
-    return false;
+  if (segments.length !== 3 || segments.some(segment => !segment)) {
+    return true;
   }
 
   try {
@@ -30,7 +29,7 @@ function isExpiredJwt(token: string) {
     const payload = JSON.parse(atob(base64Payload)) as JwtPayload;
 
     return (
-      typeof payload.exp === "number" &&
+      typeof payload.exp !== "number" || !Number.isFinite(payload.exp) ||
       payload.exp * 1000 <= Date.now()
     );
   } catch {
@@ -38,20 +37,21 @@ function isExpiredJwt(token: string) {
   }
 }
 
-function redirectToLogin(request: NextRequest, includeReturn = true) {
+function redirectToLogin(request: NextRequest) {
   const destination = parseFrontUrl(process.env.LOGIN_FRONT_URL);
-  const publicFrontUrl = readFrontUrlsFromEnv().ELEARNING_FRONT_URL;
-  if (destination && includeReturn && publicFrontUrl) {
+  const publicFrontUrl = parseFrontUrl(readFrontUrlsFromEnv().ELEARNING_FRONT_URL)?.href;
+  if (destination && publicFrontUrl) {
     try {
       const requestedPage = new URL(publicFrontUrl);
       requestedPage.pathname = request.nextUrl.pathname;
       requestedPage.search = request.nextUrl.search;
       destination.searchParams.set("redirect", requestedPage.href);
+      destination.searchParams.set("resumeSession", "1");
     } catch {
       // A missing or invalid public URL leaves Login's default destination in place.
     }
   }
-  const response = destination ? NextResponse.redirect(destination) : new NextResponse(
+  const response = destination ? NextResponse.redirect(destination, ['GET', 'HEAD'].includes(request.method) ? 307 : 303) : new NextResponse(
     "Connexion temporairement indisponible. Veuillez contacter votre administrateur.",
     {
       status: 503,
@@ -61,27 +61,13 @@ function redirectToLogin(request: NextRequest, includeReturn = true) {
       },
     },
   );
-  const cookieDomain = process.env.COOKIE_DOMAIN?.trim();
-
-  response.cookies.set({
-    name: ACCESS_TOKEN_COOKIE,
-    value: "",
-    path: "/",
-    expires: new Date(0),
-    maxAge: 0,
-    ...(cookieDomain ? { domain: cookieDomain } : {}),
-  });
+  response.headers.set('Cache-Control', 'no-store');
 
   return response;
 }
 
 export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-
-  // Déconnexion (src/lib/auth-session.ts) : le contrat BFF_Elearning publié n'expose pas de route de logout.
-  if (request.nextUrl.pathname === LOGOUT_PATH) {
-    return redirectToLogin(request, false);
-  }
 
   if (!accessToken || isExpiredJwt(accessToken)) {
     return redirectToLogin(request);

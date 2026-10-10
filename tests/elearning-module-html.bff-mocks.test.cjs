@@ -202,7 +202,7 @@ test('the first pass renders the loading state, the next one the catalogue of GE
   const html = await view.waitFor((current) => !current.includes('role="status"'));
 
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
-  assert.deepEqual(runtime.frontCalls.map((call) => `${call.method} ${call.pathname} ${call.status}`), ['GET /elearning/catalog 200']);
+  assert.deepEqual(runtime.frontCalls.map((call) => `${call.method} ${call.pathname} ${call.status}`), ['GET /api/bff/elearning/catalog 200']);
   assert.doesNotMatch(html, /role="alert"/);
   assert.match(view.text(), /RGPD et collectivités/);
   assert.match(view.text(), /Protéger les données personnelles des administrés\./);
@@ -694,7 +694,7 @@ test('read retry keeps its failure and disabled pending control until the catalo
   bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse() });
   global.fetch = async (...args) => {
     const response = await originalFetch(...args);
-    if (args[0] === '/elearning/catalog') { received(); await held; }
+    if (args[0] === '/api/bff/elearning/catalog') { received(); await held; }
     return response;
   };
   try {
@@ -784,13 +784,14 @@ test('composed status reset never restores a confirmed deletion after a failed r
   assert.deepEqual(operations(), ['GET /elearning/catalog', 'DELETE /elearning/admin/courses/{courseId}', 'GET /elearning/catalog']);
 });
 
-test('a session refused by the BFF leaves the page through the logout route', async () => {
+test('a session refused by the BFF returns to canonical Login without invoking logout', async () => {
   bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
   view = mount(React.createElement(Home));
 
   await view.waitFor(() => front.window().location.assigned.length === 1);
 
-  assert.deepEqual(front.window().location.assigned, ['/logout']);
+  assert.equal(front.window().location.assigned.length, 1);
+  assert.equal(new URL(front.window().location.assigned[0]).searchParams.get('redirect'), front.window().location.href);
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
 });
 

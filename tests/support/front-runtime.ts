@@ -60,6 +60,8 @@ export class FrontRuntime {
   readonly violations: string[] = [];
   /** Cookie `accessToken` détenu par le navigateur (posé par Login en production). */
   accessToken?: string;
+  refreshToken?: string;
+  owner?: { origin: string; calls: Array<{method: string; path: string}>; handle: (request: NextRequest) => Promise<Response> | Response };
   private readonly routes = discoverRoutes();
   private originalFetch?: typeof fetch;
 
@@ -84,6 +86,7 @@ export class FrontRuntime {
     this.upstreamCalls.length = 0;
     this.violations.length = 0;
     this.accessToken = undefined;
+    this.refreshToken = undefined;
   }
 
   /** Navigation de page (window.location.assign) : seul le middleware s'applique, les pages ne sont pas rendues. */
@@ -105,6 +108,10 @@ export class FrontRuntime {
       if (url.origin !== FRONT_ORIGIN) return this.refuse(`navigateur : ${method} ${url.href} ne vise pas l'origine du front`);
       return this.dispatch(method, url, init);
     }
+    if (this.owner && url.origin === this.owner.origin) {
+      this.owner.calls.push({ method, path: url.pathname });
+      return this.owner.handle(new NextRequest(url, { ...init, signal: init.signal ?? undefined }));
+    }
     if (!this.upstreams().includes(url.origin)) return this.refuse(`serveur (${scope.route}) : ${method} ${url.href} ne vise aucun service simulé`);
     this.upstreamCalls.push({ method, url, route: scope.route });
     return this.originalFetch!(input, init);
@@ -119,7 +126,10 @@ export class FrontRuntime {
     const call: FrontCall = { method, pathname: url.pathname, search: url.search };
     this.frontCalls.push(call);
     const headers = new Headers(init.headers);
-    if (this.accessToken) headers.set('cookie', `accessToken=${this.accessToken}`);
+    if (!headers.has('origin')) headers.set('origin', FRONT_ORIGIN);
+    if (!headers.has('sec-fetch-site')) headers.set('sec-fetch-site', 'same-origin');
+    const cookies = [this.accessToken ? `accessToken=${this.accessToken}` : '', this.refreshToken ? `refreshToken=${this.refreshToken}` : ''].filter(Boolean);
+    if (cookies.length) headers.set('cookie', cookies.join('; '));
     let request = new NextRequest(url, { ...init, method, headers } as ConstructorParameters<typeof NextRequest>[1]);
 
     if (middlewareApplies(url.pathname)) {
@@ -167,6 +177,11 @@ export class FrontRuntime {
       }
       const response = await serverScope.run({ route: relative }, () => handler(request, { params: Promise.resolve(params) }));
       call.status = response.status;
+      for (const cookie of response.headers.getSetCookie()) {
+        const [name,value] = cookie.split(';')[0].split('=');
+        if (name === 'accessToken') this.accessToken = /Max-Age=0/i.test(cookie) ? undefined : decodeURIComponent(value);
+        if (name === 'refreshToken') this.refreshToken = /Max-Age=0/i.test(cookie) ? undefined : decodeURIComponent(value);
+      }
       return response;
     }
     call.status = 404;
