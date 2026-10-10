@@ -101,28 +101,26 @@ test('administrator creation and its refresh use the cookie rather than a legacy
   assert.equal(front.window().localStorage.getItem(primaryKey), null);
 });
 
-test('an explicitly supplied Authorization header remains unchanged', async () => {
+test('an explicitly supplied browser Authorization cannot override the shared cookie', async () => {
   front.window().localStorage.setItem(primaryKey, 'stale-primary-token');
   catalogue();
   await requestBff('/elearning/catalog', { headers: { Authorization: 'Bearer explicit-caller-token' } });
-  assert.equal(bffElearning.requests[0].headers.authorization, 'Bearer explicit-caller-token');
+  assert.equal(bffElearning.requests[0].headers.authorization, `Bearer ${runtime.accessToken}`);
 });
 
-test('stored JWTs cannot replace a missing cookie or bypass the existing middleware gate', async () => {
-  runtime.accessToken = undefined;
-  front.window().localStorage.setItem(primaryKey, 'stale-primary-token');
-  front.window().localStorage.setItem(legacyKey, 'stale-legacy-token');
-  let reads = 0;
-  front.window().localStorage.getItem = () => { reads += 1; return 'stale-primary-token'; };
-  await assert.rejects(requestBff('/elearning/catalog'), /Redirection vers la connexion/);
-  assert.equal(reads, 0);
-  assert.equal(runtime.frontCalls[0].status, 307);
-  assert.equal(bffElearning.requests.length, 0);
-  assert.deepEqual(front.window().location.assigned, [front.window().location.href]);
-  assert.equal(runtime.upstreamCalls.length, 0);
+test('stored JWTs cannot replace a missing cookie on an API request', async () => {
+ runtime.accessToken=undefined;
+ front.window().localStorage.setItem(primaryKey,'stale-primary-token');front.window().localStorage.setItem(legacyKey,'stale-legacy-token');
+ let reads=0;front.window().localStorage.getItem=()=>{reads+=1;return 'stale-primary-token';};
+ bffElearning.on('get','/elearning/catalog',errorReply(401,'UNAUTHORIZED','Session refusée.'));
+ await assert.rejects(requestBff('/elearning/catalog'));
+ assert.equal(reads,0);assert.equal(runtime.frontCalls[0].status,401);assert.equal(bffElearning.requests.length,1);
+ assert.equal(bffElearning.requests[0].headers.authorization,undefined);
+ assert.equal(front.window().location.assigned.length,1);
+ assert.equal(new URL(front.window().location.assigned[0]).searchParams.get('redirect'),front.window().location.href);
 });
 
-test('a real cookie-session refusal still logs out and removes only known stored tokens', async () => {
+test('a real cookie-session refusal preserves browser data and returns without logout', async () => {
   const storage = front.window().localStorage;
   storage.setItem(primaryKey, 'stale-primary-token');
   storage.setItem(legacyKey, 'stale-legacy-token');
@@ -131,9 +129,10 @@ test('a real cookie-session refusal still logs out and removes only known stored
   const controller = actions();
   await controller.actions.loadCatalog();
   assert.equal(bffElearning.requests[0].headers.authorization, `Bearer ${runtime.accessToken}`);
-  assert.deepEqual(front.window().location.assigned, ['/logout']);
-  assert.equal(storage.getItem(primaryKey), null);
-  assert.equal(storage.getItem(legacyKey), null);
+  assert.equal(front.window().location.assigned.length,1);
+  assert.equal(new URL(front.window().location.assigned[0]).searchParams.get('redirect'),front.window().location.href);
+  assert.equal(storage.getItem(primaryKey), 'stale-primary-token');
+  assert.equal(storage.getItem(legacyKey), 'stale-legacy-token');
   assert.equal(storage.getItem('unrelated.preference'), 'keep');
   assert.equal(controller.state.response, null);
   assert.equal(controller.state.error, null);

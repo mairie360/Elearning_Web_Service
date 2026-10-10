@@ -16,18 +16,22 @@ export type FakeWindow = {
     assigned: string[];
     href: string;
     readonly search: string;
+    readonly origin: string;
+    readonly pathname: string;
   };
   history: { state: unknown; replaceState: (state: unknown, unused: string, url: string) => void };
 };
 
 export function installWindow(): FakeWindow {
-  let currentUrl = new URL('https://elearning.test.example/');
+  let currentUrl = new URL('http://localhost:5006/');
   const location = {
     assigned: [] as string[],
     assign(url: string) { location.assigned.push(url); },
     get href() { return currentUrl.href; },
     set href(url: string) { currentUrl = new URL(url, currentUrl); },
     get search() { return currentUrl.search; },
+    get origin() { return currentUrl.origin; },
+    get pathname() { return currentUrl.pathname; },
   };
   const history = {
     state: null as unknown,

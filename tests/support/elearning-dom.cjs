@@ -3,11 +3,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM, VirtualConsole } = require('jsdom');
 const { root: ROOT } = require('./load-typescript.cjs');
-const { FrontRuntime } = require('./front-runtime.ts');
+const { FrontRuntime, FRONT_ORIGIN } = require('./front-runtime.ts');
 const { ContractMockServer } = require('./contract-mock-server.ts');
 const { loadOrvalContract } = require('./orval-contract.ts');
 const fixture = require('./elearning-fixtures.ts');
-const BFF_URL_VARIABLES = ['BFF_ELEARNING_BASE_URL', 'ELEARNING_BFF_URL', 'NEXT_PUBLIC_BFF_ELEARNING_BASE_URL'];
+const BFF_URL_VARIABLES = ['ELEARNING_FRONT_URL', 'BFF_ELEARNING_BASE_URL', 'ELEARNING_BFF_URL', 'NEXT_PUBLIC_BFF_ELEARNING_BASE_URL'];
 
 /** Actual historical training page/hooks, published components and contract-gated HTTP catalog. */
 async function elearningDom(t, { reader = false } = {}) {
@@ -51,7 +51,7 @@ async function elearningDom(t, { reader = false } = {}) {
   dom.window.ResizeObserver = global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
   const style = dom.window.document.createElement('style');
   style.textContent = fs.readFileSync(path.join(ROOT, 'src/app/globals.css'), 'utf8'); dom.window.document.head.append(style);
-  await bff.start(); process.env.BFF_ELEARNING_BASE_URL = bff.url;
+  await bff.start(); process.env.BFF_ELEARNING_BASE_URL = bff.url; process.env.ELEARNING_FRONT_URL = FRONT_ORIGIN;
   front = new FrontRuntime(() => [bff.url]); front.install(); front.accessToken = fixture.accessToken();
   bff.on('get', '/elearning/catalog', { body: fixture.catalogResponse([fixture.course()], fixture.currentUser({ isAdmin: true })) });
   ({ setBrowserFrontUrls } = require('../../src/lib/front-urls.ts'));

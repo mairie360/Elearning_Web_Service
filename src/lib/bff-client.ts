@@ -1,3 +1,5 @@
+import { navigateToLogin } from './auth-session';
+
 type BffErrorBody = {
   message?: unknown;
   error?: {
@@ -25,6 +27,7 @@ export class BffRequestError extends Error {
 }
 function createRequestHeaders(init: RequestInit) {
   const headers = new Headers(init.headers);
+  headers.delete("Authorization");
 
   if (!headers.has("Accept")) {
     headers.set("Accept", "application/json");
@@ -37,35 +40,18 @@ function createRequestHeaders(init: RequestInit) {
   return headers;
 }
 
-const pendingDocumentNavigations = new WeakSet<Location>();
-
-function recoverDocumentNavigation() {
-  if (typeof window === "undefined") return;
-  const location = window.location;
-  if (pendingDocumentNavigations.has(location)) return;
-  pendingDocumentNavigations.add(location);
-  try {
-    // Reload the protected page, keeping its query. The unchanged middleware
-    // builds the configured Login destination; never navigate to a data route
-    // or inspect a cross-origin redirect's hidden Location/body.
-    location.assign(location.href);
-  } catch (error) {
-    pendingDocumentNavigations.delete(location);
-    throw error;
-  }
-}
-
 export async function requestBff<T>(path: string, init: RequestInit = {}) {
   init.signal?.throwIfAborted();
-  const response = await fetch(path, {
+  const response = await fetch("/api/bff" + path, {
     ...init,
     headers: createRequestHeaders(init),
     redirect: "manual",
+    credentials: "same-origin", cache: "no-store",
   });
   init.signal?.throwIfAborted();
 
   if (response.type === "opaqueredirect") {
-    recoverDocumentNavigation();
+    navigateToLogin();
     throw new BffRequestError(307, "Redirection vers la connexion en cours.");
   }
 
@@ -80,6 +66,7 @@ export async function requestBff<T>(path: string, init: RequestInit = {}) {
 
     init.signal?.throwIfAborted();
 
+    if (response.status === 401) navigateToLogin();
     throw new BffRequestError(response.status, errorMessage(body, response.status));
   }
 

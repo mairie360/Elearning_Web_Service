@@ -5,7 +5,7 @@ const { test } = require('node:test');
 const ts = require('typescript');
 const policy = require('./support/source-policy.cjs');
 
-// Garde-fou statique : le front ne joint qu'un service, son BFF (BFF_Elearning), et uniquement via son contrat.
+// Business requests use the published Elearning contract; auth operations delegate to the existing Login owner.
 // - navigateur : src/lib/elearning-api.ts (opérations du contrat) -> requestBff -> fetch same-origin ;
 // - serveur : src/lib/bff-proxy.ts (allowlist contracts/openapi.json) vers la seule URL configuredBffUrl().
 // tests/elearning.bff-mocks.test.cjs vérifie ensuite ces chemins à l'exécution contre le BFF simulé.
@@ -13,7 +13,7 @@ const policy = require('./support/source-policy.cjs');
 const root = path.join(__dirname, '..');
 const FETCH_ALLOWED = {
   'src/lib/bff-client.ts': 'fetch same-origin des opérations de elearning-api.ts',
-  'src/lib/bff-proxy.ts': 'proxy serveur vers BFF_Elearning',
+  'src/lib/auth-session.ts': 'POST same-origin delegated to Login owner',
 };
 const FORBIDDEN_GLOBALS = new Set(['XMLHttpRequest', 'WebSocket', 'EventSource', 'sendBeacon', 'axios']);
 const FORBIDDEN_MODULES = /^(node:)?(http|https|net|tls|dgram)$|^(axios|ky|got|node-fetch|undici|swr)$/;
@@ -66,7 +66,9 @@ test('fetch is only called by the contract-bound modules', () => {
 test('the browser-side fetch in bff-client.ts only receives the path built by elearning-api.ts', () => {
   const [call, ...others] = findings.fetch.filter(({ file }) => file === 'src/lib/bff-client.ts');
   assert.equal(others.length, 0);
-  assert.ok(policy.parameterReference(call.argument));
+  assert.ok(ts.isBinaryExpression(call.argument));
+  assert.equal(call.argument.left.text, '/api/bff');
+  assert.ok(policy.parameterReference(call.argument.right));
   assert.deepEqual(findings.requestBff.map(({ file }) => file), ['src/lib/elearning-api.ts']);
   const [request] = findings.requestBff;
   assert.ok(ts.isCallExpression(request.argument) && policy.callName(request.argument.expression) === 'contractUrl');
@@ -76,13 +78,18 @@ test('the browser-side fetch in bff-client.ts only receives the path built by el
 test('server-side forwarding only targets the configured BFF_Elearning URL, gated by the contract', () => {
   const proxyAst = policy.parse('src/lib/bff-proxy.ts');
   assert.ok(policy.imports(proxyAst).includes('../../contracts/openapi.json'));
-  const [call, ...others] = findings.fetch.filter(({ file }) => file === 'src/lib/bff-proxy.ts');
-  assert.equal(others.length, 0);
-  assert.ok(ts.isIdentifier(call.argument) && call.argument.text === 'target');
+  assert.deepEqual(findings.fetch.filter(({ file }) => file === 'src/lib/bff-proxy.ts'), []);
+  assert.ok(policy.imports(proxyAst).includes('@mairie360/lib-components/next'));
+  assert.equal(policy.calls(proxyAst, 'proxyPublishedBffRequest').length, 1);
   assert.deepEqual(findings.forwardToBff.map(({ file }) => file), ['src/lib/bff-proxy.ts']);
   assert.ok(findings.forwardToBff.every(({ baseUrl }) => policy.configuredUrl(baseUrl)));
-  assert.deepEqual(policy.envNames(proxyAst), ['BFF_ELEARNING_BASE_URL', 'ELEARNING_BFF_URL', 'NEXT_PUBLIC_BFF_ELEARNING_BASE_URL']);
+  assert.deepEqual([...new Set(policy.envNames(proxyAst))].sort(), ['LOGIN_FRONT_URL', 'ELEARNING_FRONT_URL', 'BFF_ELEARNING_BASE_URL', 'ELEARNING_BFF_URL', 'NEXT_PUBLIC_BFF_ELEARNING_BASE_URL'].sort());
   const catchAll = policy.parse('src/app/[...path]/route.ts');
   assert.ok(policy.imports(catchAll).includes('@/lib/bff-proxy'));
   assert.equal(policy.calls(catchAll, 'forwardToBff').length, 0);
+});
+
+test('explicit logout has a single same-origin POST and no browser bearer', () => {
+ const calls=findings.fetch.filter(({file})=>file==='src/lib/auth-session.ts');
+ assert.equal(calls.length,1);assert.equal(calls[0].argument.text,'/api/auth/logout');
 });

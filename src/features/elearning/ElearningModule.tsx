@@ -5,8 +5,8 @@ import {
   ElearningCatalog,
 } from "@mairie360/lib-components";
 import type { ComponentProps } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { logout } from "@/lib/auth-session";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { logout, navigateToLogin } from "@/lib/auth-session";
 import type { ElearningCatalogResponse } from "@/lib/elearning-api";
 import { courseIdFromSearch, urlWithoutCourse } from "@/lib/course-query";
 import { parseFrontUrl } from "@/lib/front-url";
@@ -29,6 +29,16 @@ export function ElearningModule() {
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [mutationSuccess, setMutationSuccess] = useState<string | null>(null);
   const [requestedCourseId, setRequestedCourseId] = useState<string | null>(null);
+
+  const [logoutError, setLogoutError] = useState("");
+  const logoutPending = useRef(false);
+  const requestLogout = async () => {
+    if (logoutPending.current) return;
+    logoutPending.current = true;
+    try { await logout(); }
+    catch (error) { setLogoutError(error instanceof Error ? error.message : "La déconnexion reste à vérifier."); }
+    finally { logoutPending.current = false; }
+  };
 
   const actions = useMemo(
     () =>
@@ -100,7 +110,7 @@ export function ElearningModule() {
       activeItem="training"
       isAdmin={user?.isAdmin ?? false}
       user={user ?? { name: "" }}
-      onLogout={() => void logout()}
+      onLogout={() => void requestLogout()}
       hrefs={hrefs}
       footerProps={
         footer ? {
@@ -112,6 +122,10 @@ export function ElearningModule() {
       }
       className="elearning-shell"
     >
+      {logoutError && <section role="alert" className="mx-auto my-4 w-full max-w-[1130px] space-y-2 rounded border border-red-200 bg-white p-4 text-red-700">
+        <p>{logoutError}</p>
+        <button type="button" className="rounded border px-4 py-2 text-sm font-medium" onClick={() => navigateToLogin({ explicit: true })}>Retour à la connexion</button>
+      </section>}
       {loading && !catalog && (
         <div
           className="mx-auto my-10 max-w-[1130px] rounded-lg border border-[#d8d2ca] bg-white p-8 text-center text-sm text-[#5f6470]"

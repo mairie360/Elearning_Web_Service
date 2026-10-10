@@ -22,7 +22,7 @@ test('missing or invalid Login configuration returns an uncached unavailable sta
     assert.equal(response.headers.get('location'), null);
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.match(response.headers.get('content-type'), /text\/plain/);
-    assert.match(response.headers.get('set-cookie'), /accessToken=;/);
+    assert.equal(response.headers.get('set-cookie'), null);
     assert.match(await response.text(), /Connexion temporairement indisponible/);
   }
 });
@@ -57,15 +57,9 @@ test('an unauthenticated visit returns to the public Elearning URL, not the ingr
   assert.doesNotMatch(login.href, /internal:3000/);
 });
 
-test('logout never redirects back to logout after signing in', () => {
-  process.env.LOGIN_FRONT_URL = 'https://login.mairie.test/';
-  process.env.ELEARNING_FRONT_URL = 'https://elearning.mairie.test/';
-
-  const response = middleware(new NextRequest('http://internal:3000/logout'));
-  const login = new URL(response.headers.get('location'));
-
-  assert.equal(response.status, 307);
-  assert.equal(login.searchParams.has('redirect'), false);
+test('an authenticated GET logout has no cookie or navigation side effects', () => {
+  const response = middleware(new NextRequest('http://internal:3000/logout', { headers: { cookie: validCookie } }));
+  assert.equal(response.status, 200); assert.equal(response.headers.get('set-cookie'), null); assert.equal(response.headers.get('location'), null);
 });
 
 test('authenticated legacy profile bookmarks redirect to Settings', () => {

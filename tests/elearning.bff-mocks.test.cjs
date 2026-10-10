@@ -7,7 +7,7 @@ const { errorReply, useMockedFront } = require('./support/mocked-front.ts');
 const { createCatalogActions, replaceCatalogCourse, toContractCourse } = require('../src/features/elearning/catalogActions.ts');
 const { loadProfile } = require('../src/features/elearning/profileActions.ts');
 const { contractUrl } = require('../src/lib/elearning-api.ts');
-const { LOGOUT_PATH, logout } = require('../src/lib/auth-session.ts');
+const { logout } = require('../src/lib/auth-session.ts');
 const { clearStoredAuthJwtToken, formatBearerToken, getStoredAuthJwtToken, storeAuthJwtToken } = require('../src/lib/auth-token.ts');
 
 // Les actions du catalogue et les anciens helpers de profil sont
@@ -17,6 +17,8 @@ const { clearStoredAuthJwtToken, formatBearerToken, getStoredAuthJwtToken, store
 
 const front = useMockedFront({ before, after, beforeEach, afterEach });
 const { bffElearning, runtime } = front;
+const loginReturn = () => { const url = new URL('https://login.mairie.test/'); url.searchParams.set('redirect', front.window().location.href); return url.href; };
+const confirmedOwner = () => { runtime.owner = { origin: 'https://login.mairie.test', calls: [], handle: async () => Response.json({ message: 'Session revoked', session_revoked: true }) }; };
 const savedLoginUrl = process.env.LOGIN_FRONT_URL;
 beforeEach(() => { process.env.LOGIN_FRONT_URL = 'https://login.mairie.test/'; });
 afterEach(() => {
@@ -65,7 +67,7 @@ async function withDelayedCatalog(run) {
   let delayed = false;
   global.fetch = async (...args) => {
     const response = await originalFetch(...args);
-    if (args[0] === '/elearning/catalog' && !delayed) {
+    if (args[0] === '/api/bff/elearning/catalog' && !delayed) {
       delayed = true;
       ready(args[1]);
       await held;
@@ -86,7 +88,7 @@ async function withDelayedLearnerResponse(pathname, run) {
   const ready = new Promise((resolve) => { received = resolve; });
   let first = true;
   global.fetch = async (...args) => {
-    const hold = args[0] === pathname && args[1]?.method === 'POST' && first;
+    const hold = args[0] === "/api/bff" + pathname && args[1]?.method === 'POST' && first;
     if (hold) first = false;
     const response = await originalFetch(...args);
     if (hold) { received(); await held; }
@@ -335,7 +337,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     });
   });
 
-  test('a superseded 401 still logs out instead of weakening session rejection', async () => {
+  test('a superseded 401 still returns to Login without logout instead of weakening session rejection', async () => {
     bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
     const { state, actions } = catalogState();
     await withDelayedCatalog(async ({ received, release }) => {
@@ -345,7 +347,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
       await actions.loadCatalog();
       release();
       await first;
-      assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+      assert.deepEqual(front.window().location.assigned, [loginReturn()]);
       assert.equal(state.error, null);
     });
   });
@@ -360,13 +362,13 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.deepEqual(state.catalogResponse, body);
     assert.deepEqual(state.loading, [true, false]);
     assert.equal(state.error, null);
-    assert.deepEqual(runtime.frontCalls, [{ method: 'GET', pathname: '/elearning/catalog', search: '', route: 'src/app/[...path]/route.ts', status: 200 }]);
+    assert.deepEqual(runtime.frontCalls, [{ method: 'GET', pathname: '/api/bff/elearning/catalog', search: '', route: 'src/app/api/bff/[...path]/route.ts', status: 200 }]);
     const [request] = bffElearning.requests;
     assert.equal(request.headers.authorization, `Bearer ${runtime.accessToken}`);
     assert.equal(request.headers.accept, 'application/json');
     for (const header of ['cookie', 'x-nonce', 'content-security-policy']) assert.equal(request.headers[header], undefined, header);
     assert.deepEqual(request.undeclaredQuery, []);
-    assert.deepEqual(runtime.upstreamCalls.map(({ url, route }) => [url.origin, route]), [[new URL(bffElearning.url).origin, 'src/app/[...path]/route.ts']]);
+    assert.deepEqual(runtime.upstreamCalls.map(({ url, route }) => [url.origin, route]), [[new URL(bffElearning.url).origin, 'src/app/api/bff/[...path]/route.ts']]);
   });
 
   test('a JWT stored in localStorage does not replace the current cookie session', async () => {
@@ -447,12 +449,12 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/start', 'GET /elearning/catalog', 'GET /elearning/catalog']);
   });
 
-  test('a session refused during start refresh still logs out', async () => {
+  test('a session refused during start refresh still returns to Login without logout', async () => {
     bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: f.course('rgpd-collectivites', { statusValue: 'in-progress' }) } });
     bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
     const { state, actions } = catalogState(f.catalogResponse());
     await actions.startCourse('rgpd-collectivites');
-    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
     assert.equal(state.error, null);
   });
 
@@ -482,7 +484,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     await actions.completeContent('securite/incendie', 'chapitre-1', 'video-1');
 
     assert.equal(state.mutationError, 'Chemin invalide.');
-    assert.deepEqual(runtime.frontCalls.map(({ pathname, status }) => [pathname, status]), [['/elearning/courses/securite%2Fincendie/contents/video-1/complete', 400]]);
+    assert.deepEqual(runtime.frontCalls.map(({ pathname, status }) => [pathname, status]), [['/api/bff/elearning/courses/securite%2Fincendie/contents/video-1/complete', 400]]);
     assert.equal(bffElearning.requests.length, 0);
   });
 
@@ -596,7 +598,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.equal(bffElearning.requests.length, 0);
   });
 
-  test('a 401 from the BFF logs out without calling any other service', async () => {
+  test('a 401 from the BFF returns to Login without logout without calling any other service', async () => {
     bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée ou invalide.'));
     front.window().localStorage.setItem('mairie360.auth.jwt', 'expired-jwt');
     const { state, actions } = catalogState();
@@ -605,34 +607,31 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
 
     assert.equal(state.error, null);
     assert.deepEqual(runtime.frontCalls.map(({ method, pathname, route, status }) => [method, pathname, route, status]), [
-      ['GET', '/elearning/catalog', 'src/app/[...path]/route.ts', 401],
+      ['GET', '/api/bff/elearning/catalog', 'src/app/api/bff/[...path]/route.ts', 401],
     ]);
-    assert.equal(front.window().localStorage.length, 0);
-    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+    assert.equal(front.window().localStorage.getItem("mairie360.auth.jwt"), "expired-jwt");
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
   });
 
-  test('a 401 on a mutation also logs out instead of showing an error', async () => {
+  test('a 401 on a mutation also returns to Login without logout instead of showing an error', async () => {
     bffElearning.on('post', '/elearning/courses/{courseId}/rating', errorReply(401, 'UNAUTHORIZED', 'Session expirée ou invalide.'));
     const { state, actions } = catalogState();
 
     await actions.rateCourse('rgpd-collectivites', 5);
 
     assert.equal(state.mutationError, null);
-    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
     assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/rating']);
   });
 
-  test('an expired session is redirected to Login by the middleware before reaching any BFF', async () => {
+  test('an expired document returns through the canonical Login owner without cookie changes', () => {
     runtime.accessToken = f.accessToken(2, 1);
-    const { state, actions } = catalogState();
-
-    await actions.loadCatalog();
-
-    assert.equal(state.error, 'Redirection vers la connexion en cours.');
-    assert.equal(runtime.frontCalls[0].status, 307);
-    assert.match(runtime.frontCalls[0].redirectedTo, /^https:\/\/login\.mairie\.test\//);
+    const navigation = runtime.navigate('/?course=rgpd-collectivites');
+    assert.equal(navigation.status, 307); assert.equal(navigation.setCookie, null);
+    const target = new URL(navigation.location);
+    assert.equal(target.searchParams.get('redirect'), 'http://localhost:5006/?course=rgpd-collectivites');
+    assert.equal(target.searchParams.get('resumeSession'), '1');
     assert.equal(runtime.upstreamCalls.length, 0);
-    assert.deepEqual(front.window().location.assigned, [front.window().location.href]);
   });
 
   test('same-origin paths absent from the contract never reach the BFF', async () => {
@@ -672,14 +671,14 @@ describe('profile loading against the contract-driven BFF E-learning', () => {
     assert.deepEqual(state, { profile: null, loading: [false], error: 'Le service utilisateur est indisponible.' });
   });
 
-  test('logs out on 401', async () => {
+  test('returns to Login without logout on 401', async () => {
     bffElearning.on('get', '/elearning/profile', errorReply(401, 'UNAUTHORIZED', 'Session expirée ou invalide.'));
     const { state, view } = profileState();
 
     await loadProfile(view, new AbortController().signal);
 
     assert.equal(state.error, undefined);
-    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
   });
 
   test('an aborted load neither calls the network nor updates the view', async () => {
@@ -733,7 +732,8 @@ describe('contract helpers', () => {
 });
 
 describe('logout and stored session without another BFF', () => {
-  test('logout clears only auth tokens, then /logout clears the cookie and redirects to Login', async () => {
+  test('confirmed POST logout clears only known auth storage and returns to Login', async () => {
+    confirmedOwner();
     storeAuthJwtToken(' session-jwt ');
     front.window().localStorage.setItem('mairie360.projects.jwt', 'legacy-jwt');
     front.window().localStorage.setItem('unrelated.preference', 'keep');
@@ -744,21 +744,19 @@ describe('logout and stored session without another BFF', () => {
     assert.equal(front.window().localStorage.getItem('mairie360.auth.jwt'), null);
     assert.equal(front.window().localStorage.getItem('mairie360.projects.jwt'), null);
     assert.equal(front.window().localStorage.getItem('unrelated.preference'), 'keep');
-    assert.deepEqual(front.window().location.assigned, ['/logout']);
-    const navigation = runtime.navigate(LOGOUT_PATH);
-    assert.equal(navigation.status, 307);
-    assert.match(navigation.location, /^https:\/\/login\.mairie\.test\//);
-    assert.match(navigation.setCookie, /accessToken=;/);
-    assert.equal(runtime.frontCalls.length, 0);
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
+    assert.deepEqual(runtime.owner.calls, [{ method: 'POST', path: '/api/auth/logout' }]);
+    assert.equal(runtime.frontCalls.length, 1);
     assert.equal(bffElearning.requests.length, 0);
   });
 
-  test('logout still navigates when storage is denied', async () => {
+  test('confirmed logout still navigates when storage is denied', async () => {
+    confirmedOwner();
     front.window().localStorage.removeItem = () => { throw new Error('refusé'); };
 
     await logout();
 
-    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
   });
 
   test('stored JWT helpers migrate the legacy key and tolerate a missing window', () => {

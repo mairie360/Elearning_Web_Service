@@ -78,7 +78,7 @@ test('a pending negative confirmation shares one refusal and never replays a wri
   const ready = new Promise(resolve => { received = resolve; });
   global.fetch = async (...args) => {
     const response = await originalFetch(...args);
-    if (args[0] === `/elearning/courses/${course.id}/rating` && args[1]?.method === 'POST') {
+    if (args[0] === `/api/bff/elearning/courses/${course.id}/rating` && args[1]?.method === 'POST') {
       received();
       await held;
     }

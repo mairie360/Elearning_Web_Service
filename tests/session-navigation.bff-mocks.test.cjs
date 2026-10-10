@@ -14,25 +14,23 @@ afterEach(() => {
   else process.env.LOGIN_FRONT_URL = oldLogin;
 });
 
-test('an expired catalogue fetch reloads the current document, not the data endpoint', async () => {
-  runtime.accessToken = undefined;
-  const browser = front.window();
-  browser.location.href = 'https://elearning.test.example/?course=rgpd-collectivites';
-  await assert.rejects(requestBff('/elearning/catalog'), BffRequestError);
-  assert.deepEqual(browser.location.assigned, [browser.location.href]);
-  assert.equal(runtime.frontCalls[0].status, 307);
-  assert.equal(bffElearning.requests.length, 0);
+test('a refused catalogue returns to canonical Login without a logout operation', async () => {
+ runtime.accessToken=undefined;
+ bffElearning.on('get','/elearning/catalog',errorReply(401,'REFUSED','Refus'));
+ const browser=front.window();browser.location.href='http://localhost:5006/?course=rgpd-collectivites';
+ await assert.rejects(requestBff('/elearning/catalog'),BffRequestError);
+ assert.equal(browser.location.assigned.length,1);
+ assert.equal(new URL(browser.location.assigned[0]).searchParams.get('redirect'),browser.location.href);
+ assert.equal(runtime.frontCalls[0].status,401);assert.equal(bffElearning.requests.length,1);
 });
 
-test('parallel expired requests navigate only once and never replay the mutation', async () => {
-  runtime.accessToken = undefined;
-  await Promise.allSettled([
-    requestBff('/elearning/catalog'),
-    requestBff('/elearning/courses/rgpd-collectivites/start', { method: 'POST' }),
-  ]);
-  assert.deepEqual(front.window().location.assigned, [front.window().location.href]);
-  assert.equal(runtime.frontCalls.length, 2);
-  assert.equal(bffElearning.requests.length, 0);
+test('parallel refused API requests navigate once and never replay a learner mutation', async () => {
+ runtime.accessToken=undefined;
+ bffElearning.on('get','/elearning/catalog',errorReply(401,'REFUSED','Refus'));
+ bffElearning.on('post','/elearning/courses/{courseId}/start',errorReply(401,'REFUSED','Refus'));
+ await Promise.allSettled([requestBff('/elearning/catalog'),requestBff('/elearning/courses/rgpd-collectivites/start',{method:'POST'})]);
+ assert.equal(front.window().location.assigned.length,1);assert.equal(runtime.frontCalls.length,2);assert.equal(bffElearning.requests.length,2);
+ assert.equal(bffElearning.requests.filter(x=>x.method==='POST').length,1);
 });
 
 test('opaque redirects are handled without inspecting hidden status, headers or body', async () => {
@@ -52,7 +50,8 @@ test('opaque redirects are handled without inspecting hidden status, headers or 
   try {
     await assert.rejects(requestBff('/elearning/catalog'), BffRequestError);
     assert.equal(calls, 1);
-    assert.deepEqual(front.window().location.assigned, [front.window().location.href]);
+    assert.equal(front.window().location.assigned.length, 1);
+    assert.equal(new URL(front.window().location.assigned[0]).searchParams.get('redirect'), front.window().location.href);
   } finally { global.fetch = fetchBefore; }
 });
 
@@ -81,12 +80,12 @@ test('an already aborted request makes no network call or document navigation', 
 });
 
 for (const status of [400, 401, 403, 503]) {
-  test(`a real service ${status} stays typed and never triggers redirect recovery or replay`, async () => {
+  test(`a real service ${status} stays typed and never replays the mutation`, async () => {
     bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(status, 'REFUSED', `Refus ${status}`));
     await assert.rejects(requestBff('/elearning/courses/rgpd-collectivites/start', { method: 'POST' }),
-      error => error instanceof BffRequestError && error.status === status && error.message === `Refus ${status}`);
+      error => error instanceof BffRequestError && error.status === status && error.message === (status === 401 ? 'Votre session a expiré. Veuillez vous reconnecter.' : `Refus ${status}`));
     assert.equal(bffElearning.requests.length, 1);
-    assert.deepEqual(front.window().location.assigned, []);
+    assert.equal(front.window().location.assigned.length, status === 401 ? 1 : 0);
   });
 }
 
@@ -95,7 +94,7 @@ test('successful requests preserve caller headers, cache, credentials and abort 
   const controller = new AbortController();
   const expected = f.catalogResponse();
   global.fetch = async (_path, init) => {
-    assert.equal(init.headers.get('Authorization'), 'Bearer explicit');
+    assert.equal(init.headers.get('Authorization'), null);
     assert.equal(init.credentials, 'same-origin');
     assert.equal(init.cache, 'no-store');
     assert.equal(init.signal, controller.signal);
@@ -108,4 +107,11 @@ test('successful requests preserve caller headers, cache, credentials and abort 
     }), expected);
     assert.deepEqual(front.window().location.assigned, []);
   } finally { global.fetch = fetchBefore; }
+});
+
+test('a read aborted during a refused JSON body cannot navigate after unmount', async () => {
+ const previous=global.fetch;const controller=new AbortController();
+ global.fetch=async()=>({type:'basic',ok:false,status:401,json:async()=>{controller.abort();return {message:'Late refusal'};}});
+ try { await assert.rejects(requestBff('/elearning/catalog',{signal:controller.signal}),{name:'AbortError'});assert.deepEqual(front.window().location.assigned,[]); }
+ finally { global.fetch=previous; }
 });

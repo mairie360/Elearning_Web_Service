@@ -83,7 +83,7 @@ describe('single published BFF contract', () => {
     assert.deepEqual(ELEARNING_OPERATIONS.filter((operation) => !operations(published).includes(operation)), []);
   });
 
-  test('the catch-all proxy is the only route handler: no adapter towards another BFF', () => {
+  test('business and Login-owner routes are the only server adapters', () => {
     const routes = [];
     const walk = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).forEach((entry) => {
       const file = path.join(dir, entry.name);
@@ -91,7 +91,7 @@ describe('single published BFF contract', () => {
       else if (/^route\.(ts|js)$/.test(entry.name)) routes.push(file.split(path.sep).join('/'));
     });
     walk('src/app');
-    assert.deepEqual(routes, ['src/app/[...path]/route.ts']);
+    assert.deepEqual(routes, ['src/app/[...path]/route.ts', 'src/app/api/auth/logout/route.ts', 'src/app/api/bff/[...path]/route.ts']);
   });
 });
 
