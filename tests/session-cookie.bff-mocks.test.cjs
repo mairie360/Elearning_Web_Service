@@ -120,7 +120,7 @@ test('stored JWTs cannot replace a missing cookie on an API request', async () =
  assert.equal(new URL(front.window().location.assigned[0]).searchParams.get('redirect'),front.window().location.href);
 });
 
-test('a real cookie-session refusal preserves browser data and returns without logout', async () => {
+test('a real cookie-session refusal cleans obsolete keys, preserves unrelated data and returns without logout', async () => {
   const storage = front.window().localStorage;
   storage.setItem(primaryKey, 'stale-primary-token');
   storage.setItem(legacyKey, 'stale-legacy-token');
@@ -131,8 +131,8 @@ test('a real cookie-session refusal preserves browser data and returns without l
   assert.equal(bffElearning.requests[0].headers.authorization, `Bearer ${runtime.accessToken}`);
   assert.equal(front.window().location.assigned.length,1);
   assert.equal(new URL(front.window().location.assigned[0]).searchParams.get('redirect'),front.window().location.href);
-  assert.equal(storage.getItem(primaryKey), 'stale-primary-token');
-  assert.equal(storage.getItem(legacyKey), 'stale-legacy-token');
+  assert.equal(storage.getItem(primaryKey), null);
+  assert.equal(storage.getItem(legacyKey), null);
   assert.equal(storage.getItem('unrelated.preference'), 'keep');
   assert.equal(controller.state.response, null);
   assert.equal(controller.state.error, null);

@@ -43,10 +43,12 @@ test('the actual catalogue rotates once at Login and retries using only cookie-d
  assert.deepEqual(runtime.frontCalls.map(x=>x.pathname),['/api/bff/elearning/catalog']);
 });
 for(const status of [401,503])test(`failed owner renewal${status} neither replays a learner mutation nor invokes logout`,async()=>{
+ browser.localStorage.setItem('mairie360.auth.jwt','legacy');browser.localStorage.setItem('unrelated.preference','keep');
  training.on('post','/elearning/courses/{courseId}/start',rejected(401));owner.override=()=>Response.json({message:'Disposable refusal'},{status});
  await assert.rejects(requestBff('/elearning/courses/rgpd-collectivites/start',{method:'POST'}));
  assert.equal(training.requests.length,1);assert.equal(owner.calls.length,1);assert.equal(owner.calls[0].path,'/api/auth/refresh');
  assert.equal(runtime.refreshToken,refresh);assert.equal(user.requests.length,0);assert.equal(browser.location.assigned.length,status===401?1:0);
+ assert.equal(browser.localStorage.getItem('mairie360.auth.jwt'),status===401?null:'legacy');assert.equal(browser.localStorage.getItem('unrelated.preference'),'keep');
  if(status===401)assert.equal(new URL(browser.location.assigned[0]).searchParams.get('redirect'),browser.location.href);
 });
 test('foreign catalogue and logout requests are refused before any service or cookie change',async()=>{
@@ -62,4 +64,5 @@ test('an unconfirmed owner logout receipt retains known legacy storage and an ex
  assert.equal(browser.localStorage.getItem('mairie360.auth.jwt'),'legacy');assert.equal(browser.localStorage.getItem('unrelated.preference'),'keep');
  assert.deepEqual(browser.location.assigned,[]);assert.equal(auth.navigateToLogin(),false);assert.equal(auth.navigateToLogin({explicit:true}),true);
  assert.equal(new URL(browser.location.assigned[0]).searchParams.get('redirect'),browser.location.href);
+ assert.equal(browser.localStorage.getItem('mairie360.auth.jwt'),null);assert.equal(browser.localStorage.getItem('unrelated.preference'),'keep');
 });
