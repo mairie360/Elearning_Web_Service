@@ -12,6 +12,9 @@ import { courseIdFromSearch, urlWithoutCourse } from "@/lib/course-query";
 import { parseFrontUrl } from "@/lib/front-url";
 import { frontUrl } from "@/lib/front-urls";
 import { settingsProfileUrl } from "@/lib/settings-profile";
+import { CourseReviewPanel } from "./CourseReviewPanel";
+import { pendingLearnerPort, prepareResourceDownload } from "./learnerFeatures";
+import type { LearnerFeaturePort, ReviewDraft } from "./learnerFeatures";
 import { createCatalogActions } from "./catalogActions";
 import { withCategoryReset, withStatusReset } from "./catalogFilters";
 
@@ -21,7 +24,10 @@ type ContentCompletePayload = Parameters<
   NonNullable<CatalogProps["onCourseContentComplete"]>
 >[1];
 
-export function ElearningModule() {
+export function ElearningModule({ learnerPort = pendingLearnerPort }: { learnerPort?: LearnerFeaturePort } = {}) {
+  const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
+  const downloadRef = useRef<AbortController | null>(null);
+  useEffect(() => () => downloadRef.current?.abort(), []);
   const [catalogResponse, setCatalogResponse] =
     useState<ElearningCatalogResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +75,7 @@ export function ElearningModule() {
   const clearRequestedCourse = () => {
     const nextUrl = urlWithoutCourse(window.location.href);
     if (nextUrl) window.history.replaceState(window.history.state, "", nextUrl);
+    downloadRef.current?.abort();
     setRequestedCourseId(null);
   };
 
@@ -237,6 +244,23 @@ export function ElearningModule() {
           onCourseRatingSubmit={(course, rating) =>
             actions.rateCourse(course.id, rating)
           }
+          renderCourseReview={course => <CourseReviewPanel key={course.id} courseId={course.id}
+            completed={course.details?.completed === true || course.details?.progress === 100}
+            draft={reviewDrafts[course.id] ?? { rating: 5, comment: '' }}
+            onDraftChange={draft => setReviewDrafts(current => ({ ...current, [course.id]: draft }))}
+            port={learnerPort} />}
+          onCourseContentDownload={learnerPort.downloadResource ? async (course,content) => {
+            downloadRef.current?.abort(); const controller = new AbortController(); downloadRef.current = controller;
+            try {
+              const file = await prepareResourceDownload(learnerPort,course.id,content.id,controller.signal);
+              if (controller.signal.aborted) return false;
+              const url = URL.createObjectURL(file.blob); const link = document.createElement('a');
+              link.href = url; link.download = file.fileName; document.body.append(link); link.click(); link.remove();
+              window.setTimeout(() => URL.revokeObjectURL(url),1000);
+              return true;
+            } finally { if (downloadRef.current === controller) downloadRef.current = null; }
+          } : undefined}
+          canCompleteCourseContent={learnerPort.canCompleteResource ? (course,content) => learnerPort.canCompleteResource!(course.id,content.id) : undefined}
           allowRatingEdits
           onCreateCourse={(course) => actions.createCourse(course)}
           onUpdateCourse={(course) => actions.updateCourse(course)}
