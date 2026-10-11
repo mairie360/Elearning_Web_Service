@@ -601,6 +601,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
   test('a 401 from the BFF returns to Login without logout without calling any other service', async () => {
     bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée ou invalide.'));
     front.window().localStorage.setItem('mairie360.auth.jwt', 'expired-jwt');
+    front.window().localStorage.setItem('formation.draft', 'unfinished lesson');
     const { state, actions } = catalogState();
 
     await actions.loadCatalog();
@@ -609,7 +610,8 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.deepEqual(runtime.frontCalls.map(({ method, pathname, route, status }) => [method, pathname, route, status]), [
       ['GET', '/api/bff/elearning/catalog', 'src/app/api/bff/[...path]/route.ts', 401],
     ]);
-    assert.equal(front.window().localStorage.getItem("mairie360.auth.jwt"), "expired-jwt");
+    assert.equal(front.window().localStorage.getItem('mairie360.auth.jwt'), null);
+    assert.equal(front.window().localStorage.getItem('formation.draft'), 'unfinished lesson');
     assert.deepEqual(front.window().location.assigned, [loginReturn()]);
   });
 
