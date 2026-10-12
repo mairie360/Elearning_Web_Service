@@ -88,8 +88,9 @@ Business domain: E-learning.
 ## Available capabilities
 
 - Catalogue, filters and course details.
-- Start, resume, content progress and rating.
-- Account access through Settings and administrator course management.
+- Start, resume and content progress, persisted per chapter by the E-learning API. The catalogue lists the courses the learner is enrolled in.
+- Account access through Settings.
+- Not available yet, so not offered (MAIR-513): course rating, administrator course management (an administrator sees a French notice instead of the Create / Edit / Delete controls) and un-ticking a completed content, which is refused locally. The BFF answers 501 to those operations until the E-learning API persists them; a 501 that still arrives is shown in French.
 
 ## Typical workflow
 
@@ -105,7 +106,7 @@ This repository contains the browser interface and its Next.js adapters. The ass
 
 ## Data and current state
 
-The initial catalogue is defined in `elearning_helpers.ts`. Course edits, progress, ratings and profile overrides are held in memory, including user-keyed maps. BFF User supplies identity. The included Elearning API client and diagnostics do not make this storage persistent.
+Since MAIR-401 the BFF reads the E-learning API: the catalogue is the learner's enrolments, course starts and progress are persisted per chapter. Course rating, course administration and un-completing a content are not persisted by any upstream service yet and answer 501; the page does not offer them (`pinnedBffCapabilities`, MAIR-513). Identity comes from the session token.
 
 ## Scope and limitations
 

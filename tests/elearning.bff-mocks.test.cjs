@@ -524,6 +524,17 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.equal(state.mutationError, null);
   });
 
+  test('a 501 of the BFF becomes the French not-implemented message and the catalogue is not reloaded (MAIR-513)', async () => {
+    const { NOT_IMPLEMENTED_MESSAGE } = require('../src/lib/bff-client.ts');
+    bffElearning.on('post', '/elearning/courses/{courseId}/rating', errorReply(501, 'NOT_IMPLEMENTED', 'Course ratings are not stored by the e-learning service yet.'));
+    const { state, actions } = catalogState(f.catalogResponse());
+
+    assert.equal(await actions.rateCourse('4', 5), false);
+
+    assert.equal(state.mutationError, NOT_IMPLEMENTED_MESSAGE);
+    assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/rating']);
+  });
+
   test('a documented BFF error is shown as mutation error and the catalogue is not reloaded', async () => {
     bffElearning.on('post', '/elearning/admin/courses', errorReply(409, 'COURSE_ALREADY_EXISTS', 'Une formation porte déjà cet identifiant.'));
     const { state, actions } = catalogState();

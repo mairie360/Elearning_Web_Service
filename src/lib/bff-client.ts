@@ -7,7 +7,12 @@ type BffErrorBody = {
   };
 };
 
+/** A 501 means "no upstream service persists this yet": the BFF's English message is not meant for the agent. */
+export const NOT_IMPLEMENTED_MESSAGE =
+  "Cette fonctionnalité n’est pas encore disponible dans le service de formation. Aucune donnée n’a été modifiée.";
+
 function errorMessage(body: BffErrorBody | null, status: number): string {
+  if (status === 501) return NOT_IMPLEMENTED_MESSAGE;
   for (const message of [body?.message, body?.error?.message]) {
     if (typeof message === "string" && message.trim()) return message;
   }

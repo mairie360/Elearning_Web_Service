@@ -16,6 +16,8 @@ import { CourseReviewPanel } from "./CourseReviewPanel";
 import { pendingLearnerPort, prepareResourceDownload } from "./learnerFeatures";
 import type { LearnerFeaturePort, ReviewDraft } from "./learnerFeatures";
 import { createCatalogActions } from "./catalogActions";
+import { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE, pinnedBffCapabilities } from "./bffCapabilities";
+import type { CatalogCapabilities } from "./bffCapabilities";
 import { withCategoryReset, withStatusReset } from "./catalogFilters";
 
 type CatalogProps = ComponentProps<typeof ElearningCatalog>;
@@ -38,7 +40,10 @@ function withChapterDurations(courses: ElearningCatalogResponse["catalog"]["cour
   ) as CatalogCourse[];
 }
 
-export function ElearningModule({ learnerPort = pendingLearnerPort }: { learnerPort?: LearnerFeaturePort } = {}) {
+export function ElearningModule({
+  learnerPort = pendingLearnerPort,
+  capabilities = pinnedBffCapabilities,
+}: { learnerPort?: LearnerFeaturePort; capabilities?: CatalogCapabilities } = {}) {
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
   const downloadRef = useRef<AbortController | null>(null);
   useEffect(() => () => downloadRef.current?.abort(), []);
@@ -97,12 +102,13 @@ export function ElearningModule({ learnerPort = pendingLearnerPort }: { learnerP
     course: CatalogCourse,
     payload: ContentCompletePayload,
   ) => {
-    return actions.completeContent(
-      course.id,
-      payload.chapter.id,
-      payload.content.id,
-      payload.content.completed ?? true,
-    );
+    const completed = payload.content.completed ?? true;
+    // The E-learning API cannot mark a chapter as not completed (the BFF answers 501): refuse here, without a call.
+    if (!completed && !capabilities.contentUncompletion) {
+      setMutationError(CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE);
+      return false;
+    }
+    return actions.completeContent(course.id, payload.chapter.id, payload.content.id, completed);
   };
 
   const catalog = catalogResponse?.catalog;
@@ -222,6 +228,16 @@ export function ElearningModule({ learnerPort = pendingLearnerPort }: { learnerP
         </div>
       )}
 
+      {catalog && user?.isAdmin && !capabilities.courseManagement && (
+        <p
+          data-elearning-capability-notice
+          className="mx-auto mt-6 max-w-[1130px] rounded-md border border-[#d8d2ca] bg-white px-4 py-3 text-sm text-[#5f6470]"
+          role="note"
+        >
+          {COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE}
+        </p>
+      )}
+
       {requestedCourseMissing && (
         <div
           className="mx-auto mt-6 max-w-[1130px] rounded-md border border-[#efb9bd] bg-white px-4 py-3 text-sm text-[#a4232c]"
@@ -258,8 +274,8 @@ export function ElearningModule({ learnerPort = pendingLearnerPort }: { learnerP
           }
           onCourseAction={(course) => actions.startCourse(course.id)}
           onCourseContentComplete={handleContentComplete}
-          onCourseRatingSubmit={(course, rating) =>
-            actions.rateCourse(course.id, rating)
+          onCourseRatingSubmit={capabilities.courseRating ? (course, rating) =>
+            actions.rateCourse(course.id, rating) : undefined
           }
           renderCourseReview={course => <CourseReviewPanel key={course.id} courseId={course.id}
             completed={course.details?.completed === true || course.details?.progress === 100}
@@ -279,9 +295,9 @@ export function ElearningModule({ learnerPort = pendingLearnerPort }: { learnerP
           } : undefined}
           canCompleteCourseContent={learnerPort.canCompleteResource ? (course,content) => learnerPort.canCompleteResource!(course.id,content.id) : undefined}
           allowRatingEdits
-          onCreateCourse={(course) => actions.createCourse(course)}
-          onUpdateCourse={(course) => actions.updateCourse(course)}
-          onDeleteCourse={(course) => void actions.deleteCourse(course.id)}
+          onCreateCourse={capabilities.courseManagement ? (course) => actions.createCourse(course) : undefined}
+          onUpdateCourse={capabilities.courseManagement ? (course) => actions.updateCourse(course) : undefined}
+          onDeleteCourse={capabilities.courseManagement ? (course) => void actions.deleteCourse(course.id) : undefined}
           className="elearning-catalog-shell min-h-full !px-6 !py-8"
         />
       )}

@@ -92,8 +92,9 @@ Domaine fonctionnel: Formation en ligne.
 ## Fonctions disponibles
 
 - Catalogue, filtres et détails de formation.
-- Démarrage, reprise, progression de contenu et notation.
-- Accès au compte via Settings et gestion des formations pour les administrateurs.
+- Démarrage, reprise et progression de contenu, persistées par chapitre par le service E-learning. Le catalogue liste les formations auxquelles l’agent est inscrit.
+- Accès au compte via Settings.
+- Pas encore disponibles, donc non proposés (MAIR-513) : la notation des formations, la gestion des formations par les administrateurs (un administrateur voit une note en français à la place des boutons Créer / Modifier / Supprimer) et le décochage d’un contenu terminé, refusé localement. Le BFF répond 501 à ces opérations tant que le service E-learning ne les persiste pas ; un 501 qui arriverait malgré tout est affiché en français.
 
 ## Parcours type
 
@@ -109,7 +110,7 @@ Ce dépôt contient l’interface navigateur et ses adaptateurs Next.js. Le BFF 
 
 ## Données et état actuel
 
-Le catalogue initial est défini dans `elearning_helpers.ts`. Les formations modifiées, progressions, notes et surcharges de profil sont gérées en mémoire, notamment dans des Map indexées par utilisateur. BFF User fournit l’identité. Le client Elearning API et les diagnostics présents ne rendent pas ce stockage persistant.
+Depuis MAIR-401, le BFF lit le service E-learning : le catalogue correspond aux inscriptions de l’agent, les démarrages et la progression sont persistés par chapitre. La notation, l’administration des formations et le décochage d’un contenu ne sont persistés par aucun service et répondent 501 ; la page ne les propose pas (`pinnedBffCapabilities`, MAIR-513). L’identité vient du jeton de session.
 
 ## Périmètre et limites
 
