@@ -74,7 +74,7 @@ test('learner start and the following catalogue read both use the current cookie
   bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: f.course() } });
   catalogue();
   const controller = actions();
-  await controller.actions.startCourse('rgpd-collectivites');
+  await controller.actions.startCourse('4');
   assert.deepEqual(bffElearning.requests.map(({ method, template }) => [method, template]), [
     ['POST', '/elearning/courses/{courseId}/start'], ['GET', '/elearning/catalog'],
   ]);

@@ -204,11 +204,11 @@ Toutes les réponses portent `X-Frame-Options: DENY`, `X-Content-Type-Options: n
 
 ## Synchronisation et vérifications
 
-Le front ne consomme que des versions publiées `X.Y.Z` de BFF_Elearning (jamais une branche ni une version `0.0.0-dev`/`staging`), actuellement **0.4.0**. Pour passer à une nouvelle release, monter le paquet de contrat, copier le contrat du même tag puis régénérer les types:
+Le front ne consomme que des paquets publiés de BFF_Elearning : une release `X.Y.Z`, ou, tant qu’aucune release n’est coupée, le paquet `0.0.0-dev.<sha>` publié par la CICD pour le commit courant de son `main` (MAIR-509 ; jamais une version `staging`), actuellement le paquet dev du commit `88f7caa`. Pour passer à une nouvelle version, monter le paquet de contrat, copier le contrat du même commit puis régénérer les types:
 
 ```bash
-npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@X.Y.Z
-git -C ../../BFFs/BFF_Elearning show vX.Y.Z:contracts/openapi.json > contracts/openapi.json
+npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@<version>
+git -C ../../BFFs/BFF_Elearning show <vX.Y.Z ou sha40>:contracts/openapi.json > contracts/openapi.json
 npm run contracts:generate
 npm run contracts:check
 npm test
@@ -224,7 +224,7 @@ Le navigateur n’atteint BFF E-learning que par [src/lib/elearning-api.ts](../.
 
 - `tests/network-boundary.test.cjs` analyse `src/` (AST TypeScript): `fetch` n’est autorisé que dans `bff-client.ts` (chemins construits par `elearning-api.ts`) et `bff-proxy.ts`, dont l’unique cible est `configuredBffUrl()`; aucun autre client HTTP ni API réseau.
 - `tests/elearning.bff-mocks.test.cjs` exécute le vrai code de bout en bout: `fetch` navigateur → vrai middleware → route handler choisi comme par l’App Router → proxy → BFF E-learning simulé en HTTP, seul service joignable. Le mock est piloté par le paquet publié `@mairie360/bff-elearning-openapi` (sortie orval): il refuse chemins, méthodes, paramètres et corps absents du contrat et valide ses réponses de succès; orval ne typant pas les erreurs, les réponses d’erreur passent par `errorReply`, qui valide le corps contre `ApiError`. Tout appel du navigateur vers une autre origine, ou du serveur vers un autre service, fait échouer le test, et chaque opération consommée doit être rejouée.
-- `tests/bff-contracts.test.cjs` vérifie que le paquet est une version `X.Y.Z` épinglée, que `contracts/openapi.json` déclare exactement ses opérations, que `elearning-api.ts` appelle les opérations consommées, que le proxy catch-all est le seul route handler et que les fixtures sont conformes.
+- `tests/bff-contracts.test.cjs` vérifie que le paquet est une version exacte acceptée (`X.Y.Z` ou `0.0.0-dev.<sha>`), que `contracts/openapi.json` déclare exactement ses opérations, que `elearning-api.ts` appelle les opérations consommées, que le proxy catch-all est le seul route handler et que les fixtures sont conformes.
 
 Les utilitaires `tests/support/openapi-contract.ts`, `contract-mock-server.ts` et `orval-contract.ts` sont copiés à l’identique depuis les BFFs (`BFFs/BFF_Elearning/tests/support`); garder les copies identiques.
 

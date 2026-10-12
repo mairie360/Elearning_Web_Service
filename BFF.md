@@ -22,7 +22,7 @@ Les chemins sont relatifs au BFF. Le navigateur appelle les routes métier via `
 
 ## Mise à jour et validation
 
-Seules les releases publiées `X.Y.Z` du BFF sont consommées. Pour en changer : monter `@mairie360/bff-elearning-openapi` à la nouvelle version, copier `contracts/openapi.json` depuis le tag correspondant du BFF (`git show vX.Y.Z:contracts/openapi.json`), puis exécuter `npm run contracts:generate`, `npm run contracts:check` et `npm test`. La CI vérifie que les types correspondent au document livré, et `tests/bff-contracts.test.cjs` que ce document déclare les mêmes opérations que le paquet publié.
+Le front consomme un paquet publié du BFF : une release `X.Y.Z`, ou, tant qu’aucune release n’est coupée, le paquet `0.0.0-dev.<sha>` du commit courant de son `main` (MAIR-509 ; jamais une pré-version `staging`). Pour en changer : monter `@mairie360/bff-elearning-openapi` à la nouvelle version, copier `contracts/openapi.json` depuis le commit correspondant du BFF (`git show <vX.Y.Z ou sha>:contracts/openapi.json`), aligner l’image `bff-elearning` des stacks (`X.Y.Z` ou `dev-<sha7>`), puis exécuter `npm run contracts:generate`, `npm run contracts:check` et `npm test`. La CI vérifie que les types correspondent au document livré, et `tests/bff-contracts.test.cjs` que ce document déclare les mêmes opérations que le paquet publié.
 
 Le générateur de types est fixé à `openapi-typescript@7.10.1`. Il est exécuté via npm ; aucun jeton privé ne figure dans les contrats.
 
