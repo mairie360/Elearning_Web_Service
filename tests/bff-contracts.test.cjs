@@ -48,18 +48,21 @@ function valid(method, pathname, status, body) {
 }
 
 describe('single published BFF contract', () => {
-  test('the contract package is a published X.Y.Z release of bff_elearning pinned in package.json', () => {
+  test('the contract package is a published version of bff_elearning pinned in package.json', async () => {
+    // Release X.Y.Z, or the 0.0.0-dev.<sha40> package published from BFF_Elearning main (scripts/contract-version.mjs).
+    const { isAcceptedContractVersion } = await import('../scripts/contract-version.mjs');
     const { dependencies = {}, devDependencies = {} } = JSON.parse(read('package.json'));
     const pinned = devDependencies[PUBLISHED_CONTRACT_PACKAGE];
-    assert.match(pinned, /^\d+\.\d+\.\d+$/);
+    assert.ok(isAcceptedContractVersion(pinned), `${PUBLISHED_CONTRACT_PACKAGE}: version exacte attendue (X.Y.Z ou 0.0.0-dev.<sha>), reçu ${pinned}`);
     assert.equal(resolveOrvalPackage(PUBLISHED_CONTRACT_PACKAGE).version, pinned);
     assert.equal(published.title, 'bff_elearning');
     assert.equal(dependencies[PUBLISHED_CONTRACT_PACKAGE], undefined);
     assert.deepEqual(Object.keys({ ...dependencies, ...devDependencies }).filter((name) => /^@mairie360\/bff-.*-openapi$/.test(name)), [PUBLISHED_CONTRACT_PACKAGE]);
   });
 
-  test('every docker-compose file runs the BFF image of the same published release', () => {
-    const version = resolveOrvalPackage(PUBLISHED_CONTRACT_PACKAGE).version;
+  test('every docker-compose file runs the BFF image built from the pinned package commit', async () => {
+    const { imageTagForContractVersion } = await import('../scripts/contract-version.mjs');
+    const version = imageTagForContractVersion(resolveOrvalPackage(PUBLISHED_CONTRACT_PACKAGE).version);
     const files = fs.readdirSync(root).filter((file) => /^docker-compose.*\.ya?ml$/.test(file));
     assert.ok(files.length > 0);
     for (const file of files) {
@@ -67,7 +70,8 @@ describe('single published BFF contract', () => {
       const tags = images.filter(image => image.startsWith('ghcr.io/mairie360/bff-elearning:')).map(image => image.slice(image.lastIndexOf(':') + 1));
       assert.ok(tags.length > 0, `${file}: missing bff-elearning image`);
       assert.deepEqual([...new Set(tags)], [version], file);
-      assert.ok(images.filter(image => !image.startsWith('ghcr.io/mairie360/bff-elearning:')).every(image => /^\d+\.\d+\.\d+$/.test(image.slice(image.lastIndexOf(':') + 1))), `${file}: other BFF images require stable release tags`);
+      // The other BFF images (BFF User) follow the same policy: a release tag or the dev-<sha7> image of a main commit.
+      assert.ok(images.filter(image => !image.startsWith('ghcr.io/mairie360/bff-elearning:')).every(image => /^(\d+\.\d+\.\d+|dev-[0-9a-f]{7})$/.test(image.slice(image.lastIndexOf(':') + 1))), `${file}: other BFF images require a release or dev-<sha7> tag`);
     }
   });
 
@@ -108,9 +112,11 @@ describe('fixtures conform to the published contract', () => {
     valid('delete', '/elearning/admin/courses/c', 200, { deleted: true, courseId: 'c' });
   });
 
-  test('errors use the ApiError schema; orval only types success statuses', () => {
+  test('errors use the ErrorResponse envelope; orval only types success statuses', () => {
     for (const contract of [published, contractSnapshot]) {
-      assert.deepEqual(contract.validate(contract.schema('ApiError'), fixtures.apiError('COURSE_NOT_FOUND', 'Formation introuvable.')), []);
+      assert.deepEqual(contract.validate(contract.schema('ErrorResponse'), fixtures.apiError('NOT_FOUND', 'Formation introuvable.')), []);
+      // Scenario codes are mapped to the published enum.
+      assert.deepEqual(contract.validate(contract.schema('ErrorResponse'), fixtures.apiError('COURSE_NOT_FOUND', 'Formation introuvable.')), []);
     }
     assert.equal(published.responseSchema(published.match('get', '/elearning/catalog'), 401).documented, false);
   });

@@ -45,7 +45,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Vérifie la connexion avec l'API Core et E-learning (Rust) */
+        /** Checks that Core API, E-learning API and BFF User answer their /health probe */
         get: {
             parameters: {
                 query?: never;
@@ -55,22 +55,22 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Connexion réussie */
+                /** @description Every upstream is reachable */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CheckApiResponse"];
+                        "application/json": components["schemas"]["CheckApisResponse"];
                     };
                 };
-                /** @description API Core injoignable ou API E-learning injoignable */
+                /** @description At least one upstream is unreachable or not configured */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CheckApiResponse"];
+                        "application/json": components["schemas"]["CheckApisResponse"];
                     };
                 };
             };
@@ -92,7 +92,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Crée une formation complète */
+        /** Creates a course (not available yet: 501) */
         post: {
             parameters: {
                 query?: never;
@@ -102,159 +102,11 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": {
-                        /** @example accueil-agents */
-                        id: string;
-                        /** @example Accueil des nouveaux agents */
-                        title: string;
-                        description: string;
-                        instructor?: string;
-                        /** @example 4.8 */
-                        rating?: number | string;
-                        /** @example 2 h 15 */
-                        duration?: string;
-                        /** @example 4 */
-                        chapters?: number | string;
-                        /** @example 128 */
-                        learners?: number | string;
-                        /** @example Intégration */
-                        category?: string;
-                        /**
-                         * @description Statut de progression de la formation pour l’utilisateur connecté
-                         * @example in-progress
-                         * @enum {string}
-                         */
-                        statusValue?: "not-started" | "in-progress" | "completed";
-                        /** @description Badge associé à une formation */
-                        titleBadge?: {
-                            /** @example Obligatoire */
-                            label: string;
-                            /**
-                             * @description Variante visuelle utilisée par les badges de formation
-                             * @example mandatory
-                             * @enum {string}
-                             */
-                            variant?: "default" | "beginner" | "intermediate" | "advanced" | "inProgress" | "completed" | "mandatory" | "notStarted";
-                        };
-                        /** @description Badge associé à une formation */
-                        levelBadge?: {
-                            /** @example Obligatoire */
-                            label: string;
-                            /**
-                             * @description Variante visuelle utilisée par les badges de formation
-                             * @example mandatory
-                             * @enum {string}
-                             */
-                            variant?: "default" | "beginner" | "intermediate" | "advanced" | "inProgress" | "completed" | "mandatory" | "notStarted";
-                        };
-                        /** @description Badge associé à une formation */
-                        statusBadge?: {
-                            /** @example Obligatoire */
-                            label: string;
-                            /**
-                             * @description Variante visuelle utilisée par les badges de formation
-                             * @example mandatory
-                             * @enum {string}
-                             */
-                            variant?: "default" | "beginner" | "intermediate" | "advanced" | "inProgress" | "completed" | "mandatory" | "notStarted";
-                        };
-                        progress?: number;
-                        /** @example 30 juin 2026 */
-                        deadline?: string;
-                        /**
-                         * @description Répartition des notes par valeur, de 1 à 5
-                         * @example {
-                         *       "1": 0,
-                         *       "2": 1,
-                         *       "3": 4,
-                         *       "4": 35,
-                         *       "5": 88
-                         *     }
-                         */
-                        ratingDistribution?: {
-                            1?: number;
-                            2?: number;
-                            3?: number;
-                            4?: number;
-                            5?: number;
-                        };
-                        /** @description Détail complet affiché dans la modale de formation */
-                        details?: {
-                            title: string;
-                            subtitle?: string;
-                            description: string;
-                            instructor?: string;
-                            duration?: string;
-                            rating?: number | string;
-                            ratingLabel?: string;
-                            /**
-                             * @description Répartition des notes par valeur, de 1 à 5
-                             * @example {
-                             *       "1": 0,
-                             *       "2": 1,
-                             *       "3": 4,
-                             *       "4": 35,
-                             *       "5": 88
-                             *     }
-                             */
-                            ratingDistribution?: {
-                                1?: number;
-                                2?: number;
-                                3?: number;
-                                4?: number;
-                                5?: number;
-                            };
-                            progress?: number;
-                            completed?: boolean;
-                            /** @description Configuration du composant de notation de fin de formation */
-                            completionRating?: {
-                                initialValue?: number;
-                                max?: number;
-                                submitted?: boolean;
-                                disabled?: boolean;
-                                title?: string;
-                                helperText?: string;
-                                submitLabel?: string;
-                                submittedLabel?: string;
-                            };
-                            chapters: {
-                                /** @example accueil-1 */
-                                id: string;
-                                /** @example Comprendre l’organisation municipale */
-                                title: string;
-                                description?: string;
-                                /** @example 25 min */
-                                duration: string;
-                                completed?: boolean;
-                                active?: boolean;
-                                contents?: {
-                                    /** @example accueil-1-video */
-                                    id: string;
-                                    /** @example Présentation des directions et services */
-                                    title: string;
-                                    /**
-                                     * @description Type de contenu pédagogique
-                                     * @example video
-                                     * @enum {string}
-                                     */
-                                    type: "video" | "pdf" | "document" | "link" | "quiz" | "audio" | "other";
-                                    description?: string;
-                                    /** @example 12 min */
-                                    duration?: string;
-                                    /** @example organigramme-mairie360.pdf */
-                                    fileName?: string;
-                                    /** @example /documents/organigramme-mairie360.pdf */
-                                    href?: string;
-                                    completed?: boolean;
-                                    required?: boolean;
-                                }[];
-                            }[];
-                        };
-                    };
+                    "application/json": components["schemas"]["AdminCourseCreateBody"];
                 };
             };
             responses: {
-                /** @description Formation créée */
+                /** @description Course created */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -277,7 +129,7 @@ export interface paths {
                                 chapters?: number | string;
                                 /** @example 128 */
                                 learners?: number | string;
-                                /** @example Intégration */
+                                /** @example Integration */
                                 category?: string;
                                 /**
                                  * @description Statut de progression de la formation pour l’utilisateur connecté
@@ -380,11 +232,11 @@ export interface paths {
                                     chapters: {
                                         /** @example accueil-1 */
                                         id: string;
-                                        /** @example Comprendre l’organisation municipale */
+                                        /** @example Municipal organisation */
                                         title: string;
                                         description?: string;
                                         /** @example 25 min */
-                                        duration: string;
+                                        duration?: string;
                                         completed?: boolean;
                                         active?: boolean;
                                         contents?: {
@@ -414,124 +266,67 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Payload invalide */
+                /** @description Invalid request payload */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session invalide, expirée ou manquante */
+                /** @description Missing, expired or invalid session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Accès réservé aux administrateurs */
+                /** @description Restricted to administrators */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Identifiant déjà utilisé */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
-                    };
-                };
-                /** @description Erreur serveur non prevue */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User injoignable ou réponse inexploitable */
+                /** @description Not available: no upstream service stores this data yet */
+                501: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is unreachable, failed or answered an unusable body */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -552,20 +347,20 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Supprime une formation */
+        /** Deletes a course (not available yet: 501) */
         delete: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant de la formation */
+                    /** @description Course (E-learning API formation) identifier */
                     courseId: string;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Formation supprimée */
+                /** @description Course deleted */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -577,117 +372,71 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Session invalide, expirée ou manquante */
+                /** @description Missing, expired or invalid session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Accès réservé aux administrateurs */
+                /** @description Restricted to administrators */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Formation introuvable */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
-                    };
-                };
-                /** @description Erreur serveur non prevue */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User injoignable ou réponse inexploitable */
+                /** @description Not available: no upstream service stores this data yet */
+                501: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is unreachable, failed or answered an unusable body */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
         };
         options?: never;
         head?: never;
-        /** Modifie une formation complète */
+        /** Updates a course (not available yet: 501) */
         patch: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant de la formation */
+                    /** @description Course (E-learning API formation) identifier */
                     courseId: string;
                 };
                 cookie?: never;
@@ -709,7 +458,7 @@ export interface paths {
                         chapters?: number | string;
                         /** @example 128 */
                         learners?: number | string;
-                        /** @example Intégration */
+                        /** @example Integration */
                         category?: string;
                         /**
                          * @description Statut de progression de la formation pour l’utilisateur connecté
@@ -812,11 +561,11 @@ export interface paths {
                             chapters: {
                                 /** @example accueil-1 */
                                 id: string;
-                                /** @example Comprendre l’organisation municipale */
+                                /** @example Municipal organisation */
                                 title: string;
                                 description?: string;
                                 /** @example 25 min */
-                                duration: string;
+                                duration?: string;
                                 completed?: boolean;
                                 active?: boolean;
                                 contents?: {
@@ -846,7 +595,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Formation mise à jour */
+                /** @description Course updated */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -869,7 +618,7 @@ export interface paths {
                                 chapters?: number | string;
                                 /** @example 128 */
                                 learners?: number | string;
-                                /** @example Intégration */
+                                /** @example Integration */
                                 category?: string;
                                 /**
                                  * @description Statut de progression de la formation pour l’utilisateur connecté
@@ -972,11 +721,11 @@ export interface paths {
                                     chapters: {
                                         /** @example accueil-1 */
                                         id: string;
-                                        /** @example Comprendre l’organisation municipale */
+                                        /** @example Municipal organisation */
                                         title: string;
                                         description?: string;
                                         /** @example 25 min */
-                                        duration: string;
+                                        duration?: string;
                                         completed?: boolean;
                                         active?: boolean;
                                         contents?: {
@@ -1006,124 +755,67 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Payload invalide */
+                /** @description Invalid request payload */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session invalide, expirée ou manquante */
+                /** @description Missing, expired or invalid session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Accès réservé aux administrateurs */
+                /** @description Restricted to administrators */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Formation introuvable */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
-                    };
-                };
-                /** @description Erreur serveur non prevue */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User injoignable ou réponse inexploitable */
+                /** @description Not available: no upstream service stores this data yet */
+                501: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is unreachable, failed or answered an unusable body */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -1138,8 +830,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Charge le catalogue E-learning
-         * @description Retourne les donnees pretes a afficher pour le catalogue : utilisateur, notifications, filtres, statistiques, formations et footer.
+         * Loads the E-learning catalogue
+         * @description Ready-to-render catalogue: user, filters, statistics, footer and the courses the caller is enrolled in, with their chapters, contents and progress, read from the E-learning API.
          */
         get: {
             parameters: {
@@ -1157,7 +849,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Catalogue charge avec succes */
+                /** @description Catalogue loaded */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1259,7 +951,7 @@ export interface paths {
                                     chapters?: number | string;
                                     /** @example 128 */
                                     learners?: number | string;
-                                    /** @example Intégration */
+                                    /** @example Integration */
                                     category?: string;
                                     /**
                                      * @description Statut de progression de la formation pour l’utilisateur connecté
@@ -1362,11 +1054,11 @@ export interface paths {
                                         chapters: {
                                             /** @example accueil-1 */
                                             id: string;
-                                            /** @example Comprendre l’organisation municipale */
+                                            /** @example Municipal organisation */
                                             title: string;
                                             description?: string;
                                             /** @example 25 min */
-                                            duration: string;
+                                            duration?: string;
                                             completed?: boolean;
                                             active?: boolean;
                                             contents?: {
@@ -1410,84 +1102,49 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Parametres de recherche invalides */
+                /** @description Invalid search parameters */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session invalide, expirée ou manquante */
+                /** @description Missing, expired or invalid session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur serveur non prevue */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User injoignable ou réponse inexploitable */
+                /** @description BFF User or an upstream API is unreachable, failed or answered an unusable body */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -1510,17 +1167,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Marque un contenu comme termine ou non termine
-         * @description Met a jour la progression de la formation et retourne les chapitres, le chapitre et le contenu actualises.
+         * Marks a content as completed
+         * @description Records the completion in the E-learning API, which tracks progress per chapter: completing a content completes its whole chapter. Returns the updated progress, chapters, chapter and content. `completed: false` answers 501 (the E-learning API cannot undo a completion).
          */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant de la formation */
+                    /** @description Course (E-learning API formation) identifier */
                     courseId: string;
-                    /** @description Identifiant du contenu */
+                    /** @description Content (E-learning API attachment) identifier */
                     contentId: string;
                 };
                 cookie?: never;
@@ -1528,15 +1185,21 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @example accueil-1 */
+                        /**
+                         * @description Chapter (E-learning API module) identifier
+                         * @example 11
+                         */
                         chapterId: string;
-                        /** @example true */
+                        /**
+                         * @description Only `true` is supported: the E-learning API cannot mark a module as not completed (501).
+                         * @example true
+                         */
                         completed: boolean;
                     };
                 };
             };
             responses: {
-                /** @description Progression mise a jour */
+                /** @description Progress updated */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1552,11 +1215,11 @@ export interface paths {
                             chapters: {
                                 /** @example accueil-1 */
                                 id: string;
-                                /** @example Comprendre l’organisation municipale */
+                                /** @example Municipal organisation */
                                 title: string;
                                 description?: string;
                                 /** @example 25 min */
-                                duration: string;
+                                duration?: string;
                                 completed?: boolean;
                                 active?: boolean;
                                 contents?: {
@@ -1585,11 +1248,11 @@ export interface paths {
                             chapter: {
                                 /** @example accueil-1 */
                                 id: string;
-                                /** @example Comprendre l’organisation municipale */
+                                /** @example Municipal organisation */
                                 title: string;
                                 description?: string;
                                 /** @example 25 min */
-                                duration: string;
+                                duration?: string;
                                 completed?: boolean;
                                 active?: boolean;
                                 contents?: {
@@ -1639,124 +1302,67 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Payload invalide */
+                /** @description Invalid request payload */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session invalide, expirée ou manquante */
+                /** @description Missing, expired or invalid session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Formation, chapitre ou contenu introuvable */
+                /** @description Course, chapter or content not found, or the caller is not enrolled in the course */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Formation incoherente ou detail indisponible */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
-                    };
-                };
-                /** @description Erreur serveur non prevue */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User injoignable ou réponse inexploitable */
+                /** @description Not available: no upstream service stores this data yet */
+                501: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is unreachable, failed or answered an unusable body */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -1775,8 +1381,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Charge le profil E-learning
-         * @description Retourne les informations necessaires au rendu direct de la page profil.
+         * Loads the E-learning profile
+         * @description The caller as resolved by BFF User `/me`, ready to render on the profile page.
          */
         get: {
             parameters: {
@@ -1787,7 +1393,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Profil charge avec succes */
+                /** @description Profile loaded */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1845,64 +1451,40 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Session invalide, expirée ou manquante */
+                /** @description Missing, expired or invalid session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur serveur non prevue */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User injoignable ou réponse inexploitable */
+                /** @description BFF User or an upstream API is unreachable, failed or answered an unusable body */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -1913,8 +1495,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Met a jour les champs editables du profil
-         * @description Ignore les champs non editables comme role, isAdmin, service, position et lastConnection.
+         * Updates the editable profile fields
+         * @description `email` and `phone` are saved by Core API (`PATCH /api/v1/user/me/`), then the profile is read again from BFF User. `address` and `city` are stored by no upstream service: a body carrying them answers 501 and nothing is written. Non-editable fields (role, isAdmin, service, position, lastConnection) are ignored.
          */
         patch: {
             parameters: {
@@ -1926,16 +1508,25 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** Format: email */
+                        /**
+                         * Format: email
+                         * @example security-admin@mairie360.fr
+                         */
                         email?: string;
+                        /**
+                         * @description Phone number in E.164 (`+33612345678`)
+                         * @example +33612345678
+                         */
                         phone?: string;
+                        /** @example 1 place de la Mairie */
                         address?: string;
+                        /** @example Paris */
                         city?: string;
                     };
                 };
             };
             responses: {
-                /** @description Profil mis a jour */
+                /** @description Profile saved, then read again */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1980,84 +1571,67 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Payload invalide */
+                /** @description Invalid request payload, or a value Core API refuses (e.g. a phone number that is not 10 to 15 digits) */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session invalide, expirée ou manquante */
+                /** @description Missing, expired or invalid session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Erreur serveur non prevue */
+                /** @description The e-mail address is already used by another account */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User injoignable ou réponse inexploitable */
+                /** @description Not available: no upstream service stores this data yet */
+                501: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is unreachable, failed or answered an unusable body */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -2074,15 +1648,15 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Note une formation
-         * @description Enregistre une note utilisateur entre 1 et 5 et retourne la repartition mise a jour.
+         * Rates a course
+         * @description Not available yet: the E-learning API does not store ratings, so a valid request from an authenticated caller answers 501. The 200 answer is the contract the route will keep once ratings are persisted upstream.
          */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant de la formation */
+                    /** @description Course (E-learning API formation) identifier */
                     courseId: string;
                 };
                 cookie?: never;
@@ -2096,7 +1670,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Note enregistree */
+                /** @description Rating recorded */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2126,104 +1700,58 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Payload invalide */
+                /** @description Invalid request payload */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session invalide, expirée ou manquante */
+                /** @description Missing, expired or invalid session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Formation introuvable */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
-                    };
-                };
-                /** @description Erreur serveur non prevue */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User injoignable ou réponse inexploitable */
+                /** @description Not available: no upstream service stores this data yet */
+                501: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is unreachable, failed or answered an unusable body */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -2244,15 +1772,15 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Demarre ou reprend une formation
-         * @description Retourne la formation actualisee, le prochain contenu et une URL de reprise optionnelle.
+         * Starts or resumes a course
+         * @description Returns the course with its progress, the next content to open and the course URL. Nothing is written: the E-learning API records the start of a course when its first chapter is completed.
          */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Identifiant de la formation */
+                    /** @description Course (E-learning API formation) identifier */
                     courseId: string;
                 };
                 cookie?: never;
@@ -2266,7 +1794,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Formation demarree ou reprise */
+                /** @description Course to start or resume */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2289,7 +1817,7 @@ export interface paths {
                                 chapters?: number | string;
                                 /** @example 128 */
                                 learners?: number | string;
-                                /** @example Intégration */
+                                /** @example Integration */
                                 category?: string;
                                 /**
                                  * @description Statut de progression de la formation pour l’utilisateur connecté
@@ -2392,11 +1920,11 @@ export interface paths {
                                     chapters: {
                                         /** @example accueil-1 */
                                         id: string;
-                                        /** @example Comprendre l’organisation municipale */
+                                        /** @example Municipal organisation */
                                         title: string;
                                         description?: string;
                                         /** @example 25 min */
-                                        duration: string;
+                                        duration?: string;
                                         completed?: boolean;
                                         active?: boolean;
                                         contents?: {
@@ -2428,124 +1956,58 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Payload invalide */
+                /** @description Invalid request payload */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Session invalide, expirée ou manquante */
+                /** @description Missing, expired or invalid session */
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Formation introuvable */
+                /** @description Unknown course, or the caller is not enrolled in it */
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Formation incoherente ou detail indisponible */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
-                    };
-                };
-                /** @description Erreur serveur non prevue */
+                /** @description Unexpected server error */
                 500: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description BFF User injoignable ou réponse inexploitable */
+                /** @description BFF User or an upstream API is unreachable, failed or answered an unusable body */
                 502: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            /** @example COURSE_NOT_FOUND */
-                            code: string;
-                            /** @example Formation introuvable. */
-                            message: string;
-                            /**
-                             * @example {
-                             *       "courseId": "accueil-agents"
-                             *     }
-                             */
-                            details?: unknown;
-                        };
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -2726,11 +2188,11 @@ export interface components {
         CourseChapter: {
             /** @example accueil-1 */
             id: string;
-            /** @example Comprendre l’organisation municipale */
+            /** @example Municipal organisation */
             title: string;
             description?: string;
             /** @example 25 min */
-            duration: string;
+            duration?: string;
             completed?: boolean;
             active?: boolean;
             contents?: {
@@ -2797,11 +2259,11 @@ export interface components {
             chapters: {
                 /** @example accueil-1 */
                 id: string;
-                /** @example Comprendre l’organisation municipale */
+                /** @example Municipal organisation */
                 title: string;
                 description?: string;
                 /** @example 25 min */
-                duration: string;
+                duration?: string;
                 completed?: boolean;
                 active?: boolean;
                 contents?: {
@@ -2843,7 +2305,7 @@ export interface components {
             chapters?: number | string;
             /** @example 128 */
             learners?: number | string;
-            /** @example Intégration */
+            /** @example Integration */
             category?: string;
             /**
              * @description Statut de progression de la formation pour l’utilisateur connecté
@@ -2946,11 +2408,161 @@ export interface components {
                 chapters: {
                     /** @example accueil-1 */
                     id: string;
-                    /** @example Comprendre l’organisation municipale */
+                    /** @example Municipal organisation */
                     title: string;
                     description?: string;
                     /** @example 25 min */
-                    duration: string;
+                    duration?: string;
+                    completed?: boolean;
+                    active?: boolean;
+                    contents?: {
+                        /** @example accueil-1-video */
+                        id: string;
+                        /** @example Présentation des directions et services */
+                        title: string;
+                        /**
+                         * @description Type de contenu pédagogique
+                         * @example video
+                         * @enum {string}
+                         */
+                        type: "video" | "pdf" | "document" | "link" | "quiz" | "audio" | "other";
+                        description?: string;
+                        /** @example 12 min */
+                        duration?: string;
+                        /** @example organigramme-mairie360.pdf */
+                        fileName?: string;
+                        /** @example /documents/organigramme-mairie360.pdf */
+                        href?: string;
+                        completed?: boolean;
+                        required?: boolean;
+                    }[];
+                }[];
+            };
+        };
+        /** @description Formation à créer */
+        AdminCourseCreateBody: {
+            /** @example scan-course */
+            id: string;
+            /** @example Accueil des nouveaux agents */
+            title: string;
+            description: string;
+            instructor?: string;
+            /** @example 4.8 */
+            rating?: number | string;
+            /** @example 2 h 15 */
+            duration?: string;
+            /** @example 4 */
+            chapters?: number | string;
+            /** @example 128 */
+            learners?: number | string;
+            /** @example Integration */
+            category?: string;
+            /**
+             * @description Statut de progression de la formation pour l’utilisateur connecté
+             * @example in-progress
+             * @enum {string}
+             */
+            statusValue?: "not-started" | "in-progress" | "completed";
+            /** @description Badge associé à une formation */
+            titleBadge?: {
+                /** @example Obligatoire */
+                label: string;
+                /**
+                 * @description Variante visuelle utilisée par les badges de formation
+                 * @example mandatory
+                 * @enum {string}
+                 */
+                variant?: "default" | "beginner" | "intermediate" | "advanced" | "inProgress" | "completed" | "mandatory" | "notStarted";
+            };
+            /** @description Badge associé à une formation */
+            levelBadge?: {
+                /** @example Obligatoire */
+                label: string;
+                /**
+                 * @description Variante visuelle utilisée par les badges de formation
+                 * @example mandatory
+                 * @enum {string}
+                 */
+                variant?: "default" | "beginner" | "intermediate" | "advanced" | "inProgress" | "completed" | "mandatory" | "notStarted";
+            };
+            /** @description Badge associé à une formation */
+            statusBadge?: {
+                /** @example Obligatoire */
+                label: string;
+                /**
+                 * @description Variante visuelle utilisée par les badges de formation
+                 * @example mandatory
+                 * @enum {string}
+                 */
+                variant?: "default" | "beginner" | "intermediate" | "advanced" | "inProgress" | "completed" | "mandatory" | "notStarted";
+            };
+            progress?: number;
+            /** @example 30 juin 2026 */
+            deadline?: string;
+            /**
+             * @description Répartition des notes par valeur, de 1 à 5
+             * @example {
+             *       "1": 0,
+             *       "2": 1,
+             *       "3": 4,
+             *       "4": 35,
+             *       "5": 88
+             *     }
+             */
+            ratingDistribution?: {
+                1?: number;
+                2?: number;
+                3?: number;
+                4?: number;
+                5?: number;
+            };
+            /** @description Détail complet affiché dans la modale de formation */
+            details?: {
+                title: string;
+                subtitle?: string;
+                description: string;
+                instructor?: string;
+                duration?: string;
+                rating?: number | string;
+                ratingLabel?: string;
+                /**
+                 * @description Répartition des notes par valeur, de 1 à 5
+                 * @example {
+                 *       "1": 0,
+                 *       "2": 1,
+                 *       "3": 4,
+                 *       "4": 35,
+                 *       "5": 88
+                 *     }
+                 */
+                ratingDistribution?: {
+                    1?: number;
+                    2?: number;
+                    3?: number;
+                    4?: number;
+                    5?: number;
+                };
+                progress?: number;
+                completed?: boolean;
+                /** @description Configuration du composant de notation de fin de formation */
+                completionRating?: {
+                    initialValue?: number;
+                    max?: number;
+                    submitted?: boolean;
+                    disabled?: boolean;
+                    title?: string;
+                    helperText?: string;
+                    submitLabel?: string;
+                    submittedLabel?: string;
+                };
+                chapters: {
+                    /** @example accueil-1 */
+                    id: string;
+                    /** @example Municipal organisation */
+                    title: string;
+                    description?: string;
+                    /** @example 25 min */
+                    duration?: string;
                     completed?: boolean;
                     active?: boolean;
                     contents?: {
@@ -2978,7 +2590,9 @@ export interface components {
             };
         };
         ElearningCatalogQuery: {
+            /** @example accueil */
             search?: string;
+            /** @example Integration */
             category?: string;
             /**
              * @description Filtre de statut disponible dans le catalogue
@@ -2986,7 +2600,9 @@ export interface components {
              * @enum {string}
              */
             status?: "all" | "not-started" | "in-progress" | "completed";
+            /** @example 1 */
             page?: number;
+            /** @example 10 */
             pageSize?: number;
         };
         /** @description Modèle complet du catalogue E-learning */
@@ -3044,7 +2660,7 @@ export interface components {
                 chapters?: number | string;
                 /** @example 128 */
                 learners?: number | string;
-                /** @example Intégration */
+                /** @example Integration */
                 category?: string;
                 /**
                  * @description Statut de progression de la formation pour l’utilisateur connecté
@@ -3147,11 +2763,11 @@ export interface components {
                     chapters: {
                         /** @example accueil-1 */
                         id: string;
-                        /** @example Comprendre l’organisation municipale */
+                        /** @example Municipal organisation */
                         title: string;
                         description?: string;
                         /** @example 25 min */
-                        duration: string;
+                        duration?: string;
                         completed?: boolean;
                         active?: boolean;
                         contents?: {
@@ -3276,7 +2892,7 @@ export interface components {
                     chapters?: number | string;
                     /** @example 128 */
                     learners?: number | string;
-                    /** @example Intégration */
+                    /** @example Integration */
                     category?: string;
                     /**
                      * @description Statut de progression de la formation pour l’utilisateur connecté
@@ -3379,11 +2995,11 @@ export interface components {
                         chapters: {
                             /** @example accueil-1 */
                             id: string;
-                            /** @example Comprendre l’organisation municipale */
+                            /** @example Municipal organisation */
                             title: string;
                             description?: string;
                             /** @example 25 min */
-                            duration: string;
+                            duration?: string;
                             completed?: boolean;
                             active?: boolean;
                             contents?: {
@@ -3443,7 +3059,7 @@ export interface components {
                 chapters?: number | string;
                 /** @example 128 */
                 learners?: number | string;
-                /** @example Intégration */
+                /** @example Integration */
                 category?: string;
                 /**
                  * @description Statut de progression de la formation pour l’utilisateur connecté
@@ -3546,11 +3162,11 @@ export interface components {
                     chapters: {
                         /** @example accueil-1 */
                         id: string;
-                        /** @example Comprendre l’organisation municipale */
+                        /** @example Municipal organisation */
                         title: string;
                         description?: string;
                         /** @example 25 min */
-                        duration: string;
+                        duration?: string;
                         completed?: boolean;
                         active?: boolean;
                         contents?: {
@@ -3636,10 +3252,19 @@ export interface components {
         };
         /** @description Champs éditables du profil utilisateur */
         UpdateProfileBody: {
-            /** Format: email */
+            /**
+             * Format: email
+             * @example security-admin@mairie360.fr
+             */
             email?: string;
+            /**
+             * @description Phone number in E.164 (`+33612345678`)
+             * @example +33612345678
+             */
             phone?: string;
+            /** @example 1 place de la Mairie */
             address?: string;
+            /** @example Paris */
             city?: string;
         };
         /** @description Profil mis à jour */
@@ -3682,28 +3307,34 @@ export interface components {
         };
         CourseIdParams: {
             /**
-             * @description Identifiant de la formation
-             * @example accueil-agents
+             * @description Course (E-learning API formation) identifier
+             * @example 4
              */
             courseId: string;
         };
         CourseContentParams: {
             /**
-             * @description Identifiant de la formation
-             * @example accueil-agents
+             * @description Course (E-learning API formation) identifier
+             * @example 4
              */
             courseId: string;
             /**
-             * @description Identifiant du contenu
-             * @example accueil-1-video
+             * @description Content (E-learning API attachment) identifier
+             * @example 27
              */
             contentId: string;
         };
-        /** @description Payload de complétion d’un contenu */
+        /** @description Content completion. Progress is tracked per chapter by the E-learning API: completing a content completes its whole chapter. */
         CompleteContentBody: {
-            /** @example accueil-1 */
+            /**
+             * @description Chapter (E-learning API module) identifier
+             * @example 11
+             */
             chapterId: string;
-            /** @example true */
+            /**
+             * @description Only `true` is supported: the E-learning API cannot mark a module as not completed (501).
+             * @example true
+             */
             completed: boolean;
         };
         /** @description Progression mise à jour après complétion d’un contenu */
@@ -3717,11 +3348,11 @@ export interface components {
             chapters: {
                 /** @example accueil-1 */
                 id: string;
-                /** @example Comprendre l’organisation municipale */
+                /** @example Municipal organisation */
                 title: string;
                 description?: string;
                 /** @example 25 min */
-                duration: string;
+                duration?: string;
                 completed?: boolean;
                 active?: boolean;
                 contents?: {
@@ -3750,11 +3381,11 @@ export interface components {
             chapter: {
                 /** @example accueil-1 */
                 id: string;
-                /** @example Comprendre l’organisation municipale */
+                /** @example Municipal organisation */
                 title: string;
                 description?: string;
                 /** @example 25 min */
-                duration: string;
+                duration?: string;
                 completed?: boolean;
                 active?: boolean;
                 contents?: {
@@ -3853,7 +3484,7 @@ export interface components {
                 chapters?: number | string;
                 /** @example 128 */
                 learners?: number | string;
-                /** @example Intégration */
+                /** @example Integration */
                 category?: string;
                 /**
                  * @description Statut de progression de la formation pour l’utilisateur connecté
@@ -3956,11 +3587,11 @@ export interface components {
                     chapters: {
                         /** @example accueil-1 */
                         id: string;
-                        /** @example Comprendre l’organisation municipale */
+                        /** @example Municipal organisation */
                         title: string;
                         description?: string;
                         /** @example 25 min */
-                        duration: string;
+                        duration?: string;
                         completed?: boolean;
                         active?: boolean;
                         contents?: {
@@ -3990,26 +3621,26 @@ export interface components {
             nextContentId?: string;
             redirectUrl?: string;
         };
-        /** @description Format d’erreur commun du BFF E-learning */
-        ApiError: {
-            /** @example COURSE_NOT_FOUND */
-            code: string;
-            /** @example Formation introuvable. */
-            message: string;
-            /**
-             * @example {
-             *       "courseId": "accueil-agents"
-             *     }
-             */
-            details?: unknown;
+        ErrorResponse: {
+            error: {
+                /** @enum {string} */
+                code: "BAD_REQUEST" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "PAYLOAD_TOO_LARGE" | "UNPROCESSABLE_ENTITY" | "TOO_MANY_REQUESTS" | "INTERNAL_ERROR" | "BAD_GATEWAY" | "SERVICE_UNAVAILABLE" | "GATEWAY_TIMEOUT";
+                message: string;
+                details: {
+                    path?: string;
+                    message: string;
+                }[];
+            };
         };
-        CheckApiResponse: {
-            /** @example OK */
-            status: string;
-            /** @example Connected */
-            core_api: string;
-            /** @example Connected */
-            elearning_api: string;
+        CheckApisResponse: {
+            /** @enum {string} */
+            status: "OK" | "Error";
+            /** @enum {string} */
+            core_api: "Connected" | "Unreachable";
+            /** @enum {string} */
+            elearning_api: "Connected" | "Unreachable";
+            /** @enum {string} */
+            user_bff: "Connected" | "Unreachable";
         };
     };
     responses: never;

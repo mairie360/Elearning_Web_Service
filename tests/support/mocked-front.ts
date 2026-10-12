@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { installWindow, removeWindow, type FakeWindow } from './browser';
 import { ContractMockServer, type MockReply } from './contract-mock-server';
-import { accessToken } from './elearning-fixtures';
+import { apiError, accessToken } from './elearning-fixtures';
 import { setBrowserFrontUrls } from '../../src/lib/front-urls';
 import { FrontRuntime, FRONT_ORIGIN } from './front-runtime';
 import { OpenApiContract } from './openapi-contract';
@@ -22,11 +22,11 @@ export const contractSnapshot = OpenApiContract.load(path.join(__dirname, '..', 
 
 /**
  * Réponse d'erreur du BFF. Orval ne type que les succès : l'erreur est donc hors du contrat du paquet, mais son corps
- * doit respecter le schéma `ApiError` du contrat publié.
+ * doit respecter le schéma `ErrorResponse` du contrat publié ({ error: { code, message, details } }, enveloppe commune des BFFs).
  */
 export function errorReply(status: number, code: string, message: string): MockReply {
-  const body = { code, message, details: {} };
-  assert.deepEqual(contractSnapshot.validate(contractSnapshot.schema('ApiError'), body), []);
+  const body = apiError(code, message);
+  assert.deepEqual(contractSnapshot.validate(contractSnapshot.schema('ErrorResponse'), body), []);
   return { status, body, outOfContract: true };
 }
 

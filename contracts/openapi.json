@@ -4,7 +4,19 @@
     "title": "bff_elearning",
     "version": "1.0.0"
   },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
   "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
     "schemas": {
       "CourseStatus": {
         "type": "string",
@@ -401,7 +413,7 @@
           },
           "title": {
             "type": "string",
-            "example": "Comprendre l’organisation municipale"
+            "example": "Municipal organisation"
           },
           "description": {
             "type": "string"
@@ -476,8 +488,7 @@
         },
         "required": [
           "id",
-          "title",
-          "duration"
+          "title"
         ],
         "description": "Chapitre d’une formation"
       },
@@ -597,7 +608,7 @@
                 },
                 "title": {
                   "type": "string",
-                  "example": "Comprendre l’organisation municipale"
+                  "example": "Municipal organisation"
                 },
                 "description": {
                   "type": "string"
@@ -672,8 +683,7 @@
               },
               "required": [
                 "id",
-                "title",
-                "duration"
+                "title"
               ],
               "description": "Chapitre d’une formation"
             }
@@ -742,7 +752,7 @@
           },
           "category": {
             "type": "string",
-            "example": "Intégration"
+            "example": "Integration"
           },
           "statusValue": {
             "type": "string",
@@ -996,7 +1006,7 @@
                     },
                     "title": {
                       "type": "string",
-                      "example": "Comprendre l’organisation municipale"
+                      "example": "Municipal organisation"
                     },
                     "description": {
                       "type": "string"
@@ -1071,8 +1081,7 @@
                   },
                   "required": [
                     "id",
-                    "title",
-                    "duration"
+                    "title"
                   ],
                   "description": "Chapitre d’une formation"
                 }
@@ -1093,14 +1102,422 @@
         ],
         "description": "Formation affichée dans le catalogue"
       },
+      "AdminCourseCreateBody": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "scan-course"
+          },
+          "title": {
+            "type": "string",
+            "example": "Accueil des nouveaux agents"
+          },
+          "description": {
+            "type": "string"
+          },
+          "instructor": {
+            "type": "string"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "example": 4.8
+          },
+          "duration": {
+            "type": "string",
+            "example": "2 h 15"
+          },
+          "chapters": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "example": 4
+          },
+          "learners": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "example": 128
+          },
+          "category": {
+            "type": "string",
+            "example": "Integration"
+          },
+          "statusValue": {
+            "type": "string",
+            "enum": [
+              "not-started",
+              "in-progress",
+              "completed"
+            ],
+            "description": "Statut de progression de la formation pour l’utilisateur connecté",
+            "example": "in-progress"
+          },
+          "titleBadge": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "example": "Obligatoire"
+              },
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "default",
+                  "beginner",
+                  "intermediate",
+                  "advanced",
+                  "inProgress",
+                  "completed",
+                  "mandatory",
+                  "notStarted"
+                ],
+                "description": "Variante visuelle utilisée par les badges de formation",
+                "example": "mandatory"
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "description": "Badge associé à une formation"
+          },
+          "levelBadge": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "example": "Obligatoire"
+              },
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "default",
+                  "beginner",
+                  "intermediate",
+                  "advanced",
+                  "inProgress",
+                  "completed",
+                  "mandatory",
+                  "notStarted"
+                ],
+                "description": "Variante visuelle utilisée par les badges de formation",
+                "example": "mandatory"
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "description": "Badge associé à une formation"
+          },
+          "statusBadge": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "example": "Obligatoire"
+              },
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "default",
+                  "beginner",
+                  "intermediate",
+                  "advanced",
+                  "inProgress",
+                  "completed",
+                  "mandatory",
+                  "notStarted"
+                ],
+                "description": "Variante visuelle utilisée par les badges de formation",
+                "example": "mandatory"
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "description": "Badge associé à une formation"
+          },
+          "progress": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "deadline": {
+            "type": "string",
+            "example": "30 juin 2026"
+          },
+          "ratingDistribution": {
+            "type": "object",
+            "properties": {
+              "1": {
+                "type": "number",
+                "minimum": 0
+              },
+              "2": {
+                "type": "number",
+                "minimum": 0
+              },
+              "3": {
+                "type": "number",
+                "minimum": 0
+              },
+              "4": {
+                "type": "number",
+                "minimum": 0
+              },
+              "5": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "description": "Répartition des notes par valeur, de 1 à 5",
+            "example": {
+              "1": 0,
+              "2": 1,
+              "3": 4,
+              "4": 35,
+              "5": 88
+            }
+          },
+          "details": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "subtitle": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "instructor": {
+                "type": "string"
+              },
+              "duration": {
+                "type": "string"
+              },
+              "rating": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "ratingLabel": {
+                "type": "string"
+              },
+              "ratingDistribution": {
+                "type": "object",
+                "properties": {
+                  "1": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "2": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "3": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "4": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "5": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "description": "Répartition des notes par valeur, de 1 à 5",
+                "example": {
+                  "1": 0,
+                  "2": 1,
+                  "3": 4,
+                  "4": 35,
+                  "5": 88
+                }
+              },
+              "progress": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "completed": {
+                "type": "boolean"
+              },
+              "completionRating": {
+                "type": "object",
+                "properties": {
+                  "initialValue": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 5
+                  },
+                  "max": {
+                    "type": "number",
+                    "minimum": 1
+                  },
+                  "submitted": {
+                    "type": "boolean"
+                  },
+                  "disabled": {
+                    "type": "boolean"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "helperText": {
+                    "type": "string"
+                  },
+                  "submitLabel": {
+                    "type": "string"
+                  },
+                  "submittedLabel": {
+                    "type": "string"
+                  }
+                },
+                "description": "Configuration du composant de notation de fin de formation"
+              },
+              "chapters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "example": "accueil-1"
+                    },
+                    "title": {
+                      "type": "string",
+                      "example": "Municipal organisation"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "duration": {
+                      "type": "string",
+                      "example": "25 min"
+                    },
+                    "completed": {
+                      "type": "boolean"
+                    },
+                    "active": {
+                      "type": "boolean"
+                    },
+                    "contents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "accueil-1-video"
+                          },
+                          "title": {
+                            "type": "string",
+                            "example": "Présentation des directions et services"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "video",
+                              "pdf",
+                              "document",
+                              "link",
+                              "quiz",
+                              "audio",
+                              "other"
+                            ],
+                            "description": "Type de contenu pédagogique",
+                            "example": "video"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "duration": {
+                            "type": "string",
+                            "example": "12 min"
+                          },
+                          "fileName": {
+                            "type": "string",
+                            "example": "organigramme-mairie360.pdf"
+                          },
+                          "href": {
+                            "type": "string",
+                            "example": "/documents/organigramme-mairie360.pdf"
+                          },
+                          "completed": {
+                            "type": "boolean"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "type"
+                        ],
+                        "description": "Contenu pédagogique d’un chapitre"
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title"
+                  ],
+                  "description": "Chapitre d’une formation"
+                }
+              }
+            },
+            "required": [
+              "title",
+              "description",
+              "chapters"
+            ],
+            "description": "Détail complet affiché dans la modale de formation"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description"
+        ],
+        "description": "Formation à créer"
+      },
       "ElearningCatalogQuery": {
         "type": "object",
         "properties": {
           "search": {
-            "type": "string"
+            "type": "string",
+            "example": "accueil"
           },
           "category": {
-            "type": "string"
+            "type": "string",
+            "example": "Integration"
           },
           "status": {
             "type": "string",
@@ -1115,12 +1532,14 @@
           },
           "page": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "example": 1
           },
           "pageSize": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 100
+            "maximum": 100,
+            "example": 10
           }
         }
       },
@@ -1321,7 +1740,7 @@
                 },
                 "category": {
                   "type": "string",
-                  "example": "Intégration"
+                  "example": "Integration"
                 },
                 "statusValue": {
                   "type": "string",
@@ -1575,7 +1994,7 @@
                           },
                           "title": {
                             "type": "string",
-                            "example": "Comprendre l’organisation municipale"
+                            "example": "Municipal organisation"
                           },
                           "description": {
                             "type": "string"
@@ -1650,8 +2069,7 @@
                         },
                         "required": [
                           "id",
-                          "title",
-                          "duration"
+                          "title"
                         ],
                         "description": "Chapitre d’une formation"
                       }
@@ -1963,7 +2381,7 @@
                     },
                     "category": {
                       "type": "string",
-                      "example": "Intégration"
+                      "example": "Integration"
                     },
                     "statusValue": {
                       "type": "string",
@@ -2217,7 +2635,7 @@
                               },
                               "title": {
                                 "type": "string",
-                                "example": "Comprendre l’organisation municipale"
+                                "example": "Municipal organisation"
                               },
                               "description": {
                                 "type": "string"
@@ -2292,8 +2710,7 @@
                             },
                             "required": [
                               "id",
-                              "title",
-                              "duration"
+                              "title"
                             ],
                             "description": "Chapitre d’une formation"
                           }
@@ -2432,7 +2849,7 @@
               },
               "category": {
                 "type": "string",
-                "example": "Intégration"
+                "example": "Integration"
               },
               "statusValue": {
                 "type": "string",
@@ -2686,7 +3103,7 @@
                         },
                         "title": {
                           "type": "string",
-                          "example": "Comprendre l’organisation municipale"
+                          "example": "Municipal organisation"
                         },
                         "description": {
                           "type": "string"
@@ -2761,8 +3178,7 @@
                       },
                       "required": [
                         "id",
-                        "title",
-                        "duration"
+                        "title"
                       ],
                       "description": "Chapitre d’une formation"
                     }
@@ -2925,16 +3341,21 @@
         "properties": {
           "email": {
             "type": "string",
-            "format": "email"
+            "format": "email",
+            "example": "security-admin@mairie360.fr"
           },
           "phone": {
-            "type": "string"
+            "type": "string",
+            "description": "Phone number in E.164 (`+33612345678`)",
+            "example": "+33612345678"
           },
           "address": {
-            "type": "string"
+            "type": "string",
+            "example": "1 place de la Mairie"
           },
           "city": {
-            "type": "string"
+            "type": "string",
+            "example": "Paris"
           }
         },
         "description": "Champs éditables du profil utilisateur"
@@ -3019,8 +3440,9 @@
         "properties": {
           "courseId": {
             "type": "string",
-            "description": "Identifiant de la formation",
-            "example": "accueil-agents"
+            "pattern": "^[1-9]\\d{0,14}$",
+            "description": "Course (E-learning API formation) identifier",
+            "example": "4"
           }
         },
         "required": [
@@ -3032,13 +3454,15 @@
         "properties": {
           "courseId": {
             "type": "string",
-            "description": "Identifiant de la formation",
-            "example": "accueil-agents"
+            "pattern": "^[1-9]\\d{0,14}$",
+            "description": "Course (E-learning API formation) identifier",
+            "example": "4"
           },
           "contentId": {
             "type": "string",
-            "description": "Identifiant du contenu",
-            "example": "accueil-1-video"
+            "pattern": "^[1-9]\\d{0,14}$",
+            "description": "Content (E-learning API attachment) identifier",
+            "example": "27"
           }
         },
         "required": [
@@ -3051,10 +3475,13 @@
         "properties": {
           "chapterId": {
             "type": "string",
-            "example": "accueil-1"
+            "pattern": "^[1-9]\\d{0,14}$",
+            "description": "Chapter (E-learning API module) identifier",
+            "example": "11"
           },
           "completed": {
             "type": "boolean",
+            "description": "Only `true` is supported: the E-learning API cannot mark a module as not completed (501).",
             "example": true
           }
         },
@@ -3062,7 +3489,7 @@
           "chapterId",
           "completed"
         ],
-        "description": "Payload de complétion d’un contenu"
+        "description": "Content completion. Progress is tracked per chapter by the E-learning API: completing a content completes its whole chapter."
       },
       "ContentCompleteResponse": {
         "type": "object",
@@ -3102,7 +3529,7 @@
                 },
                 "title": {
                   "type": "string",
-                  "example": "Comprendre l’organisation municipale"
+                  "example": "Municipal organisation"
                 },
                 "description": {
                   "type": "string"
@@ -3177,8 +3604,7 @@
               },
               "required": [
                 "id",
-                "title",
-                "duration"
+                "title"
               ],
               "description": "Chapitre d’une formation"
             }
@@ -3192,7 +3618,7 @@
               },
               "title": {
                 "type": "string",
-                "example": "Comprendre l’organisation municipale"
+                "example": "Municipal organisation"
               },
               "description": {
                 "type": "string"
@@ -3267,8 +3693,7 @@
             },
             "required": [
               "id",
-              "title",
-              "duration"
+              "title"
             ],
             "description": "Chapitre d’une formation"
           },
@@ -3481,7 +3906,7 @@
               },
               "category": {
                 "type": "string",
-                "example": "Intégration"
+                "example": "Integration"
               },
               "statusValue": {
                 "type": "string",
@@ -3735,7 +4160,7 @@
                         },
                         "title": {
                           "type": "string",
-                          "example": "Comprendre l’organisation municipale"
+                          "example": "Municipal organisation"
                         },
                         "description": {
                           "type": "string"
@@ -3810,8 +4235,7 @@
                       },
                       "required": [
                         "id",
-                        "title",
-                        "duration"
+                        "title"
                       ],
                       "description": "Chapitre d’une formation"
                     }
@@ -3844,49 +4268,98 @@
         ],
         "description": "Réponse de démarrage ou reprise d’une formation"
       },
-      "ApiError": {
+      "ErrorResponse": {
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string",
-            "example": "COURSE_NOT_FOUND"
-          },
-          "message": {
-            "type": "string",
-            "example": "Formation introuvable."
-          },
-          "details": {
-            "example": {
-              "courseId": "accueil-agents"
-            }
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "BAD_REQUEST",
+                  "UNAUTHORIZED",
+                  "FORBIDDEN",
+                  "NOT_FOUND",
+                  "CONFLICT",
+                  "PAYLOAD_TOO_LARGE",
+                  "UNPROCESSABLE_ENTITY",
+                  "TOO_MANY_REQUESTS",
+                  "INTERNAL_ERROR",
+                  "BAD_GATEWAY",
+                  "SERVICE_UNAVAILABLE",
+                  "GATEWAY_TIMEOUT"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ]
           }
         },
         "required": [
-          "code",
-          "message"
-        ],
-        "description": "Format d’erreur commun du BFF E-learning"
+          "error"
+        ]
       },
-      "CheckApiResponse": {
+      "CheckApisResponse": {
         "type": "object",
         "properties": {
           "status": {
             "type": "string",
-            "example": "OK"
+            "enum": [
+              "OK",
+              "Error"
+            ]
           },
           "core_api": {
             "type": "string",
-            "example": "Connected"
+            "enum": [
+              "Connected",
+              "Unreachable"
+            ]
           },
           "elearning_api": {
             "type": "string",
-            "example": "Connected"
+            "enum": [
+              "Connected",
+              "Unreachable"
+            ]
+          },
+          "user_bff": {
+            "type": "string",
+            "enum": [
+              "Connected",
+              "Unreachable"
+            ]
           }
         },
         "required": [
           "status",
           "core_api",
-          "elearning_api"
+          "elearning_api",
+          "user_bff"
         ]
       }
     },
@@ -3895,6 +4368,7 @@
   "paths": {
     "/health": {
       "get": {
+        "security": [],
         "tags": [
           "Connectivity"
         ],
@@ -3908,27 +4382,28 @@
     },
     "/check_apis": {
       "get": {
+        "security": [],
         "tags": [
           "Connectivity"
         ],
-        "summary": "Vérifie la connexion avec l'API Core et E-learning (Rust)",
+        "summary": "Checks that Core API, E-learning API and BFF User answer their /health probe",
         "responses": {
           "200": {
-            "description": "Connexion réussie",
+            "description": "Every upstream is reachable",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CheckApiResponse"
+                  "$ref": "#/components/schemas/CheckApisResponse"
                 }
               }
             }
           },
           "502": {
-            "description": "API Core injoignable ou API E-learning injoignable",
+            "description": "At least one upstream is unreachable or not configured",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CheckApiResponse"
+                  "$ref": "#/components/schemas/CheckApisResponse"
                 }
               }
             }
@@ -3941,424 +4416,20 @@
         "tags": [
           "E-learning administration"
         ],
-        "summary": "Crée une formation complète",
+        "summary": "Creates a course (not available yet: 501)",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "example": "accueil-agents"
-                  },
-                  "title": {
-                    "type": "string",
-                    "example": "Accueil des nouveaux agents"
-                  },
-                  "description": {
-                    "type": "string"
-                  },
-                  "instructor": {
-                    "type": "string"
-                  },
-                  "rating": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ],
-                    "example": 4.8
-                  },
-                  "duration": {
-                    "type": "string",
-                    "example": "2 h 15"
-                  },
-                  "chapters": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ],
-                    "example": 4
-                  },
-                  "learners": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ],
-                    "example": 128
-                  },
-                  "category": {
-                    "type": "string",
-                    "example": "Intégration"
-                  },
-                  "statusValue": {
-                    "type": "string",
-                    "enum": [
-                      "not-started",
-                      "in-progress",
-                      "completed"
-                    ],
-                    "description": "Statut de progression de la formation pour l’utilisateur connecté",
-                    "example": "in-progress"
-                  },
-                  "titleBadge": {
-                    "type": "object",
-                    "properties": {
-                      "label": {
-                        "type": "string",
-                        "example": "Obligatoire"
-                      },
-                      "variant": {
-                        "type": "string",
-                        "enum": [
-                          "default",
-                          "beginner",
-                          "intermediate",
-                          "advanced",
-                          "inProgress",
-                          "completed",
-                          "mandatory",
-                          "notStarted"
-                        ],
-                        "description": "Variante visuelle utilisée par les badges de formation",
-                        "example": "mandatory"
-                      }
-                    },
-                    "required": [
-                      "label"
-                    ],
-                    "description": "Badge associé à une formation"
-                  },
-                  "levelBadge": {
-                    "type": "object",
-                    "properties": {
-                      "label": {
-                        "type": "string",
-                        "example": "Obligatoire"
-                      },
-                      "variant": {
-                        "type": "string",
-                        "enum": [
-                          "default",
-                          "beginner",
-                          "intermediate",
-                          "advanced",
-                          "inProgress",
-                          "completed",
-                          "mandatory",
-                          "notStarted"
-                        ],
-                        "description": "Variante visuelle utilisée par les badges de formation",
-                        "example": "mandatory"
-                      }
-                    },
-                    "required": [
-                      "label"
-                    ],
-                    "description": "Badge associé à une formation"
-                  },
-                  "statusBadge": {
-                    "type": "object",
-                    "properties": {
-                      "label": {
-                        "type": "string",
-                        "example": "Obligatoire"
-                      },
-                      "variant": {
-                        "type": "string",
-                        "enum": [
-                          "default",
-                          "beginner",
-                          "intermediate",
-                          "advanced",
-                          "inProgress",
-                          "completed",
-                          "mandatory",
-                          "notStarted"
-                        ],
-                        "description": "Variante visuelle utilisée par les badges de formation",
-                        "example": "mandatory"
-                      }
-                    },
-                    "required": [
-                      "label"
-                    ],
-                    "description": "Badge associé à une formation"
-                  },
-                  "progress": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 100
-                  },
-                  "deadline": {
-                    "type": "string",
-                    "example": "30 juin 2026"
-                  },
-                  "ratingDistribution": {
-                    "type": "object",
-                    "properties": {
-                      "1": {
-                        "type": "number",
-                        "minimum": 0
-                      },
-                      "2": {
-                        "type": "number",
-                        "minimum": 0
-                      },
-                      "3": {
-                        "type": "number",
-                        "minimum": 0
-                      },
-                      "4": {
-                        "type": "number",
-                        "minimum": 0
-                      },
-                      "5": {
-                        "type": "number",
-                        "minimum": 0
-                      }
-                    },
-                    "description": "Répartition des notes par valeur, de 1 à 5",
-                    "example": {
-                      "1": 0,
-                      "2": 1,
-                      "3": 4,
-                      "4": 35,
-                      "5": 88
-                    }
-                  },
-                  "details": {
-                    "type": "object",
-                    "properties": {
-                      "title": {
-                        "type": "string"
-                      },
-                      "subtitle": {
-                        "type": "string"
-                      },
-                      "description": {
-                        "type": "string"
-                      },
-                      "instructor": {
-                        "type": "string"
-                      },
-                      "duration": {
-                        "type": "string"
-                      },
-                      "rating": {
-                        "anyOf": [
-                          {
-                            "type": "number"
-                          },
-                          {
-                            "type": "string"
-                          }
-                        ]
-                      },
-                      "ratingLabel": {
-                        "type": "string"
-                      },
-                      "ratingDistribution": {
-                        "type": "object",
-                        "properties": {
-                          "1": {
-                            "type": "number",
-                            "minimum": 0
-                          },
-                          "2": {
-                            "type": "number",
-                            "minimum": 0
-                          },
-                          "3": {
-                            "type": "number",
-                            "minimum": 0
-                          },
-                          "4": {
-                            "type": "number",
-                            "minimum": 0
-                          },
-                          "5": {
-                            "type": "number",
-                            "minimum": 0
-                          }
-                        },
-                        "description": "Répartition des notes par valeur, de 1 à 5",
-                        "example": {
-                          "1": 0,
-                          "2": 1,
-                          "3": 4,
-                          "4": 35,
-                          "5": 88
-                        }
-                      },
-                      "progress": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 100
-                      },
-                      "completed": {
-                        "type": "boolean"
-                      },
-                      "completionRating": {
-                        "type": "object",
-                        "properties": {
-                          "initialValue": {
-                            "type": "number",
-                            "minimum": 1,
-                            "maximum": 5
-                          },
-                          "max": {
-                            "type": "number",
-                            "minimum": 1
-                          },
-                          "submitted": {
-                            "type": "boolean"
-                          },
-                          "disabled": {
-                            "type": "boolean"
-                          },
-                          "title": {
-                            "type": "string"
-                          },
-                          "helperText": {
-                            "type": "string"
-                          },
-                          "submitLabel": {
-                            "type": "string"
-                          },
-                          "submittedLabel": {
-                            "type": "string"
-                          }
-                        },
-                        "description": "Configuration du composant de notation de fin de formation"
-                      },
-                      "chapters": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "example": "accueil-1"
-                            },
-                            "title": {
-                              "type": "string",
-                              "example": "Comprendre l’organisation municipale"
-                            },
-                            "description": {
-                              "type": "string"
-                            },
-                            "duration": {
-                              "type": "string",
-                              "example": "25 min"
-                            },
-                            "completed": {
-                              "type": "boolean"
-                            },
-                            "active": {
-                              "type": "boolean"
-                            },
-                            "contents": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "properties": {
-                                  "id": {
-                                    "type": "string",
-                                    "example": "accueil-1-video"
-                                  },
-                                  "title": {
-                                    "type": "string",
-                                    "example": "Présentation des directions et services"
-                                  },
-                                  "type": {
-                                    "type": "string",
-                                    "enum": [
-                                      "video",
-                                      "pdf",
-                                      "document",
-                                      "link",
-                                      "quiz",
-                                      "audio",
-                                      "other"
-                                    ],
-                                    "description": "Type de contenu pédagogique",
-                                    "example": "video"
-                                  },
-                                  "description": {
-                                    "type": "string"
-                                  },
-                                  "duration": {
-                                    "type": "string",
-                                    "example": "12 min"
-                                  },
-                                  "fileName": {
-                                    "type": "string",
-                                    "example": "organigramme-mairie360.pdf"
-                                  },
-                                  "href": {
-                                    "type": "string",
-                                    "example": "/documents/organigramme-mairie360.pdf"
-                                  },
-                                  "completed": {
-                                    "type": "boolean"
-                                  },
-                                  "required": {
-                                    "type": "boolean"
-                                  }
-                                },
-                                "required": [
-                                  "id",
-                                  "title",
-                                  "type"
-                                ],
-                                "description": "Contenu pédagogique d’un chapitre"
-                              }
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "title",
-                            "duration"
-                          ],
-                          "description": "Chapitre d’une formation"
-                        }
-                      }
-                    },
-                    "required": [
-                      "title",
-                      "description",
-                      "chapters"
-                    ],
-                    "description": "Détail complet affiché dans la modale de formation"
-                  }
-                },
-                "required": [
-                  "id",
-                  "title",
-                  "description"
-                ],
-                "description": "Formation affichée dans le catalogue"
+                "$ref": "#/components/schemas/AdminCourseCreateBody"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Formation créée",
+            "description": "Course created",
             "content": {
               "application/json": {
                 "schema": {
@@ -4420,7 +4491,7 @@
                         },
                         "category": {
                           "type": "string",
-                          "example": "Intégration"
+                          "example": "Integration"
                         },
                         "statusValue": {
                           "type": "string",
@@ -4674,7 +4745,7 @@
                                   },
                                   "title": {
                                     "type": "string",
-                                    "example": "Comprendre l’organisation municipale"
+                                    "example": "Municipal organisation"
                                   },
                                   "description": {
                                     "type": "string"
@@ -4749,8 +4820,7 @@
                                 },
                                 "required": [
                                   "id",
-                                  "title",
-                                  "duration"
+                                  "title"
                                 ],
                                 "description": "Chapitre d’une formation"
                               }
@@ -4781,181 +4851,71 @@
             }
           },
           "400": {
-            "description": "Payload invalide",
+            "description": "Invalid request payload",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Missing, expired or invalid session",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "403": {
-            "description": "Accès réservé aux administrateurs",
+            "description": "Restricted to administrators",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Identifiant déjà utilisé",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Erreur serveur non prevue",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not available: no upstream service stores this data yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
+            "description": "BFF User or an upstream API is unreachable, failed or answered an unusable body",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -4968,16 +4928,17 @@
         "tags": [
           "E-learning administration"
         ],
-        "summary": "Modifie une formation complète",
+        "summary": "Updates a course (not available yet: 501)",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant de la formation",
-              "example": "accueil-agents"
+              "pattern": "^[1-9]\\d{0,14}$",
+              "description": "Course (E-learning API formation) identifier",
+              "example": "4"
             },
             "required": true,
-            "description": "Identifiant de la formation",
+            "description": "Course (E-learning API formation) identifier",
             "name": "courseId",
             "in": "path"
           }
@@ -5042,7 +5003,7 @@
                   },
                   "category": {
                     "type": "string",
-                    "example": "Intégration"
+                    "example": "Integration"
                   },
                   "statusValue": {
                     "type": "string",
@@ -5296,7 +5257,7 @@
                             },
                             "title": {
                               "type": "string",
-                              "example": "Comprendre l’organisation municipale"
+                              "example": "Municipal organisation"
                             },
                             "description": {
                               "type": "string"
@@ -5371,8 +5332,7 @@
                           },
                           "required": [
                             "id",
-                            "title",
-                            "duration"
+                            "title"
                           ],
                           "description": "Chapitre d’une formation"
                         }
@@ -5398,7 +5358,7 @@
         },
         "responses": {
           "200": {
-            "description": "Formation mise à jour",
+            "description": "Course updated",
             "content": {
               "application/json": {
                 "schema": {
@@ -5460,7 +5420,7 @@
                         },
                         "category": {
                           "type": "string",
-                          "example": "Intégration"
+                          "example": "Integration"
                         },
                         "statusValue": {
                           "type": "string",
@@ -5714,7 +5674,7 @@
                                   },
                                   "title": {
                                     "type": "string",
-                                    "example": "Comprendre l’organisation municipale"
+                                    "example": "Municipal organisation"
                                   },
                                   "description": {
                                     "type": "string"
@@ -5789,8 +5749,7 @@
                                 },
                                 "required": [
                                   "id",
-                                  "title",
-                                  "duration"
+                                  "title"
                                 ],
                                 "description": "Chapitre d’une formation"
                               }
@@ -5821,181 +5780,71 @@
             }
           },
           "400": {
-            "description": "Payload invalide",
+            "description": "Invalid request payload",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Missing, expired or invalid session",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "403": {
-            "description": "Accès réservé aux administrateurs",
+            "description": "Restricted to administrators",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Formation introuvable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Erreur serveur non prevue",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not available: no upstream service stores this data yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
+            "description": "BFF User or an upstream API is unreachable, failed or answered an unusable body",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -6006,23 +5855,24 @@
         "tags": [
           "E-learning administration"
         ],
-        "summary": "Supprime une formation",
+        "summary": "Deletes a course (not available yet: 501)",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant de la formation",
-              "example": "accueil-agents"
+              "pattern": "^[1-9]\\d{0,14}$",
+              "description": "Course (E-learning API formation) identifier",
+              "example": "4"
             },
             "required": true,
-            "description": "Identifiant de la formation",
+            "description": "Course (E-learning API formation) identifier",
             "name": "courseId",
             "in": "path"
           }
         ],
         "responses": {
           "200": {
-            "description": "Formation supprimée",
+            "description": "Course deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -6045,151 +5895,61 @@
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Missing, expired or invalid session",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "403": {
-            "description": "Accès réservé aux administrateurs",
+            "description": "Restricted to administrators",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Formation introuvable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Erreur serveur non prevue",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not available: no upstream service stores this data yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
+            "description": "BFF User or an upstream API is unreachable, failed or answered an unusable body",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -6202,12 +5962,13 @@
         "tags": [
           "E-learning"
         ],
-        "summary": "Charge le catalogue E-learning",
-        "description": "Retourne les donnees pretes a afficher pour le catalogue : utilisateur, notifications, filtres, statistiques, formations et footer.",
+        "summary": "Loads the E-learning catalogue",
+        "description": "Ready-to-render catalogue: user, filters, statistics, footer and the courses the caller is enrolled in, with their chapters, contents and progress, read from the E-learning API.",
         "parameters": [
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "example": "accueil"
             },
             "required": false,
             "name": "search",
@@ -6215,7 +5976,8 @@
           },
           {
             "schema": {
-              "type": "string"
+              "type": "string",
+              "example": "Integration"
             },
             "required": false,
             "name": "category",
@@ -6241,7 +6003,8 @@
           {
             "schema": {
               "type": "integer",
-              "minimum": 1
+              "minimum": 1,
+              "example": 1
             },
             "required": false,
             "name": "page",
@@ -6251,7 +6014,8 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 100
+              "maximum": 100,
+              "example": 10
             },
             "required": false,
             "name": "pageSize",
@@ -6260,7 +6024,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Catalogue charge avec succes",
+            "description": "Catalogue loaded",
             "content": {
               "application/json": {
                 "schema": {
@@ -6543,7 +6307,7 @@
                               },
                               "category": {
                                 "type": "string",
-                                "example": "Intégration"
+                                "example": "Integration"
                               },
                               "statusValue": {
                                 "type": "string",
@@ -6797,7 +6561,7 @@
                                         },
                                         "title": {
                                           "type": "string",
-                                          "example": "Comprendre l’organisation municipale"
+                                          "example": "Municipal organisation"
                                         },
                                         "description": {
                                           "type": "string"
@@ -6872,8 +6636,7 @@
                                       },
                                       "required": [
                                         "id",
-                                        "title",
-                                        "duration"
+                                        "title"
                                       ],
                                       "description": "Chapitre d’une formation"
                                     }
@@ -6957,121 +6720,51 @@
             }
           },
           "400": {
-            "description": "Parametres de recherche invalides",
+            "description": "Invalid search parameters",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Missing, expired or invalid session",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Erreur serveur non prevue",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
+            "description": "BFF User or an upstream API is unreachable, failed or answered an unusable body",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -7084,28 +6777,30 @@
         "tags": [
           "E-learning"
         ],
-        "summary": "Marque un contenu comme termine ou non termine",
-        "description": "Met a jour la progression de la formation et retourne les chapitres, le chapitre et le contenu actualises.",
+        "summary": "Marks a content as completed",
+        "description": "Records the completion in the E-learning API, which tracks progress per chapter: completing a content completes its whole chapter. Returns the updated progress, chapters, chapter and content. `completed: false` answers 501 (the E-learning API cannot undo a completion).",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant de la formation",
-              "example": "accueil-agents"
+              "pattern": "^[1-9]\\d{0,14}$",
+              "description": "Course (E-learning API formation) identifier",
+              "example": "4"
             },
             "required": true,
-            "description": "Identifiant de la formation",
+            "description": "Course (E-learning API formation) identifier",
             "name": "courseId",
             "in": "path"
           },
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant du contenu",
-              "example": "accueil-1-video"
+              "pattern": "^[1-9]\\d{0,14}$",
+              "description": "Content (E-learning API attachment) identifier",
+              "example": "27"
             },
             "required": true,
-            "description": "Identifiant du contenu",
+            "description": "Content (E-learning API attachment) identifier",
             "name": "contentId",
             "in": "path"
           }
@@ -7119,10 +6814,13 @@
                 "properties": {
                   "chapterId": {
                     "type": "string",
-                    "example": "accueil-1"
+                    "pattern": "^[1-9]\\d{0,14}$",
+                    "description": "Chapter (E-learning API module) identifier",
+                    "example": "11"
                   },
                   "completed": {
                     "type": "boolean",
+                    "description": "Only `true` is supported: the E-learning API cannot mark a module as not completed (501).",
                     "example": true
                   }
                 },
@@ -7130,14 +6828,14 @@
                   "chapterId",
                   "completed"
                 ],
-                "description": "Payload de complétion d’un contenu"
+                "description": "Content completion. Progress is tracked per chapter by the E-learning API: completing a content completes its whole chapter."
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Progression mise a jour",
+            "description": "Progress updated",
             "content": {
               "application/json": {
                 "schema": {
@@ -7178,7 +6876,7 @@
                           },
                           "title": {
                             "type": "string",
-                            "example": "Comprendre l’organisation municipale"
+                            "example": "Municipal organisation"
                           },
                           "description": {
                             "type": "string"
@@ -7253,8 +6951,7 @@
                         },
                         "required": [
                           "id",
-                          "title",
-                          "duration"
+                          "title"
                         ],
                         "description": "Chapitre d’une formation"
                       }
@@ -7268,7 +6965,7 @@
                         },
                         "title": {
                           "type": "string",
-                          "example": "Comprendre l’organisation municipale"
+                          "example": "Municipal organisation"
                         },
                         "description": {
                           "type": "string"
@@ -7343,8 +7040,7 @@
                       },
                       "required": [
                         "id",
-                        "title",
-                        "duration"
+                        "title"
                       ],
                       "description": "Chapitre d’une formation"
                     },
@@ -7420,181 +7116,71 @@
             }
           },
           "400": {
-            "description": "Payload invalide",
+            "description": "Invalid request payload",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Missing, expired or invalid session",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "404": {
-            "description": "Formation, chapitre ou contenu introuvable",
+            "description": "Course, chapter or content not found, or the caller is not enrolled in the course",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Formation incoherente ou detail indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Erreur serveur non prevue",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not available: no upstream service stores this data yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
+            "description": "BFF User or an upstream API is unreachable, failed or answered an unusable body",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -7607,11 +7193,11 @@
         "tags": [
           "E-learning"
         ],
-        "summary": "Charge le profil E-learning",
-        "description": "Retourne les informations necessaires au rendu direct de la page profil.",
+        "summary": "Loads the E-learning profile",
+        "description": "The caller as resolved by BFF User `/me`, ready to render on the profile page.",
         "responses": {
           "200": {
-            "description": "Profil charge avec succes",
+            "description": "Profile loaded",
             "content": {
               "application/json": {
                 "schema": {
@@ -7733,91 +7319,41 @@
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Missing, expired or invalid session",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Erreur serveur non prevue",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
+            "description": "BFF User or an upstream API is unreachable, failed or answered an unusable body",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -7828,8 +7364,8 @@
         "tags": [
           "E-learning"
         ],
-        "summary": "Met a jour les champs editables du profil",
-        "description": "Ignore les champs non editables comme role, isAdmin, service, position et lastConnection.",
+        "summary": "Updates the editable profile fields",
+        "description": "`email` and `phone` are saved by Core API (`PATCH /api/v1/user/me/`), then the profile is read again from BFF User. `address` and `city` are stored by no upstream service: a body carrying them answers 501 and nothing is written. Non-editable fields (role, isAdmin, service, position, lastConnection) are ignored.",
         "requestBody": {
           "required": true,
           "content": {
@@ -7839,16 +7375,21 @@
                 "properties": {
                   "email": {
                     "type": "string",
-                    "format": "email"
+                    "format": "email",
+                    "example": "security-admin@mairie360.fr"
                   },
                   "phone": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Phone number in E.164 (`+33612345678`)",
+                    "example": "+33612345678"
                   },
                   "address": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "1 place de la Mairie"
                   },
                   "city": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Paris"
                   }
                 },
                 "description": "Champs éditables du profil utilisateur"
@@ -7858,7 +7399,7 @@
         },
         "responses": {
           "200": {
-            "description": "Profil mis a jour",
+            "description": "Profile saved, then read again",
             "content": {
               "application/json": {
                 "schema": {
@@ -7940,121 +7481,71 @@
             }
           },
           "400": {
-            "description": "Payload invalide",
+            "description": "Invalid request payload, or a value Core API refuses (e.g. a phone number that is not 10 to 15 digits)",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Missing, expired or invalid session",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The e-mail address is already used by another account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Erreur serveur non prevue",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not available: no upstream service stores this data yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
+            "description": "BFF User or an upstream API is unreachable, failed or answered an unusable body",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -8067,17 +7558,18 @@
         "tags": [
           "E-learning"
         ],
-        "summary": "Note une formation",
-        "description": "Enregistre une note utilisateur entre 1 et 5 et retourne la repartition mise a jour.",
+        "summary": "Rates a course",
+        "description": "Not available yet: the E-learning API does not store ratings, so a valid request from an authenticated caller answers 501. The 200 answer is the contract the route will keep once ratings are persisted upstream.",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant de la formation",
-              "example": "accueil-agents"
+              "pattern": "^[1-9]\\d{0,14}$",
+              "description": "Course (E-learning API formation) identifier",
+              "example": "4"
             },
             "required": true,
-            "description": "Identifiant de la formation",
+            "description": "Course (E-learning API formation) identifier",
             "name": "courseId",
             "in": "path"
           }
@@ -8106,7 +7598,7 @@
         },
         "responses": {
           "200": {
-            "description": "Note enregistree",
+            "description": "Rating recorded",
             "content": {
               "application/json": {
                 "schema": {
@@ -8170,151 +7662,61 @@
             }
           },
           "400": {
-            "description": "Payload invalide",
+            "description": "Invalid request payload",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Missing, expired or invalid session",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Formation introuvable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Erreur serveur non prevue",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not available: no upstream service stores this data yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
+            "description": "BFF User or an upstream API is unreachable, failed or answered an unusable body",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -8327,17 +7729,18 @@
         "tags": [
           "E-learning"
         ],
-        "summary": "Demarre ou reprend une formation",
-        "description": "Retourne la formation actualisee, le prochain contenu et une URL de reprise optionnelle.",
+        "summary": "Starts or resumes a course",
+        "description": "Returns the course with its progress, the next content to open and the course URL. Nothing is written: the E-learning API records the start of a course when its first chapter is completed.",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "description": "Identifiant de la formation",
-              "example": "accueil-agents"
+              "pattern": "^[1-9]\\d{0,14}$",
+              "description": "Course (E-learning API formation) identifier",
+              "example": "4"
             },
             "required": true,
-            "description": "Identifiant de la formation",
+            "description": "Course (E-learning API formation) identifier",
             "name": "courseId",
             "in": "path"
           }
@@ -8361,7 +7764,7 @@
         },
         "responses": {
           "200": {
-            "description": "Formation demarree ou reprise",
+            "description": "Course to start or resume",
             "content": {
               "application/json": {
                 "schema": {
@@ -8423,7 +7826,7 @@
                         },
                         "category": {
                           "type": "string",
-                          "example": "Intégration"
+                          "example": "Integration"
                         },
                         "statusValue": {
                           "type": "string",
@@ -8677,7 +8080,7 @@
                                   },
                                   "title": {
                                     "type": "string",
-                                    "example": "Comprendre l’organisation municipale"
+                                    "example": "Municipal organisation"
                                   },
                                   "description": {
                                     "type": "string"
@@ -8752,8 +8155,7 @@
                                 },
                                 "required": [
                                   "id",
-                                  "title",
-                                  "duration"
+                                  "title"
                                 ],
                                 "description": "Chapitre d’une formation"
                               }
@@ -8790,181 +8192,61 @@
             }
           },
           "400": {
-            "description": "Payload invalide",
+            "description": "Invalid request payload",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Session invalide, expirée ou manquante",
+            "description": "Missing, expired or invalid session",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "404": {
-            "description": "Formation introuvable",
+            "description": "Unknown course, or the caller is not enrolled in it",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Formation incoherente ou detail indisponible",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Erreur serveur non prevue",
+            "description": "Unexpected server error",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
           "502": {
-            "description": "BFF User injoignable ou réponse inexploitable",
+            "description": "BFF User or an upstream API is unreachable, failed or answered an unusable body",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "example": "COURSE_NOT_FOUND"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Formation introuvable."
-                    },
-                    "details": {
-                      "example": {
-                        "courseId": "accueil-agents"
-                      }
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "message"
-                  ],
-                  "description": "Format d’erreur commun du BFF E-learning"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "BFF User or an upstream API is not configured (`<SERVICE>_URL` missing or invalid)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }

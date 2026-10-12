@@ -24,6 +24,20 @@ type ContentCompletePayload = Parameters<
   NonNullable<CatalogProps["onCourseContentComplete"]>
 >[1];
 
+function withChapterDurations(courses: ElearningCatalogResponse["catalog"]["courses"]): CatalogCourse[] {
+  return courses.map((course) =>
+    course.details
+      ? {
+          ...course,
+          details: {
+            ...course.details,
+            chapters: course.details.chapters.map((chapter) => ({ ...chapter, duration: chapter.duration ?? "" })),
+          },
+        }
+      : course,
+  ) as CatalogCourse[];
+}
+
 export function ElearningModule({ learnerPort = pendingLearnerPort }: { learnerPort?: LearnerFeaturePort } = {}) {
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
   const downloadRef = useRef<AbortController | null>(null);
@@ -92,6 +106,9 @@ export function ElearningModule({ learnerPort = pendingLearnerPort }: { learnerP
   };
 
   const catalog = catalogResponse?.catalog;
+  // The dev BFF contract no longer requires `chapters[].duration` (the E-learning API has none), while the published
+  // library still types it as a string: present an empty duration rather than failing the type check or the reader.
+  const catalogCourses = useMemo(() => (catalog ? withChapterDurations(catalog.courses) : []), [catalog]);
   const requestedCourseMissing =
     requestedCourseId !== null &&
     !!catalog &&
@@ -229,7 +246,7 @@ export function ElearningModule({ learnerPort = pendingLearnerPort }: { learnerP
           title={catalog.title}
           subtitle={catalog.subtitle}
           certificationCount={catalog.certificationCount}
-          courses={catalog.courses}
+          courses={catalogCourses}
           stats={catalog.stats}
           data-stat-count={catalog.stats?.length}
           adminStats={catalog.adminStats}

@@ -27,7 +27,7 @@ beforeEach(()=>{
  access=f.accessToken(2,Math.floor(Date.now()/1000)+3600);refresh='disposable-training-'+Math.random();
  runtime.accessToken=f.accessToken(2,1);runtime.refreshToken=refresh;
  process.env.BFF_ELEARNING_BASE_URL=training.url;process.env.ELEARNING_FRONT_URL=FRONT_ORIGIN;process.env.LOGIN_FRONT_URL=owner.origin;
- setBrowserFrontUrls({ELEARNING_FRONT_URL:FRONT_ORIGIN,LOGIN_FRONT_URL:owner.origin});browser=installWindow();browser.location.href=FRONT_ORIGIN+'/?course=rgpd-collectivites';
+ setBrowserFrontUrls({ELEARNING_FRONT_URL:FRONT_ORIGIN,LOGIN_FRONT_URL:owner.origin});browser=installWindow();browser.location.href=FRONT_ORIGIN+'/?course=4';
 });
 afterEach(()=>{forgetUserSession(user.url,refresh);forgetUserSession(user.url,runtime.refreshToken);const violations=[...training.violations,...user.violations,...runtime.violations];removeWindow();assert.deepEqual(violations,[]);});
 const rejected=status=>({status,body:{message:'Disposable refusal'},outOfContract:true});
@@ -45,7 +45,7 @@ test('the actual catalogue rotates once at Login and retries using only cookie-d
 for(const status of [401,503])test(`failed owner renewal${status} neither replays a learner mutation nor invokes logout`,async()=>{
  browser.localStorage.setItem('mairie360.auth.jwt','legacy');browser.localStorage.setItem('unrelated.preference','keep');
  training.on('post','/elearning/courses/{courseId}/start',rejected(401));owner.override=()=>Response.json({message:'Disposable refusal'},{status});
- await assert.rejects(requestBff('/elearning/courses/rgpd-collectivites/start',{method:'POST'}));
+ await assert.rejects(requestBff('/elearning/courses/4/start',{method:'POST'}));
  assert.equal(training.requests.length,1);assert.equal(owner.calls.length,1);assert.equal(owner.calls[0].path,'/api/auth/refresh');
  assert.equal(runtime.refreshToken,refresh);assert.equal(user.requests.length,0);assert.equal(browser.location.assigned.length,status===401?1:0);
  assert.equal(browser.localStorage.getItem('mairie360.auth.jwt'),status===401?null:'legacy');assert.equal(browser.localStorage.getItem('unrelated.preference'),'keep');

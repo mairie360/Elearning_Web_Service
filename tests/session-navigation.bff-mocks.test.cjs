@@ -17,7 +17,7 @@ afterEach(() => {
 test('a refused catalogue returns to canonical Login without a logout operation', async () => {
  runtime.accessToken=undefined;
  bffElearning.on('get','/elearning/catalog',errorReply(401,'REFUSED','Refus'));
- const browser=front.window();browser.location.href='http://localhost:5006/?course=rgpd-collectivites';
+ const browser=front.window();browser.location.href='http://localhost:5006/?course=4';
  await assert.rejects(requestBff('/elearning/catalog'),BffRequestError);
  assert.equal(browser.location.assigned.length,1);
  assert.equal(new URL(browser.location.assigned[0]).searchParams.get('redirect'),browser.location.href);
@@ -28,7 +28,7 @@ test('parallel refused API requests navigate once and never replay a learner mut
  runtime.accessToken=undefined;
  bffElearning.on('get','/elearning/catalog',errorReply(401,'REFUSED','Refus'));
  bffElearning.on('post','/elearning/courses/{courseId}/start',errorReply(401,'REFUSED','Refus'));
- await Promise.allSettled([requestBff('/elearning/catalog'),requestBff('/elearning/courses/rgpd-collectivites/start',{method:'POST'})]);
+ await Promise.allSettled([requestBff('/elearning/catalog'),requestBff('/elearning/courses/4/start',{method:'POST'})]);
  assert.equal(front.window().location.assigned.length,1);assert.equal(runtime.frontCalls.length,2);assert.equal(bffElearning.requests.length,2);
  assert.equal(bffElearning.requests.filter(x=>x.method==='POST').length,1);
 });
@@ -82,7 +82,7 @@ test('an already aborted request makes no network call or document navigation', 
 for (const status of [400, 401, 403, 503]) {
   test(`a real service ${status} stays typed and never replays the mutation`, async () => {
     bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(status, 'REFUSED', `Refus ${status}`));
-    await assert.rejects(requestBff('/elearning/courses/rgpd-collectivites/start', { method: 'POST' }),
+    await assert.rejects(requestBff('/elearning/courses/4/start', { method: 'POST' }),
       error => error instanceof BffRequestError && error.status === status && error.message === (status === 401 ? 'Votre session a expiré. Veuillez vous reconnecter.' : `Refus ${status}`));
     assert.equal(bffElearning.requests.length, 1);
     assert.equal(front.window().location.assigned.length, status === 401 ? 1 : 0);

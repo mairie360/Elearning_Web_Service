@@ -20,7 +20,7 @@ async function elearningDom(t, { reader = false } = {}) {
   const errors = [], console = new VirtualConsole();
   console.on('jsdomError', error => errors.push(error.message));
   const dom = new JSDOM('<!doctype html><html><head></head><body><div id="root"></div></body></html>', {
-    url: 'http://localhost:5006/' + (reader ? '?course=rgpd-collectivites' : ''), pretendToBeVisual: true, virtualConsole: console,
+    url: 'http://localhost:5006/' + (reader ? '?course=4' : ''), pretendToBeVisual: true, virtualConsole: console,
   });
   const bff = new ContractMockServer('BFF_ELEARNING', loadOrvalContract('@mairie360/bff-elearning-openapi'));
   let front, root, React, setBrowserFrontUrls;

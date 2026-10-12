@@ -27,12 +27,12 @@ Tests are plain CommonJS `node:test` files matching `tests/*.test.cjs`. No Jest/
 Same approach as the BFFs' `*.upstream-mocks.test.ts`. `tests/support/openapi-contract.ts`, `contract-mock-server.ts` and `orval-contract.ts` are **verbatim copies** of `../../BFFs/BFF_Elearning/tests/support/`, so keep them identical.
 
 - `tests/support/mocked-front.ts` starts a single `ContractMockServer`, BFF E-learning. It is rebuilt from the published devDependency `@mairie360/bff-elearning-openapi` (orval output, exact version). It also installs `FrontRuntime` (`tests/support/front-runtime.ts`), which replaces `global.fetch`. A browser-side call must target the front origin and goes through the real `middleware` (with its matcher), then the `src/app/**/route.ts` handler that the App Router would pick. A server-side call (inside a handler, tracked with `AsyncLocalStorage`) may only target that mock. After each test, any contract violation or out-of-scope call fails it. `BFF_ELEARNING_BASE_URL` is reset per test. `runtime.navigate(path)` runs only the middleware, for page navigations such as `/logout`.
-- Mocked success replies are validated against the package contract. Orval only types success statuses, so error replies go through `errorReply(status, code, message)`. It marks them `outOfContract` but validates the body against the `ApiError` schema of `contracts/openapi.json`.
+- Mocked success replies are validated against the package contract. Orval only types success statuses, so error replies go through `errorReply(status, code, message)`. It marks them `outOfContract` but validates the body against the `ErrorResponse` schema of `contracts/openapi.json` (`{ error: { code, message, details } }`, the envelope shared by every BFF; scenario codes are mapped to the published enum by `fixtures.apiError`).
 - `tests/elearning-module-html.bff-mocks.test.cjs` renders the real `ElearningModule` (behind `src/app/page.tsx`) inside the shared `AppShell` through `tests/support/server-view.cjs` (`react-dom/server` with hook state kept between passes, same file in every front, see `../CLAUDE.md`) on `useMockedFront`: loading state, catalogue, BFF-supplied user/footer, retry after an error, course start, refused mutation, 401 → `/logout`, active-module navigation and Settings profile access are asserted on the HTML. The loader transpiles `.tsx` with `jsx: react-jsx`.
 - `tests/elearning.bff-mocks.test.cjs` asserts in `after()` that every operation listed in `CONSUMED` was exercised. `tests/bff-contracts.test.cjs` enforces several things:
-  - the package is an exact `X.Y.Z` and the only `bff-*-openapi` dependency;
+  - the package is an accepted exact version (`scripts/contract-version.mjs`: a release `X.Y.Z` or a `0.0.0-dev.<sha40>` dev package of BFF_Elearning `main`, never `staging`) and the only `bff-*-openapi` dependency;
   - `contracts/openapi.json` declares exactly the package's operations;
-  - every `docker-compose*.yml` uses `bff-elearning:<package version>`;
+  - every `docker-compose*.yml` uses the `bff-elearning` image built from the pinned commit (`X.Y.Z`, or `dev-<sha7>` for a dev package) and release or `dev-<sha7>` tags for the other BFF images;
   - the catch-all is the only route handler (no adapter to another BFF);
   - `src/lib/elearning-api.ts` (`callBff("method", "template"`) calls the consumed operations.
 
@@ -40,16 +40,16 @@ Same approach as the BFFs' `*.upstream-mocks.test.ts`. `tests/support/openapi-co
 
 ### OpenAPI contract
 
-`contracts/openapi.json` is BFF_Elearning's contract **as of a published release tag**. It is the proxy allowlist, and `src/contracts/bff.d.ts` is generated from it (`openapi-typescript@7.10.1`, pinned in `scripts/contracts.mjs`). Never hand-edit either file. The devDependency `@mairie360/bff-elearning-openapi` (same version, used only by tests) is the published artifact both are checked against. Don't use `contracts:sync` from a BFF checkout: `BFFs/BFF_Elearning` usually sits on an unreleased branch that is ahead of the last release. To bump:
+`contracts/openapi.json` is BFF_Elearning's contract **as of a published package**: a release tag, or, while no release is cut, the `main` commit whose `0.0.0-dev.<sha40>` package is pinned (MAIR-509). It is the proxy allowlist, and `src/contracts/bff.d.ts` is generated from it (`openapi-typescript@7.10.1`, pinned in `scripts/contracts.mjs`). Never hand-edit either file. The devDependency `@mairie360/bff-elearning-openapi` (same version, used only by tests) is the published artifact both are checked against. Don't use `contracts:sync` from a BFF checkout: `BFFs/BFF_Elearning` usually sits on an unreleased branch that is ahead of the last release. To bump:
 
 ```bash
-npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@X.Y.Z   # published releases only
-git -C ../../BFFs/BFF_Elearning show vX.Y.Z:contracts/openapi.json > contracts/openapi.json
+npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@<version>   # a release X.Y.Z or a published 0.0.0-dev.<sha40>, never staging
+git -C ../../BFFs/BFF_Elearning show <vX.Y.Z or sha40>:contracts/openapi.json > contracts/openapi.json
 npm run contracts:generate  # regenerate types from the snapshot
 npm run contracts:check     # fail if types are stale
 ```
 
-Then move `BFF_ELEARNING_IMAGE` defaults in every `docker-compose*.yml` to `X.Y.Z`, which the tests enforce. The published contract has no logout route. A logout endpoint is a proposed need in `BFF.md`. `contracts:*` run `npm exec` on `openapi-typescript`, so they need network access.
+Then move `BFF_ELEARNING_IMAGE` defaults in every `docker-compose*.yml` to the image built from the same commit (`X.Y.Z`, or `dev-<sha7>`), which the tests enforce. The stacks also pin dev images of BFF User, Core API, E-learning API and the database: the dev Liquibase needs `-Dallow_template_admin=true`, the database enforces argon2id hashes in `init-test.sql`, the dev APIs need `JWT_ALLOW_WEAK_SECRET` for the shared test secret and `RATE_LIMIT_ENABLED=false` (plus a lifted `RATE_LIMIT_PER_SECOND` / `RATE_LIMIT_BURST` on E-learning API, whose per-IP token bucket otherwise answers 429 under load), BFF_Elearning needs `JWT_SECRET` at startup and BFF User `AUTH_RATE_LIMIT_ENABLED=false` for the ZAP scan. The published contract has no logout route. A logout endpoint is a proposed need in `BFF.md`. `contracts:*` run `npm exec` on `openapi-typescript`, so they need network access.
 
 ## Architecture
 
