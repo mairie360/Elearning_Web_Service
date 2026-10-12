@@ -109,17 +109,19 @@ export function writes(data) {
 
   group('profile write', () => {
     // Alternate between two valid values so every iteration really changes the stored profile.
-    const city = __ITER % 2 === 0 ? 'Paris' : 'Lyon';
-    const updated = http.patch(`${BASE_URL}/api/bff/elearning/profile`, JSON.stringify({ city }), {
+    // Only the phone is persisted (E.164, Core API refuses national formats): the pinned BFF
+    // answers 501 for address and city, which no service stores yet (MAIR-513).
+    const phone = __ITER % 2 === 0 ? '+33601020304' : '+33601020305';
+    const updated = http.patch(`${BASE_URL}/api/bff/elearning/profile`, JSON.stringify({ phone }), {
       headers,
       redirects: 0,
       tags: { endpoint: 'profile-write' },
     });
     check(updated, {
       'PATCH /api/bff/elearning/profile 200': (r) => r.status === 200,
-      'PATCH /api/bff/elearning/profile echoes the city': (r) => {
+      'PATCH /api/bff/elearning/profile echoes the phone': (r) => {
         try {
-          return r.json().user.city === city;
+          return r.json().user.phone === phone;
         } catch {
           return false;
         }
