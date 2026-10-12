@@ -13,6 +13,12 @@ const React = require('react');
 const f = require('./support/elearning-fixtures.ts');
 const { errorReply, useMockedFront } = require('./support/mocked-front.ts');
 const Home = require('../src/app/page.tsx').default;
+const { ElearningModule } = require('../src/features/elearning/ElearningModule.tsx');
+const { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE, fullCatalogCapabilities, pinnedBffCapabilities } = require('../src/features/elearning/bffCapabilities.ts');
+const { NOT_IMPLEMENTED_MESSAGE } = require('../src/lib/bff-client.ts');
+// The module once BFF_Elearning serves every contract operation (MAIR-513): the flows below that rate courses or
+// administer them render it, the page itself (Home) only wires what the pinned BFF serves.
+const FullModule = () => React.createElement(ElearningModule, { capabilities: fullCatalogCapabilities });
 
 const front = useMockedFront({ before, after, beforeEach, afterEach });
 const { bffElearning, runtime } = front;
@@ -28,7 +34,7 @@ const operations = () => bffElearning.requests.map((request) => `${request.metho
 for (const returnedId of ['unrelated', ' ']) {
   test(`the actual admin form keeps all edits after an uncorrelated receipt ${JSON.stringify(returnedId)}`, async () => {
     const initial = f.catalogResponse([f.course(), f.course('unrelated', { title: 'Independent course' })], f.currentUser({ isAdmin: true }));
-    await renderLoadedCatalog(initial);
+    await renderLoadedCatalog(initial, FullModule);
     const course = initial.catalog.courses[0];
     const chapter = course.details.chapters[0];
     const content = chapter.contents[0];
@@ -102,7 +108,7 @@ for (const scenario of ['foreign-content', 'negative-completion']) {
 
 for (const mode of ['create', 'update']) {
   test(`confirmed admin ${mode} announces the canonical response despite a refused GET and dismissal never writes`, async () => {
-    await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+    await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })), FullModule);
     const method = mode === 'create' ? 'post' : 'patch';
     const path = mode === 'create' ? '/elearning/admin/courses' : '/elearning/admin/courses/{courseId}';
     const callback = mode === 'create' ? 'onCreateCourse' : 'onUpdateCourse';
@@ -127,7 +133,7 @@ for (const mode of ['create', 'update']) {
 }
 
 test('a confirmed deletion has truthful status and a subsequent refused write clears that old confirmation', async () => {
-  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })), FullModule);
   bffElearning.on('delete', '/elearning/admin/courses/{courseId}', { body: { deleted: true, courseId: '4' } });
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Catalogue après suppression refusé'));
   await view.act(() => view.props('ElearningCatalog').onDeleteCourse(f.course()));
@@ -142,7 +148,7 @@ test('a confirmed deletion has truthful status and a subsequent refused write cl
 });
 
 test('GET-only recovery retains the undismissed canonical success without repeating an admin write', async () => {
-  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })), FullModule);
   const canonical = f.course('4', { title: 'Titre confirmé conservé' });
   bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { course: canonical } });
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Lecture de récupération refusée'));
@@ -157,7 +163,7 @@ test('GET-only recovery retains the undismissed canonical success without repeat
 });
 
 test('a pending write and a contract-shaped unconfirmed deletion never announce success', async (t) => {
-  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })), FullModule);
   let release;
   const gate = new Promise(resolve => { release = resolve; });
   t.after(() => release());
@@ -183,9 +189,9 @@ test('a pending write and a contract-shaped unconfirmed deletion never announce 
   assert.equal(view.props('ElearningCatalog').courses.length, 1);
 });
 
-async function renderLoadedCatalog(body = f.catalogResponse()) {
+async function renderLoadedCatalog(body = f.catalogResponse(), Component = Home) {
   bffElearning.on('get', '/elearning/catalog', { body });
-  view = mount(React.createElement(Home));
+  view = mount(React.createElement(Component));
   return view.waitFor((html) => !html.includes('role="status"'));
 }
 
@@ -296,7 +302,7 @@ for (const supplied of [[], [{ label: 'En cours reçu', value: 'in-progress' }],
 
 for (const mode of ['create', 'update']) {
   test(`the rendered administrator catalogue forwards ${mode} refusal and confirmation promises`, async () => {
-    await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+    await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })), FullModule);
     const method = mode === 'create' ? 'post' : 'patch';
     const path = mode === 'create' ? '/elearning/admin/courses' : '/elearning/admin/courses/{courseId}';
     const callback = mode === 'create' ? 'onCreateCourse' : 'onUpdateCourse';
@@ -318,7 +324,7 @@ for (const mode of ['create', 'update']) {
 }
 
 test('repeating the visible Delete action while pending sends one write; refusal keeps the course for retry', async () => {
-  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })));
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })), FullModule);
   const originalFetch = global.fetch;
   let release;
   let received;
@@ -357,7 +363,7 @@ test('repeating the visible Delete action while pending sends one write; refusal
 
 for (const mode of ['start', 'complete', 'rating']) {
   test(`the rendered learner catalogue forwards ${mode} refusal and confirmation promises`, async () => {
-    await renderLoadedCatalog();
+    await renderLoadedCatalog(f.catalogResponse(), FullModule);
     const path = mode === 'complete'
       ? '/elearning/courses/{courseId}/contents/{contentId}/complete'
       : `/elearning/courses/{courseId}/${mode}`;
@@ -528,7 +534,7 @@ for (const previouslySubmitted of [false, true]) {
     course.details.completionRating = previouslySubmitted
       ? { initialValue: 4, submitted: true } : { submitted: false };
     front.window().location.href = `https://elearning.test.example/?course=${course.id}`;
-    await renderLoadedCatalog(f.catalogResponse([course]));
+    await renderLoadedCatalog(f.catalogResponse([course]), FullModule);
     if (previouslySubmitted) await view.click('Modifier ma note');
     await view.click(props => props['aria-label'] === 'Donner la note 3 sur 5');
     bffElearning.on('post', '/elearning/courses/{courseId}/rating', {
@@ -615,7 +621,7 @@ test('a failed start refresh keeps the confirmed reader and offers GET-only retr
 });
 
 test('a failed refresh after a rating keeps the catalogue visible and offers a reload-only retry', async () => {
-  await renderLoadedCatalog();
+  await renderLoadedCatalog(f.catalogResponse(), FullModule);
   bffElearning.on('post', '/elearning/courses/{courseId}/rating', { body: f.ratingResponse(4) });
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'BFF_UNAVAILABLE', 'Actualisation indisponible'));
 
@@ -656,7 +662,7 @@ test('a refused mutation is shown as an alert above the catalogue, which stays d
 
 async function confirmedCourseWithFailedRead() {
   const initial = f.catalogResponse([f.course()], f.currentUser({ isAdmin: true }));
-  await renderLoadedCatalog(initial);
+  await renderLoadedCatalog(initial, FullModule);
   const confirmed = f.course('4', { title: 'Formation confirmée' });
   bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { course: confirmed } });
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Lecture refusée'));
@@ -719,7 +725,7 @@ test('composed status reset retains filters and independent write refusal throug
   const course = f.course('legal', { title: 'Parcours juridique' });
   const initial = f.catalogResponse([course, f.course('welcome', { title: 'Parcours accueil', category: 'Accueil' })], f.currentUser({ isAdmin: true }));
   initial.catalog.statuses = [{ label: 'Terminées', value: 'completed' }, { label: 'Tout reçu', value: 'all', disabled: true }, { label: 'Doublon', value: 'all' }];
-  await renderLoadedCatalog(initial);
+  await renderLoadedCatalog(initial, FullModule);
   await view.act(() => view.props('ElearningSearchInput').onValueChange('Parcours'));
   await view.act(() => view.props('ElearningFilterSelect', 0).onValueChange('Juridique'));
   await view.act(() => view.props('ElearningFilterSelect', 1).onValueChange('completed'));
@@ -766,7 +772,7 @@ test('composed status reset never restores a confirmed deletion after a failed r
   const target = f.course('legal', { title: 'Parcours supprimé' });
   const body = f.catalogResponse([target, f.course('welcome', { title: 'Parcours accueil', category: 'Accueil' })], f.currentUser({ isAdmin: true }));
   body.catalog.statuses = [{ label: 'Terminées', value: 'completed' }];
-  await renderLoadedCatalog(body);
+  await renderLoadedCatalog(body, FullModule);
   await view.act(() => view.props('ElearningSearchInput').onValueChange('Parcours'));
   await view.act(() => view.props('ElearningFilterSelect', 0).onValueChange('Juridique'));
   bffElearning.on('delete', '/elearning/admin/courses/{courseId}', { body: { deleted: true, courseId: target.id } });
@@ -862,4 +868,75 @@ test('the shared shell directs profile access to configured Settings', async () 
     setBrowserFrontUrls({});
     global.window.location.assign = originalAssign;
   }
+});
+
+// MAIR-513: the pinned BFF_Elearning answers 501 to course ratings, course administration and `completed: false`.
+// The page only wires what the BFF serves; the shared catalogue hides a control whose callback is absent.
+test('the page wires neither rating nor administration callbacks and tells administrators why', async () => {
+  assert.deepEqual(pinnedBffCapabilities, { courseRating: false, courseManagement: false, contentUncompletion: false });
+  const course = f.course();
+  await renderLoadedCatalog(f.catalogResponse([course], f.currentUser({ isAdmin: true })));
+  const props = view.props('ElearningCatalog');
+  assert.equal(props.currentUserRole, 'administrator');
+  for (const name of ['onCreateCourse', 'onUpdateCourse', 'onDeleteCourse', 'onCourseRatingSubmit']) assert.equal(props[name], undefined, name);
+  assert.equal(typeof props.onCourseAction, 'function');
+  assert.equal(typeof props.onCourseContentComplete, 'function');
+  assert.doesNotMatch(view.html, new RegExp(`aria-label="(Modifier|Supprimer) ${course.title}"`));
+  // react-dom/server keeps the typographic apostrophe as is.
+  assert.match(view.html, new RegExp(`<p data-elearning-capability-notice="true" class="[^"]*" role="note">${COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE.replace(/[()]/g, '\\$&')}</p>`));
+  assert.deepEqual(operations(), ['GET /elearning/catalog']);
+});
+
+test('a learner sees no capability notice and no rating control on a completed course', async () => {
+  const course = f.course();
+  course.progress = 100; course.details.progress = 100; course.details.completed = true;
+  course.details.completionRating = { submitted: false };
+  front.window().location.href = `https://elearning.test.example/?course=${course.id}`;
+  await renderLoadedCatalog(f.catalogResponse([course]));
+  assert.doesNotMatch(view.html, /data-elearning-capability-notice/);
+  assert.match(view.html, /role="dialog"/);
+  assert.doesNotMatch(view.text(), /Donner la note|Envoyer la note|Noter cette formation/);
+  assert.equal(view.props('ElearningCatalog').onCourseRatingSubmit, undefined);
+});
+
+test('un-ticking a completed content is refused locally in French, ticking it still reaches the BFF', async () => {
+  const course = f.course();
+  front.window().location.href = `https://elearning.test.example/?course=${course.id}`;
+  await renderLoadedCatalog(f.catalogResponse([course]));
+  const receipt = f.contentCompleteResponse();
+  const untick = { ...receipt, content: { ...receipt.content, completed: false } };
+
+  assert.equal(await view.act(() => view.props('ElearningCatalog').onCourseContentComplete(view.props('ElearningCatalog').courses[0], untick)), false);
+  assert.match(view.html, new RegExp(`role="alert"[^>]*>${CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE.replace(/’/g, '&#x27;')}<`));
+  assert.deepEqual(operations(), ['GET /elearning/catalog']);
+
+  bffElearning.on('post', '/elearning/courses/{courseId}/contents/{contentId}/complete', { body: receipt });
+  assert.equal(await view.act(() => view.props('ElearningCatalog').onCourseContentComplete(view.props('ElearningCatalog').courses[0], { ...receipt, content: { ...receipt.content, completed: true } })), true);
+  const [, write] = bffElearning.requests;
+  assert.deepEqual(write.body, { chapterId: receipt.chapter.id, completed: true });
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/contents/{contentId}/complete', 'GET /elearning/catalog']);
+});
+
+test('a 501 of the BFF is shown in French, never with its English message', async () => {
+  await renderLoadedCatalog();
+  bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(501, 'NOT_IMPLEMENTED', 'Course starts are not available yet.'));
+  assert.equal(await view.act(() => view.props('ElearningCatalog').onCourseAction(view.props('ElearningCatalog').courses[0])), false);
+  assert.match(view.text(), new RegExp(NOT_IMPLEMENTED_MESSAGE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(view.text(), /not available yet/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/start']);
+});
+
+test('an empty enrolment catalogue renders the BFF empty label without inventing courses', async () => {
+  await renderLoadedCatalog(f.catalogResponse([]));
+  assert.match(view.text(), /Aucune formation/);
+  assert.doesNotMatch(view.html, /<article/);
+  assert.deepEqual(view.props('ElearningCatalog').courses, []);
+  assert.deepEqual(operations(), ['GET /elearning/catalog']);
+});
+
+test('with every capability the module wires the rating and administration callbacks (future BFF)', async () => {
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })), FullModule);
+  const props = view.props('ElearningCatalog');
+  for (const name of ['onCreateCourse', 'onUpdateCourse', 'onDeleteCourse', 'onCourseRatingSubmit']) assert.equal(typeof props[name], 'function', name);
+  assert.doesNotMatch(view.html, /data-elearning-capability-notice/);
 });

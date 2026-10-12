@@ -94,7 +94,7 @@ The generic proxy reads the versioned OpenAPI contract to allow paths and method
 
 The following sources and limitations describe the associated BFF, which determines persistence for the displayed data.
 
-The initial catalogue is defined in `elearning_helpers.ts`. Course edits, progress, ratings and profile overrides are held in memory, including user-keyed maps. BFF User supplies identity. The included Elearning API client and diagnostics do not make this storage persistent.
+Since MAIR-401 the BFF reads the E-learning API: the catalogue is the learner's enrolments, course starts and progress are persisted per chapter. Course rating, course administration and `completed: false` answer 501 (nothing upstream persists them). `src/features/elearning/bffCapabilities.ts` (MAIR-513) lists what the pinned BFF serves: `ElearningModule` only wires the rating and admin callbacks of the shared catalogue when the capability is on (the component hides a control without a callback), refuses an uncompletion locally and shows administrators a notice. `requestBff` translates any 501 into `NOT_IMPLEMENTED_MESSAGE`.
 
 Restarting resets in-memory data; multiple instances do not share that state. Contract validation or an HTTP success does not prove durable storage in Elearning API.
 
@@ -161,14 +161,14 @@ These data paths are exposed at the same origin through the proxy; Next.js pages
 | --- | --- | --- | --- |
 | GET | `/health` | — | 200 |
 | GET | `/check_apis` | — | 200, 502 |
-| POST | `/elearning/admin/courses` | application/json | 201, 400, 401, 403, 409 |
-| PATCH | `/elearning/admin/courses/{courseId}` | application/json | 200, 400, 401, 403, 404 |
-| DELETE | `/elearning/admin/courses/{courseId}` | — | 200, 401, 403, 404 |
+| POST | `/elearning/admin/courses` | application/json | 201, 400, 401, 403, 409, 501 (today: always 501, not offered) |
+| PATCH | `/elearning/admin/courses/{courseId}` | application/json | 200, 400, 401, 403, 404, 501 |
+| DELETE | `/elearning/admin/courses/{courseId}` | — | 200, 401, 403, 404, 501 |
 | GET | `/elearning/catalog` | — | 200, 400, 500 |
-| POST | `/elearning/courses/{courseId}/contents/{contentId}/complete` | application/json | 200, 400, 404, 422, 500 |
+| POST | `/elearning/courses/{courseId}/contents/{contentId}/complete` | application/json | 200, 400, 404, 422, 500, 501 (`completed: false`) |
 | GET | `/elearning/profile` | — | 200, 500 |
 | PATCH | `/elearning/profile` | application/json | 200, 400, 500 |
-| POST | `/elearning/courses/{courseId}/rating` | application/json | 200, 400, 404, 500 |
+| POST | `/elearning/courses/{courseId}/rating` | application/json | 200, 400, 404, 500, 501 (today: always 501, not offered) |
 | POST | `/elearning/courses/{courseId}/start` | application/json | 200, 400, 404, 422, 500 |
 
 ### Pages
