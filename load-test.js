@@ -10,8 +10,9 @@ import encoding from 'k6/encoding';
 //     /api/bff/elearning/catalog and /api/bff/elearning/profile reads the page fetches, relayed by
 //     the same-origin proxy to BFF Elearning;
 //   * `writes` (MAIR-516): the profile update a learner saves from the page,
-//     PATCH /api/bff/elearning/profile (-> BFF Elearning -> Core API), and the start of the first
-//     course of the catalogue when it lists one, POST /api/bff/elearning/courses/{id}/start.
+//     PATCH /api/bff/elearning/profile (-> BFF Elearning -> Core API), then the course seeded by
+//     init-test.sql: POST /api/bff/elearning/courses/{id}/start and the completion of its first
+//     content, POST …/contents/{contentId}/complete (-> E-learning API, idempotent upsert).
 //     Course administration and ratings are left out: the pinned BFF answers 501 (MAIR-513).
 // Authentication goes through the accessToken cookie, like in the browser: the proxy turns it
 // into Authorization: Bearer for the BFF.
@@ -43,6 +44,7 @@ export const options = {
     'http_req_duration{endpoint:elearning}': ['p(95)<500'], // proxy + BFF aggregation + upstream
     'http_req_duration{endpoint:profile-write}': ['p(95)<800'], // proxy -> BFF Elearning -> Core API update
     'http_req_duration{endpoint:course-start}': ['p(95)<800'], // proxy -> BFF Elearning -> E-learning API
+    'http_req_duration{endpoint:content-complete}': ['p(95)<800'], // proxy -> BFF Elearning -> E-learning API upsert + reload
   },
 };
 
@@ -104,6 +106,18 @@ function firstCourseId(response) {
   }
 }
 
+// First content of the first chapter of the started course, or null.
+function firstContent(response) {
+  try {
+    const chapters = response.json('course.details.chapters');
+    const chapter = Array.isArray(chapters) && chapters.length ? chapters[0] : null;
+    const content = chapter && Array.isArray(chapter.contents) && chapter.contents.length ? chapter.contents[0] : null;
+    return content && content.id !== undefined ? { chapterId: String(chapter.id), contentId: String(content.id) } : null;
+  } catch {
+    return null;
+  }
+}
+
 export function writes(data) {
   const headers = { Cookie: `accessToken=${data.token}`, Accept: 'application/json', 'Content-Type': 'application/json' };
 
@@ -130,16 +144,30 @@ export function writes(data) {
   });
 
   group('course start', () => {
-    // The isolated stack seeds no course: the start is only exercised when the catalogue lists one.
+    // init-test.sql enrols the user in one course: a catalogue without it fails the check.
     const catalog = http.get(`${BASE_URL}/api/bff/elearning/catalog`, { headers, redirects: 0, tags: { endpoint: 'elearning' } });
     const courseId = firstCourseId(catalog);
-    if (courseId === null) return;
+    if (!check(catalog, { '/api/bff/elearning/catalog lists the seeded course': () => courseId !== null })) return;
     const started = http.post(`${BASE_URL}/api/bff/elearning/courses/${courseId}/start`, JSON.stringify({ source: 'k6' }), {
       headers,
       redirects: 0,
       tags: { endpoint: 'course-start' },
     });
-    check(started, { 'POST /api/bff/elearning/courses/{id}/start 200': (r) => r.status === 200 });
+    const content = firstContent(started);
+    const ok = check(started, {
+      'POST /api/bff/elearning/courses/{id}/start 200': (r) => r.status === 200,
+      'POST /api/bff/elearning/courses/{id}/start returns the course chapters': () => content !== null,
+    });
+    if (!ok) return;
+
+    // Progress is tracked per chapter upstream and a completion cannot be undone (501), so every
+    // iteration completes the same content again: the E-learning API upserts the row.
+    const completed = http.post(
+      `${BASE_URL}/api/bff/elearning/courses/${courseId}/contents/${content.contentId}/complete`,
+      JSON.stringify({ chapterId: content.chapterId, completed: true }),
+      { headers, redirects: 0, tags: { endpoint: 'content-complete' } },
+    );
+    check(completed, { 'POST /api/bff/elearning/courses/{id}/contents/{contentId}/complete 200': (r) => r.status === 200 });
   });
 
   sleep(1);
