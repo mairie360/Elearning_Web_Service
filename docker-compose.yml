@@ -55,7 +55,7 @@ x-service: &service-template
 services:
   postgres:
     profiles: ["legacy-stack"]
-    image: ${DB_IMAGE:-ghcr.io/mairie360/database:dev-99f6127}
+    image: ${DB_IMAGE:-ghcr.io/mairie360/database:dev-90c22bb}
     restart: always
     container_name: mairie360-db-elearning-front #change front name
     environment:
@@ -76,7 +76,7 @@ services:
 
   liquibase:
     profiles: ["legacy-stack"]
-    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:dev-99f6127}
+    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:dev-90c22bb}
     container_name: mairie360-liquibase-elearning-front #change front name
     depends_on:
       postgres:
@@ -115,7 +115,7 @@ services:
   core-api:
     profiles: ["legacy-stack"]
     container_name: core-api-elearning-front-developpement
-    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:dev-2529974}
+    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:dev-95531e2}
     ports:
       - "3000:3000"
     networks:
@@ -124,6 +124,11 @@ services:
       <<: *api-env
       PORT: 3000
       PUBLIC_URL: http://core-api:3000
+      # Core refuses to start without its Resend configuration (MAIR-522). No page of this front sends an
+      # e-mail through these stacks, so the key is fake and the URL never called.
+      RESEND_API_KEY: "re_fake_local"
+      RESEND_BASE_URL: "http://fake-resend.invalid"
+      EMAIL_DOMAIN: "mairie360.local"
       # API >= api_lib 3.0 refuses the weak shared test secret unless this flag is set (MAIR-428),
       # and rate-limits each account (MAIR-425): the scan / load test hammer it as one user.
       JWT_ALLOW_WEAK_SECRET: "true"
@@ -171,7 +176,7 @@ services:
   bff-user:
     profiles: ["legacy-stack"]
     container_name: bff-user-elearning-front-developpement
-    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:dev-0d80ef4}
+    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:dev-46a698b}
     ports:
       - "4000:4000"
     networks:
@@ -193,7 +198,7 @@ services:
   bff-elearning:
     profiles: ["legacy-stack"]
     container_name: bff-elearning-elearning-front
-    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:dev-88f7caa}
+    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:dev-c4c3f73}
     ports:
       - "4006:4006"
     networks:
