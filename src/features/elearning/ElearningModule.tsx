@@ -1,7 +1,8 @@
 "use client";
 
+import AccessibleShell from "@/components/accessible-shell";
+
 import {
-  AppShell,
   ElearningCatalog,
 } from "@mairie360/lib-components";
 import type { ComponentProps } from "react";
@@ -136,7 +137,7 @@ export function ElearningModule({
   };
 
   return (
-    <AppShell
+    <AccessibleShell
       activeItem="training"
       isAdmin={user?.isAdmin ?? false}
       user={user ?? { name: "" }}
@@ -152,6 +153,7 @@ export function ElearningModule({
       }
       className="elearning-shell"
     >
+      <h1 className="sr-only">Formation</h1>
       {logoutError && <section role="alert" className="mx-auto my-4 w-full max-w-[1130px] space-y-2 rounded border border-red-200 bg-white p-4 text-red-700">
         <p>{logoutError}</p>
         <button type="button" className="rounded border px-4 py-2 text-sm font-medium" onClick={() => navigateToLogin({ explicit: true })}>Retour à la connexion</button>
@@ -301,6 +303,6 @@ export function ElearningModule({
           className="elearning-catalog-shell min-h-full !px-6 !py-8"
         />
       )}
-    </AppShell>
+    </AccessibleShell>
   );
 }
