@@ -7,11 +7,11 @@ import encoding from 'k6/encoding';
 // k6 load test of the Elearning front (Elearning_Web_Service).
 // Two scenarios run side by side against the routes the Next.js server really serves:
 //   * `reads`: the page (Next.js render behind the authentication middleware), /health, then the
-//     /api/bff/elearning/catalog and /api/bff/elearning/profile reads the page fetches, relayed by
+//     /elearning/catalog and /elearning/profile reads the page fetches, relayed by
 //     the same-origin proxy to BFF Elearning;
 //   * `writes` (MAIR-516): the profile update a learner saves from the page,
-//     PATCH /api/bff/elearning/profile (-> BFF Elearning -> Core API), then the course seeded by
-//     init-test.sql: POST /api/bff/elearning/courses/{id}/start and the completion of its first
+//     PATCH /elearning/profile (-> BFF Elearning -> Core API), then the course seeded by
+//     init-test.sql: POST /elearning/courses/{id}/start and the completion of its first
 //     content, POST …/contents/{contentId}/complete (-> E-learning API, idempotent upsert).
 //     Course administration and ratings are left out: the pinned BFF answers 501 (MAIR-513).
 // Authentication goes through the accessToken cookie, like in the browser: the proxy turns it
@@ -84,12 +84,12 @@ export function reads(data) {
   });
 
   group('elearning reads', () => {
-    // Browser paths of the page (src/lib/elearning-api.ts prefixes /api/bff), not the root catch-all.
-    const elearningCatalog = http.get(`${BASE_URL}/api/bff/elearning/catalog`, dataParams);
-    check(elearningCatalog, { '/api/bff/elearning/catalog 200': (r) => r.status === 200 });
+    // Browser paths of the page (the generated client called by src/lib/elearning-api.ts requests the contract path as is), not the root catch-all.
+    const elearningCatalog = http.get(`${BASE_URL}/elearning/catalog`, dataParams);
+    check(elearningCatalog, { '/elearning/catalog 200': (r) => r.status === 200 });
 
-    const elearningProfile = http.get(`${BASE_URL}/api/bff/elearning/profile`, dataParams);
-    check(elearningProfile, { '/api/bff/elearning/profile 200': (r) => r.status === 200 });
+    const elearningProfile = http.get(`${BASE_URL}/elearning/profile`, dataParams);
+    check(elearningProfile, { '/elearning/profile 200': (r) => r.status === 200 });
   });
 
   sleep(1);
@@ -126,14 +126,14 @@ export function writes(data) {
     // Only the phone is persisted (E.164, Core API refuses national formats): the pinned BFF
     // answers 501 for address and city, which no service stores yet (MAIR-513).
     const phone = __ITER % 2 === 0 ? '+33601020304' : '+33601020305';
-    const updated = http.patch(`${BASE_URL}/api/bff/elearning/profile`, JSON.stringify({ phone }), {
+    const updated = http.patch(`${BASE_URL}/elearning/profile`, JSON.stringify({ phone }), {
       headers,
       redirects: 0,
       tags: { endpoint: 'profile-write' },
     });
     check(updated, {
-      'PATCH /api/bff/elearning/profile 200': (r) => r.status === 200,
-      'PATCH /api/bff/elearning/profile echoes the phone': (r) => {
+      'PATCH /elearning/profile 200': (r) => r.status === 200,
+      'PATCH /elearning/profile echoes the phone': (r) => {
         try {
           return r.json().user.phone === phone;
         } catch {
@@ -145,29 +145,29 @@ export function writes(data) {
 
   group('course start', () => {
     // init-test.sql enrols the user in one course: a catalogue without it fails the check.
-    const catalog = http.get(`${BASE_URL}/api/bff/elearning/catalog`, { headers, redirects: 0, tags: { endpoint: 'elearning' } });
+    const catalog = http.get(`${BASE_URL}/elearning/catalog`, { headers, redirects: 0, tags: { endpoint: 'elearning' } });
     const courseId = firstCourseId(catalog);
-    if (!check(catalog, { '/api/bff/elearning/catalog lists the seeded course': () => courseId !== null })) return;
-    const started = http.post(`${BASE_URL}/api/bff/elearning/courses/${courseId}/start`, JSON.stringify({ source: 'k6' }), {
+    if (!check(catalog, { '/elearning/catalog lists the seeded course': () => courseId !== null })) return;
+    const started = http.post(`${BASE_URL}/elearning/courses/${courseId}/start`, JSON.stringify({ source: 'k6' }), {
       headers,
       redirects: 0,
       tags: { endpoint: 'course-start' },
     });
     const content = firstContent(started);
     const ok = check(started, {
-      'POST /api/bff/elearning/courses/{id}/start 200': (r) => r.status === 200,
-      'POST /api/bff/elearning/courses/{id}/start returns the course chapters': () => content !== null,
+      'POST /elearning/courses/{id}/start 200': (r) => r.status === 200,
+      'POST /elearning/courses/{id}/start returns the course chapters': () => content !== null,
     });
     if (!ok) return;
 
     // Progress is tracked per chapter upstream and a completion cannot be undone (501), so every
     // iteration completes the same content again: the E-learning API upserts the row.
     const completed = http.post(
-      `${BASE_URL}/api/bff/elearning/courses/${courseId}/contents/${content.contentId}/complete`,
+      `${BASE_URL}/elearning/courses/${courseId}/contents/${content.contentId}/complete`,
       JSON.stringify({ chapterId: content.chapterId, completed: true }),
       { headers, redirects: 0, tags: { endpoint: 'content-complete' } },
     );
-    check(completed, { 'POST /api/bff/elearning/courses/{id}/contents/{contentId}/complete 200': (r) => r.status === 200 });
+    check(completed, { 'POST /elearning/courses/{id}/contents/{contentId}/complete 200': (r) => r.status === 200 });
   });
 
   sleep(1);

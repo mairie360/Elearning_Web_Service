@@ -108,7 +108,7 @@ for (const confirmed of [false, true]) {
     const ready = new Promise(resolve => { received = resolve; });
     let first = true;
     global.fetch = async (...args) => {
-      const hold = first && args[0] === '/api/bff/elearning/admin/courses/existing' && args[1]?.method === 'DELETE';
+      const hold = first && args[0] === '/elearning/admin/courses/existing' && args[1]?.method === 'DELETE';
       if (hold) first = false;
       const response = await originalFetch(...args);
       if (hold) { received(); await held; }
@@ -162,7 +162,7 @@ test('delete: different course identifiers remain independent while one deletion
   const ready = new Promise(resolve => { received = resolve; });
   global.fetch = async (...args) => {
     const response = await originalFetch(...args);
-    if (args[0] === '/api/bff/elearning/admin/courses/held' && args[1]?.method === 'DELETE') { received(); await held; }
+    if (args[0] === '/elearning/admin/courses/held' && args[1]?.method === 'DELETE') { received(); await held; }
     return response;
   };
   let pending;
@@ -193,7 +193,7 @@ test('delete: the same flight also covers its pending post-confirmation catalogu
   const ready = new Promise(resolve => { received = resolve; });
   global.fetch = async (...args) => {
     const response = await originalFetch(...args);
-    if (args[0] === '/api/bff/elearning/catalog') { received(); await held; }
+    if (args[0] === '/elearning/catalog') { received(); await held; }
     return response;
   };
   const pending = [];
@@ -281,7 +281,7 @@ for (const mode of ['create', 'update', 'delete']) {
     let first = true;
     global.fetch = async (...args) => {
       const response = await originalFetch(...args);
-      if (args[0] === '/api/bff/elearning/catalog' && first) {
+      if (args[0] === '/elearning/catalog' && first) {
         first = false;
         received();
         await held;

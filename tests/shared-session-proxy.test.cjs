@@ -40,7 +40,7 @@ test('the actual catalogue rotates once at Login and retries using only cookie-d
  assert.equal(training.requests.length,2);assert.equal(user.requests.length,1);assert.equal(user.requests[0].template,'/auth/refresh');
  assert.deepEqual(user.requests[0].body,{refresh_token:refresh});assert.equal(user.requests[0].headers.authorization,undefined);
  assert.equal(runtime.accessToken,access);assert.deepEqual(browser.location.assigned,[]);
- assert.deepEqual(runtime.frontCalls.map(x=>x.pathname),['/api/bff/elearning/catalog']);
+ assert.deepEqual(runtime.frontCalls.map(x=>x.pathname),['/elearning/catalog']);
 });
 for(const status of [401,503])test(`failed owner renewal${status} neither replays a learner mutation nor invokes logout`,async()=>{
  browser.localStorage.setItem('mairie360.auth.jwt','legacy');browser.localStorage.setItem('unrelated.preference','keep');
@@ -52,7 +52,7 @@ for(const status of [401,503])test(`failed owner renewal${status} neither replay
  if(status===401)assert.equal(new URL(browser.location.assigned[0]).searchParams.get('redirect'),browser.location.href);
 });
 test('foreign catalogue and logout requests are refused before any service or cookie change',async()=>{
- for(const [path,init] of [['/api/bff/elearning/catalog',{}],['/api/auth/logout',{method:'POST',body:'{}'}]]){
+ for(const [path,init] of [['/elearning/catalog',{}],['/api/auth/logout',{method:'POST',body:'{}'}]]){
   const response=await fetch(path,{...init,headers:{Origin:'https://foreign.test','Content-Type':'application/json'}});assert.equal(response.status,403);assert.equal(response.headers.get('set-cookie'),null);
  }
  assert.equal(owner.calls.length,0);assert.equal(training.requests.length,0);assert.equal(user.requests.length,0);assert.equal(runtime.refreshToken,refresh);

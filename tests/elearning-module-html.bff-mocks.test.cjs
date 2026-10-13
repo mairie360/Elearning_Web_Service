@@ -208,7 +208,7 @@ test('the first pass renders the loading state, the next one the catalogue of GE
   const html = await view.waitFor((current) => !current.includes('role="status"'));
 
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
-  assert.deepEqual(runtime.frontCalls.map((call) => `${call.method} ${call.pathname} ${call.status}`), ['GET /api/bff/elearning/catalog 200']);
+  assert.deepEqual(runtime.frontCalls.map((call) => `${call.method} ${call.pathname} ${call.status}`), ['GET /elearning/catalog 200']);
   assert.doesNotMatch(html, /role="alert"/);
   assert.match(view.text(), /RGPD et collectivités/);
   assert.match(view.text(), /Protéger les données personnelles des administrés\./);
@@ -700,7 +700,7 @@ test('read retry keeps its failure and disabled pending control until the catalo
   bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse() });
   global.fetch = async (...args) => {
     const response = await originalFetch(...args);
-    if (args[0] === '/api/bff/elearning/catalog') { received(); await held; }
+    if (args[0] === '/elearning/catalog') { received(); await held; }
     return response;
   };
   try {

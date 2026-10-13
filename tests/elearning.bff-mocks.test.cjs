@@ -6,7 +6,7 @@ const f = require('./support/elearning-fixtures.ts');
 const { errorReply, useMockedFront } = require('./support/mocked-front.ts');
 const { createCatalogActions, replaceCatalogCourse, toContractCourse } = require('../src/features/elearning/catalogActions.ts');
 const { loadProfile } = require('../src/features/elearning/profileActions.ts');
-const { contractUrl } = require('../src/lib/elearning-api.ts');
+const { pathSegment } = require('../src/lib/elearning-api.ts');
 const { logout } = require('../src/lib/auth-session.ts');
 const { clearStoredAuthJwtToken, formatBearerToken, getStoredAuthJwtToken, storeAuthJwtToken } = require('../src/lib/auth-token.ts');
 
@@ -67,7 +67,7 @@ async function withDelayedCatalog(run) {
   let delayed = false;
   global.fetch = async (...args) => {
     const response = await originalFetch(...args);
-    if (args[0] === '/api/bff/elearning/catalog' && !delayed) {
+    if (args[0] === '/elearning/catalog' && !delayed) {
       delayed = true;
       ready(args[1]);
       await held;
@@ -88,7 +88,7 @@ async function withDelayedLearnerResponse(pathname, run) {
   const ready = new Promise((resolve) => { received = resolve; });
   let first = true;
   global.fetch = async (...args) => {
-    const hold = args[0] === "/api/bff" + pathname && args[1]?.method === 'POST' && first;
+    const hold = args[0] === '' + pathname && args[1]?.method === 'POST' && first;
     if (hold) first = false;
     const response = await originalFetch(...args);
     if (hold) { received(); await held; }
@@ -362,13 +362,13 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.deepEqual(state.catalogResponse, body);
     assert.deepEqual(state.loading, [true, false]);
     assert.equal(state.error, null);
-    assert.deepEqual(runtime.frontCalls, [{ method: 'GET', pathname: '/api/bff/elearning/catalog', search: '', route: 'src/app/api/bff/[...path]/route.ts', status: 200 }]);
+    assert.deepEqual(runtime.frontCalls, [{ method: 'GET', pathname: '/elearning/catalog', search: '', route: 'src/app/[...path]/route.ts', status: 200 }]);
     const [request] = bffElearning.requests;
     assert.equal(request.headers.authorization, `Bearer ${runtime.accessToken}`);
     assert.equal(request.headers.accept, 'application/json');
     for (const header of ['cookie', 'x-nonce', 'content-security-policy']) assert.equal(request.headers[header], undefined, header);
     assert.deepEqual(request.undeclaredQuery, []);
-    assert.deepEqual(runtime.upstreamCalls.map(({ url, route }) => [url.origin, route]), [[new URL(bffElearning.url).origin, 'src/app/api/bff/[...path]/route.ts']]);
+    assert.deepEqual(runtime.upstreamCalls.map(({ url, route }) => [url.origin, route]), [[new URL(bffElearning.url).origin, 'src/app/[...path]/route.ts']]);
   });
 
   test('a JWT stored in localStorage does not replace the current cookie session', async () => {
@@ -484,7 +484,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     await actions.completeContent('securite/incendie', 'chapitre-1', 'video-1');
 
     assert.equal(state.mutationError, 'Chemin invalide.');
-    assert.deepEqual(runtime.frontCalls.map(({ pathname, status }) => [pathname, status]), [['/api/bff/elearning/courses/securite%2Fincendie/contents/video-1/complete', 400]]);
+    assert.deepEqual(runtime.frontCalls.map(({ pathname, status }) => [pathname, status]), [['/elearning/courses/securite%2Fincendie/contents/video-1/complete', 400]]);
     assert.equal(bffElearning.requests.length, 0);
   });
 
@@ -619,7 +619,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
 
     assert.equal(state.error, null);
     assert.deepEqual(runtime.frontCalls.map(({ method, pathname, route, status }) => [method, pathname, route, status]), [
-      ['GET', '/api/bff/elearning/catalog', 'src/app/api/bff/[...path]/route.ts', 401],
+      ['GET', '/elearning/catalog', 'src/app/[...path]/route.ts', 401],
     ]);
     assert.equal(front.window().localStorage.getItem('mairie360.auth.jwt'), null);
     assert.equal(front.window().localStorage.getItem('formation.draft'), 'unfinished lesson');
@@ -717,8 +717,9 @@ describe('profile loading against the contract-driven BFF E-learning', () => {
 });
 
 describe('contract helpers', () => {
-  test('contractUrl refuses a missing path parameter before any network call', () => {
-    assert.throws(() => contractUrl('/elearning/courses/{courseId}/start', {}), /Paramètre de chemin "courseId" manquant/);
+  test('pathSegment refuses a missing path parameter before any network call and encodes the others', () => {
+    assert.throws(() => pathSegment('', 'courseId'), /Missing path parameter "courseId"/);
+    assert.equal(pathSegment('a/b c', 'courseId'), 'a%2Fb%20c');
     assert.equal(runtime.frontCalls.length, 0);
   });
 

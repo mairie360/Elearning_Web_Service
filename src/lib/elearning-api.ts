@@ -1,67 +1,36 @@
-import type { components, paths } from "../contracts/bff";
-import { requestBff } from "./bff-client";
+import type { components } from "../contracts/bff";
+import { bffElearning } from "./bff-client";
 
-// Seul point d'accès du navigateur au BFF E-learning. Chemins, méthodes, paramètres, corps et réponses
-// sont typés depuis src/contracts/bff.d.ts (généré à partir de contracts/openapi.json) : une opération
-// absente du contrat ne compile pas. tests/network-boundary.test.cjs interdit tout autre appel réseau,
-// tests/elearning.bff-mocks.test.cjs rejoue chaque opération contre un BFF simulé piloté par le contrat.
+// Only entry point of the browser to the E-learning BFF. Every call goes through an operation of the
+// generated client of the published contract (@mairie360/bff-elearning-openapi): paths, methods and
+// parameters are owned by the package, and an operation missing from it does not compile.
+// tests/network-boundary.test.cjs forbids any other network call, tests/elearning.bff-mocks.test.cjs replays
+// every operation against a BFF mock driven by the contract.
 
 type Schemas = components["schemas"];
-type HttpMethod = "get" | "post" | "patch" | "delete";
-type ContractPath = keyof paths;
 
-/** Méthodes réellement déclarées pour un chemin (les autres sont `?: never` dans le contrat généré). */
-type DeclaredMethod<P extends ContractPath> = {
-  [M in HttpMethod]: paths[P][M] extends undefined ? never : M;
-}[HttpMethod];
+/** The generated client does not escape path parameters: refuse an empty one and encode the others. */
+export function pathSegment(value: string, name: string) {
+  if (!value) {
+    throw new Error(`Missing path parameter "${name}".`);
+  }
 
-type Operation<P extends ContractPath, M extends HttpMethod> = NonNullable<paths[P][M]>;
-
-type PathParams<O> = O extends { parameters: { path: infer T } } ? T : never;
-
-type RequestBody<O> = O extends { requestBody?: { content: { "application/json": infer B } } } ? B : never;
-
-type SuccessBody<O> = O extends { responses: infer R }
-  ? {
-      [S in keyof R]: S extends 200 | 201
-        ? R[S] extends { content: { "application/json": infer B } }
-          ? B
-          : never
-        : never;
-    }[keyof R]
-  : never;
-
-type CallOptions<O> = {
-  path?: PathParams<O>;
-  body?: RequestBody<O>;
-  init?: RequestInit;
-};
-
-export function contractUrl(template: string, params: Record<string, string> = {}) {
-  return template.replace(/\{([^}]+)\}/g, (_match, name: string) => {
-    const value = params[name];
-
-    if (!value) {
-      throw new Error(`Paramètre de chemin "${name}" manquant pour ${template}.`);
-    }
-
-    return encodeURIComponent(value);
-  });
+  return encodeURIComponent(value);
 }
 
-function callBff<P extends ContractPath, M extends DeclaredMethod<P>>(
-  method: M,
-  template: P,
-  { path, body, init = {} }: CallOptions<Operation<P, M>> = {},
-) {
-  return requestBff<SuccessBody<Operation<P, M>>>(
-    contractUrl(template, path as Record<string, string> | undefined),
-    {
-      ...init,
-      method: method.toUpperCase(),
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    },
-  );
+/**
+ * Runs a read operation with the abort signal of the caller. Axios turns an aborted signal into a
+ * CanceledError: rethrow the signal reason (an AbortError) instead, as the callers expect.
+ */
+async function withSignal<T>(init: RequestInit | undefined, call: (options: { signal?: AbortSignal }) => Promise<{ data: T }>) {
+  const signal = init?.signal ?? undefined;
+  signal?.throwIfAborted();
+  try {
+    return (await call({ signal })).data;
+  } catch (error) {
+    if (signal?.aborted && error instanceof Error && error.name === "CanceledError") throw signal.reason;
+    throw error;
+  }
 }
 
 export type ElearningCatalogResponse = Schemas["ElearningCatalogResponse"];
@@ -70,51 +39,43 @@ export type ElearningCourse = Schemas["ElearningCourse"];
 export type CompleteContentBody = Schemas["CompleteContentBody"];
 
 export function getCatalog(init?: RequestInit) {
-  return callBff("get", "/elearning/catalog", { init });
+  return withSignal(init, (options) => bffElearning.getElearningCatalog(undefined, options));
 }
 
 export function getProfile(init?: RequestInit) {
-  return callBff("get", "/elearning/profile", { init });
+  return withSignal(init, (options) => bffElearning.getElearningProfile(options));
 }
 
-export function startCourse(courseId: string) {
-  return callBff("post", "/elearning/courses/{courseId}/start", {
-    path: { courseId },
-    body: {},
-  });
+export async function startCourse(courseId: string) {
+  return (await bffElearning.postElearningCoursesCourseIdStart(pathSegment(courseId, "courseId"), {})).data;
 }
 
-export function completeCourseContent(
+export async function completeCourseContent(
   courseId: string,
   contentId: string,
   body: CompleteContentBody,
 ) {
-  return callBff("post", "/elearning/courses/{courseId}/contents/{contentId}/complete", {
-    path: { courseId, contentId },
-    body,
-  });
+  return (
+    await bffElearning.postElearningCoursesCourseIdContentsContentIdComplete(
+      pathSegment(courseId, "courseId"),
+      pathSegment(contentId, "contentId"),
+      body,
+    )
+  ).data;
 }
 
-export function rateCourse(courseId: string, rating: number) {
-  return callBff("post", "/elearning/courses/{courseId}/rating", {
-    path: { courseId },
-    body: { rating },
-  });
+export async function rateCourse(courseId: string, rating: number) {
+  return (await bffElearning.postElearningCoursesCourseIdRating(pathSegment(courseId, "courseId"), { rating })).data;
 }
 
-export function createCourse(course: ElearningCourse) {
-  return callBff("post", "/elearning/admin/courses", { body: course });
+export async function createCourse(course: ElearningCourse) {
+  return (await bffElearning.postElearningAdminCourses(course)).data;
 }
 
-export function updateCourse(course: ElearningCourse) {
-  return callBff("patch", "/elearning/admin/courses/{courseId}", {
-    path: { courseId: course.id },
-    body: course,
-  });
+export async function updateCourse(course: ElearningCourse) {
+  return (await bffElearning.patchElearningAdminCoursesCourseId(pathSegment(course.id, "courseId"), course)).data;
 }
 
-export function deleteCourse(courseId: string) {
-  return callBff("delete", "/elearning/admin/courses/{courseId}", {
-    path: { courseId },
-  });
+export async function deleteCourse(courseId: string) {
+  return (await bffElearning.deleteElearningAdminCoursesCourseId(pathSegment(courseId, "courseId"))).data;
 }
