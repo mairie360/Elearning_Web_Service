@@ -52,11 +52,11 @@ describe('single published BFF contract', () => {
     // Release X.Y.Z, or the 0.0.0-dev.<sha40> package published from BFF_Elearning main (scripts/contract-version.mjs).
     const { isAcceptedContractVersion } = await import('../scripts/contract-version.mjs');
     const { dependencies = {}, devDependencies = {} } = JSON.parse(read('package.json'));
-    const pinned = devDependencies[PUBLISHED_CONTRACT_PACKAGE];
+    const pinned = dependencies[PUBLISHED_CONTRACT_PACKAGE];
     assert.ok(isAcceptedContractVersion(pinned), `${PUBLISHED_CONTRACT_PACKAGE}: version exacte attendue (X.Y.Z ou 0.0.0-dev.<sha>), reçu ${pinned}`);
     assert.equal(resolveOrvalPackage(PUBLISHED_CONTRACT_PACKAGE).version, pinned);
     assert.equal(published.title, 'bff_elearning');
-    assert.equal(dependencies[PUBLISHED_CONTRACT_PACKAGE], undefined);
+    assert.equal(devDependencies[PUBLISHED_CONTRACT_PACKAGE], undefined);
     assert.deepEqual(Object.keys({ ...dependencies, ...devDependencies }).filter((name) => /^@mairie360\/bff-.*-openapi$/.test(name)), [PUBLISHED_CONTRACT_PACKAGE]);
   });
 
@@ -80,11 +80,18 @@ describe('single published BFF contract', () => {
     assert.deepEqual(operations(contractSnapshot), operations(published));
   });
 
-  test('src/lib/elearning-api.ts calls exactly the consumed operations, all declared by the contract', () => {
-    const calls = [...read('src/lib/elearning-api.ts').matchAll(/callBff\("(\w+)", "([^"]+)"/g)]
-      .map(([, method, template]) => `${method.toUpperCase()} ${template}`);
+  test('src/lib/elearning-api.ts calls exactly the consumed operations through the generated client', () => {
+    const source = read('src/lib/elearning-api.ts');
+    const generated = read('node_modules/@mairie360/bff-elearning-openapi/endpoints/bffElearning.ts');
+    const calls = [...source.matchAll(/bffElearning\.(\w+)\(/g)].map(([, name]) => {
+      // The generated function names the operation: its URL template and method come from the package.
+      const body = generated.match(new RegExp(`const ${name} = \\([\\s\\S]*?axiosInstance\\.(\\w+)\\(\\s*\`([^\`]+)\``));
+      assert.ok(body, `${name} is not a generated operation`);
+      return `${body[1].toUpperCase()} ${body[2].replace(/\$\{(\w+)\}/g, '{$1}')}`;
+    });
     assert.deepEqual([...new Set(calls)].sort(), [...ELEARNING_OPERATIONS].sort());
     assert.deepEqual(ELEARNING_OPERATIONS.filter((operation) => !operations(published).includes(operation)), []);
+    assert.doesNotMatch(source, /["'`]\/elearning\b/);
   });
 
   test('business and Login-owner routes are the only server adapters', () => {
@@ -95,7 +102,7 @@ describe('single published BFF contract', () => {
       else if (/^route\.(ts|js)$/.test(entry.name)) routes.push(file.split(path.sep).join('/'));
     });
     walk('src/app');
-    assert.deepEqual(routes, ['src/app/[...path]/route.ts', 'src/app/api/auth/logout/route.ts', 'src/app/api/bff/[...path]/route.ts']);
+    assert.deepEqual(routes, ['src/app/[...path]/route.ts', 'src/app/api/auth/logout/route.ts']);
   });
 });
 

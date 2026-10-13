@@ -6,13 +6,13 @@ const ts = require('typescript');
 const policy = require('./support/source-policy.cjs');
 
 // Business requests use the published Elearning contract; auth operations delegate to the existing Login owner.
-// - navigateur : src/lib/elearning-api.ts (opérations du contrat) -> requestBff -> fetch same-origin ;
+// - browser: src/lib/elearning-api.ts (generated operations) -> axios adapter of bff-client.ts -> requestBff -> same-origin fetch;
 // - serveur : src/lib/bff-proxy.ts (allowlist contracts/openapi.json) vers la seule URL configuredBffUrl().
 // tests/elearning.bff-mocks.test.cjs vérifie ensuite ces chemins à l'exécution contre le BFF simulé.
 
 const root = path.join(__dirname, '..');
 const FETCH_ALLOWED = {
-  'src/lib/bff-client.ts': 'fetch same-origin des opérations de elearning-api.ts',
+  'src/lib/bff-client.ts': 'same-origin fetch of the generated operations of elearning-api.ts',
   'src/lib/auth-session.ts': 'POST same-origin delegated to Login owner',
 };
 const FORBIDDEN_GLOBALS = new Set(['XMLHttpRequest', 'WebSocket', 'EventSource', 'sendBeacon', 'axios']);
@@ -40,8 +40,8 @@ function scan() {
         if (name === 'requestBff') findings.requestBff.push({ file: relative, at, argument: node.arguments[0] });
         if (name === 'forwardToBff') findings.forwardToBff.push({ file: relative, at, baseUrl: node.arguments[1] });
       }
-      if (ts.isIdentifier(node) && FORBIDDEN_GLOBALS.has(node.text)) findings.forbidden.push(`${at} ${node.text}`);
-      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && FORBIDDEN_MODULES.test(node.moduleSpecifier.text)) {
+      if (ts.isIdentifier(node) && FORBIDDEN_GLOBALS.has(node.text) && !(relative === 'src/lib/bff-client.ts' && node.text === 'axios')) findings.forbidden.push(`${at} ${node.text}`);
+      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && FORBIDDEN_MODULES.test(node.moduleSpecifier.text) && !(relative === 'src/lib/bff-client.ts' && node.moduleSpecifier.text === 'axios')) {
         findings.forbidden.push(`${at} import ${node.moduleSpecifier.text}`);
       }
       if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) findings.forbidden.push(`${at} import() dynamique`);
@@ -63,16 +63,18 @@ test('fetch is only called by the contract-bound modules', () => {
   assert.deepEqual([...new Set(findings.fetch.map(({ file }) => file))].sort(), Object.keys(FETCH_ALLOWED).sort());
 });
 
-test('the browser-side fetch in bff-client.ts only receives the path built by elearning-api.ts', () => {
+test('the browser-side fetch in bff-client.ts only receives the path built by the generated client', () => {
   const [call, ...others] = findings.fetch.filter(({ file }) => file === 'src/lib/bff-client.ts');
   assert.equal(others.length, 0);
-  assert.ok(ts.isBinaryExpression(call.argument));
-  assert.equal(call.argument.left.text, '/api/bff');
-  assert.ok(policy.parameterReference(call.argument.right));
-  assert.deepEqual(findings.requestBff.map(({ file }) => file), ['src/lib/elearning-api.ts']);
-  const [request] = findings.requestBff;
-  assert.ok(ts.isCallExpression(request.argument) && policy.callName(request.argument.expression) === 'contractUrl');
-  assert.ok(policy.parameterReference(request.argument.arguments[0], 1));
+  assert.ok(policy.parameterReference(call.argument));
+  // No caller of requestBff outside the axios adapter of bff-client.ts: elearning-api.ts only calls generated operations.
+  assert.deepEqual(findings.requestBff.map(({ file }) => file), ['src/lib/bff-client.ts']);
+  const api = fs.readFileSync(path.join(root, 'src/lib/elearning-api.ts'), 'utf8');
+  assert.doesNotMatch(api, /requestBff|contractUrl|["'`]\/(?:elearning|api|bff)\b/);
+  const operations = [...api.matchAll(/bffElearning\.(\w+)\(/g)].map(([, name]) => name);
+  assert.ok(operations.length > 0);
+  const generated = fs.readFileSync(path.join(path.dirname(require.resolve('@mairie360/bff-elearning-openapi/package.json')), 'endpoints/bffElearning.ts'), 'utf8');
+  operations.forEach((name) => assert.match(generated, new RegExp(`const ${name} = \\(`), `${name} is not a generated operation`));
 });
 
 test('server-side forwarding only targets the configured BFF_Elearning URL, gated by the contract', () => {

@@ -62,7 +62,7 @@ Présenter le catalogue de formations et permettre aux agents de suivre leur app
 
 ## Current cookie session / Session cookie courante (MAIR-410)
 
-Business requests use same-origin `/api/bff` and the published shared session
+Business requests use the contract paths on the same origin and the published shared session
 proxy 0.7.1. Browser bearer headers and legacy localStorage tokens cannot override
 the shared cookie. A business 401 may renew once through the existing Login
 owner and retry once; a persistent refusal returns to validated Login without
@@ -76,7 +76,7 @@ data remains. A trusted optional HTTPS realm logout URL finishes SSO handoff.
 These frontend changes do not certify deployed User/Core/IdP authentication or
 Elearning persistence. The historical SDK 0.4.0 remains unchanged.
 
-Les opérations métier passent par `/api/bff` avec le proxy partagé publié 0.7.1.
+Les opérations métier appellent les chemins du contrat sur la même origine avec le proxy partagé publié 0.7.1.
 Le bearer navigateur et les anciens JWT du localStorage ne remplacent pas le
 cookie. Un 401 peut effectuer une seule reprise auprès de Login et une seule
 nouvelle tentative ; un refus persistant ramène à la connexion sans logout.
