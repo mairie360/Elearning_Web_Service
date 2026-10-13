@@ -219,8 +219,8 @@ test('the first pass renders the loading state, the next one the catalogue of GE
   assert.equal(view.props('ElearningCatalog').allowRatingEdits, true);
   assert.equal(view.props('ElearningCatalog').className, 'elearning-catalog-shell min-h-full !px-6 !py-8');
   assert.match(html, /<footer/);
-  assert.match(html, /<aside\b[^]*?<footer\b[^]*?<\/footer>[^]*?<\/aside>/);
-  assert.doesNotMatch(html, /<\/main>\s*<footer\b/);
+  assert.doesNotMatch(html, /<aside\b[^]*?<footer\b[^]*?<\/footer>[^]*?<\/aside>/);
+  assert.match(html, /<\/main>\s*<footer\b/);
   assert.match(view.text(), /1\.0\.0/);
 });
 
