@@ -1,4 +1,5 @@
 "use client";
+import { subscribePageReturn } from "@/lib/page-return";
 
 import AccessibleShell from "@/components/accessible-shell";
 
@@ -20,9 +21,12 @@ import { createCatalogActions } from "./catalogActions";
 import { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE, pinnedBffCapabilities } from "./bffCapabilities";
 import type { CatalogCapabilities } from "./bffCapabilities";
 import { withCategoryReset, withStatusReset } from "./catalogFilters";
+import { usePageUrlState } from '@/lib/use-page-url-state';
+import { urlText } from '@/lib/page-url-state';
 
 type CatalogProps = ComponentProps<typeof ElearningCatalog>;
 type CatalogCourse = CatalogProps["courses"][number];
+const catalogUrlSchema = { q: urlText(200), category: { ...urlText(80), defaultValue: 'all' }, status: { ...urlText(80), defaultValue: 'all' } };
 type ContentCompletePayload = Parameters<
   NonNullable<CatalogProps["onCourseContentComplete"]>
 >[1];
@@ -45,6 +49,8 @@ export function ElearningModule({
   learnerPort = pendingLearnerPort,
   capabilities = pinnedBffCapabilities,
 }: { learnerPort?: LearnerFeaturePort; capabilities?: CatalogCapabilities } = {}) {
+  const pageUrl = usePageUrlState(catalogUrlSchema);
+  const [historyRevision, setHistoryRevision] = useState(0);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
   const downloadRef = useRef<AbortController | null>(null);
   useEffect(() => () => downloadRef.current?.abort(), []);
@@ -83,13 +89,22 @@ export function ElearningModule({
   }, [actions]);
 
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const page = document;
+    const refresh = () => { if (!page.hidden && !loading) void actions.loadCatalog(); };
+    const unsubscribe = subscribePageReturn(refresh);
+    return () => unsubscribe();
+  }, [actions, loading]);
+
+  useEffect(() => {
     const browserWindow = window;
     const syncRequestedCourse = () =>
       setRequestedCourseId(courseIdFromSearch(browserWindow.location.search));
+    const receiveHistory = () => { syncRequestedCourse(); setHistoryRevision(revision => revision + 1); };
 
     syncRequestedCourse();
-    browserWindow.addEventListener("popstate", syncRequestedCourse);
-    return () => browserWindow.removeEventListener("popstate", syncRequestedCourse);
+    browserWindow.addEventListener("popstate", receiveHistory);
+    return () => browserWindow.removeEventListener("popstate", receiveHistory);
   }, []);
 
   const clearRequestedCourse = () => {
@@ -116,6 +131,16 @@ export function ElearningModule({
   // The dev BFF contract no longer requires `chapters[].duration` (the E-learning API has none), while the published
   // library still types it as a string: present an empty duration rather than failing the type check or the reader.
   const catalogCourses = useMemo(() => (catalog ? withChapterDurations(catalog.courses) : []), [catalog]);
+  const categoryOptions = withCategoryReset(catalog?.categories) ?? [
+    { value: 'all', label: 'Toutes les catégories' },
+    ...Array.from(new Set(catalogCourses.map(course => course.category).filter((value): value is string => Boolean(value)))).map(value => ({ value, label: value })),
+  ];
+  const statusOptions = withStatusReset(catalog?.statuses) ?? [
+    { value: 'all', label: 'Tous les statuts' },
+    ...Array.from(new Set(catalogCourses.map(course => course.statusValue).filter((value): value is string => Boolean(value)))).map(value => ({ value, label: value })),
+  ];
+  const category = categoryOptions.some(option => option.value === pageUrl.state.category && !option.disabled) ? pageUrl.state.category : 'all';
+  const statusFilter = statusOptions.some(option => option.value === pageUrl.state.status && !option.disabled) ? pageUrl.state.status : 'all';
   const requestedCourseMissing =
     requestedCourseId !== null &&
     !!catalog &&
@@ -256,9 +281,25 @@ export function ElearningModule({
         </div>
       )}
 
-      {catalog && (
+      {catalog && pageUrl.ready && (
         <ElearningCatalog
-          key={requestedCourseId === null ? "catalog" : `course:${requestedCourseId}`}
+          key={`${requestedCourseId === null ? 'catalog' : `course:${requestedCourseId}`}:${historyRevision}`}
+          defaultSearch={pageUrl.state.q}
+          defaultCategory={category}
+          defaultStatus={statusFilter}
+          onChangeCapture={event => {
+            // Published UI 0.8.0 owns its input state. Keep typing focused; only
+            // history navigation remounts it, while review drafts stay in this parent.
+            if (event.target instanceof HTMLInputElement && event.target.type === 'search') pageUrl.update({ q: event.target.value }, 'replace');
+          }}
+          onClickCapture={event => {
+            const option = (event.target as HTMLElement).closest<HTMLButtonElement>('button[role="option"]');
+            if (!option || option.disabled) return;
+            const field = option.parentElement?.previousElementSibling?.getAttribute('aria-label');
+            const choices = field === 'Toutes les catégories' ? categoryOptions : field === 'Tous les statuts' ? statusOptions : null;
+            const matching = choices?.filter(choice => choice.label === option.textContent?.trim() && !choice.disabled);
+            if (matching?.length === 1) pageUrl.update({ [field === 'Toutes les catégories' ? 'category' : 'status']: matching[0].value });
+          }}
           initialCourseId={requestedCourseId}
           onCourseClose={clearRequestedCourse}
           title={catalog.title}
