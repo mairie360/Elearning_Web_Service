@@ -24,7 +24,7 @@ test('actual catalog cards keep the shadow binding and reference token values', 
 });
 
 test('actual published historical sidebar receives reference shadow and seven rows', async t => {
-  const dom = await elearningDom(t), sidebar = dom.document.querySelector('aside[aria-label="Navigation principale"]');
+  const dom = await elearningDom(t), sidebar = dom.document.querySelector('.app-published-sidebar');
   assert.equal(dom.style(sidebar).position, 'relative'); assert.equal(dom.style(sidebar).zIndex, '20');
   assert.deepEqual(shadow(dom.window, dom.style(sidebar).boxShadow), [{ lengths: [8, 0, 24, 0], color: 'rgba(12, 28, 48, 0.28)' }]);
   const buttons = [...sidebar.querySelectorAll('nav button')];
