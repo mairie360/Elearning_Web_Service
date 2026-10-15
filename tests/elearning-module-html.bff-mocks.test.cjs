@@ -189,9 +189,9 @@ test('a pending write and a contract-shaped unconfirmed deletion never announce 
   assert.equal(view.props('ElearningCatalog').courses.length, 1);
 });
 
-async function renderLoadedCatalog(body = f.catalogResponse(), Component = Home) {
+async function renderLoadedCatalog(body = f.catalogResponse(), Component = Home, displayRole = 'Guest') {
   bffElearning.on('get', '/elearning/catalog', { body });
-  view = mount(React.createElement(Component));
+  view = mount(React.createElement(require('@mairie360/front-kit/react').InstanceProvider, { role: displayRole, timeZone: 'UTC' }, React.createElement(Component)));
   return view.waitFor((html) => !html.includes('role="status"'));
 }
 
@@ -225,7 +225,7 @@ test('the first pass renders the loading state, the next one the catalogue of GE
 });
 
 test('an administrator sees the catalogue with the administrator role', async () => {
-  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ name: 'Admin Mairie', initials: 'AM', role: 'Admin', isAdmin: true })));
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ name: 'Admin Mairie', initials: 'AM', role: 'Admin', isAdmin: true })), Home, 'Admin');
 
   assert.equal(view.props('ElearningCatalog').currentUserRole, 'administrator');
   assert.equal(view.props('Sidebar').isAdmin, true);

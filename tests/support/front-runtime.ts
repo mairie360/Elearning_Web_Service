@@ -64,6 +64,7 @@ export class FrontRuntime {
   owner?: { origin: string; calls: Array<{method: string; path: string}>; handle: (request: NextRequest) => Promise<Response> | Response };
   private readonly routes = discoverRoutes();
   private originalFetch?: typeof fetch;
+  private previousFrontUrl?: string;
 
   /** @param upstreams origines des services simulés joignables depuis les route handlers. */
   constructor(private readonly upstreams: () => string[]) {}
@@ -74,11 +75,15 @@ export class FrontRuntime {
 
   install(): void {
     this.originalFetch = globalThis.fetch;
+    this.previousFrontUrl = process.env.ELEARNING_FRONT_URL;
+    process.env.ELEARNING_FRONT_URL = FRONT_ORIGIN;
     globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => this.fetch(input, init)) as typeof fetch;
   }
 
   restore(): void {
     if (this.originalFetch) globalThis.fetch = this.originalFetch;
+    if (this.previousFrontUrl === undefined) delete process.env.ELEARNING_FRONT_URL;
+    else process.env.ELEARNING_FRONT_URL = this.previousFrontUrl;
   }
 
   reset(): void {
@@ -128,7 +133,7 @@ export class FrontRuntime {
     const headers = new Headers(init.headers);
     if (!headers.has('origin')) headers.set('origin', FRONT_ORIGIN);
     if (!headers.has('sec-fetch-site')) headers.set('sec-fetch-site', 'same-origin');
-    const cookies = [this.accessToken ? `accessToken=${this.accessToken}` : '', this.refreshToken ? `refreshToken=${this.refreshToken}` : ''].filter(Boolean);
+    const cookies = [this.accessToken ? `accessToken=${this.accessToken}` : '', this.refreshToken && (url.pathname === '/api' || url.pathname.startsWith('/api/')) ? `refreshToken=${this.refreshToken}` : ''].filter(Boolean);
     if (cookies.length) headers.set('cookie', cookies.join('; '));
     let request = new NextRequest(url, { ...init, method, headers } as ConstructorParameters<typeof NextRequest>[1]);
 
@@ -151,7 +156,7 @@ export class FrontRuntime {
             },
           });
         }
-        throw new TypeError('Failed to fetch');
+        return response;
       }
       const overridden = new Headers();
       for (const name of (response.headers.get('x-middleware-override-headers') ?? '').split(',').filter(Boolean)) {

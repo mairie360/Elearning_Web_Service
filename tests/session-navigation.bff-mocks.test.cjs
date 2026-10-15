@@ -21,7 +21,7 @@ test('a refused catalogue returns to canonical Login without a logout operation'
  await assert.rejects(requestBff('/elearning/catalog'),BffRequestError);
  assert.equal(browser.location.assigned.length,1);
  assert.equal(new URL(browser.location.assigned[0]).searchParams.get('redirect'),browser.location.href);
- assert.equal(runtime.frontCalls[0].status,401);assert.equal(bffElearning.requests.length,1);
+ assert.equal(runtime.frontCalls[0].status,401);assert.equal(bffElearning.requests.length,0);
 });
 
 test('parallel refused API requests navigate once and never replay a learner mutation', async () => {
@@ -29,8 +29,8 @@ test('parallel refused API requests navigate once and never replay a learner mut
  bffElearning.on('get','/elearning/catalog',errorReply(401,'REFUSED','Refus'));
  bffElearning.on('post','/elearning/courses/{courseId}/start',errorReply(401,'REFUSED','Refus'));
  await Promise.allSettled([requestBff('/elearning/catalog'),requestBff('/elearning/courses/4/start',{method:'POST'})]);
- assert.equal(front.window().location.assigned.length,1);assert.equal(runtime.frontCalls.length,2);assert.equal(bffElearning.requests.length,2);
- assert.equal(bffElearning.requests.filter(x=>x.method==='POST').length,1);
+ assert.equal(front.window().location.assigned.length,1);assert.equal(runtime.frontCalls.length,3);assert.equal(bffElearning.requests.length,0);
+ assert.equal(runtime.frontCalls.filter(x=>x.method==='POST'&&x.pathname==='/api/auth/refresh').length,1);
 });
 
 test('opaque redirects are handled without inspecting hidden status, headers or body', async () => {
@@ -83,7 +83,7 @@ for (const status of [400, 401, 403, 503]) {
   test(`a real service ${status} stays typed and never replays the mutation`, async () => {
     bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(status, 'REFUSED', `Refus ${status}`));
     await assert.rejects(requestBff('/elearning/courses/4/start', { method: 'POST' }),
-      error => error instanceof BffRequestError && error.status === status && error.message === (status === 401 ? 'Votre session a expiré. Veuillez vous reconnecter.' : `Refus ${status}`));
+      error => error instanceof BffRequestError && error.status === status && error.message === (status === 401 ? 'Votre session a expiré.' : `Refus ${status}`));
     assert.equal(bffElearning.requests.length, 1);
     assert.equal(front.window().location.assigned.length, status === 401 ? 1 : 0);
   });
@@ -111,7 +111,7 @@ test('successful requests preserve caller headers, cache, credentials and abort 
 
 test('a read aborted during a refused JSON body cannot navigate after unmount', async () => {
  const previous=global.fetch;const controller=new AbortController();
- global.fetch=async()=>({type:'basic',ok:false,status:401,json:async()=>{controller.abort();return {message:'Late refusal'};}});
+ global.fetch=async()=>({type:'basic',ok:false,status:401,headers:new Headers({'X-Mairie360-Refresh-Refused':'true'}),json:async()=>{controller.abort();return {message:'Late refusal'};}});
  try { await assert.rejects(requestBff('/elearning/catalog',{signal:controller.signal}),{name:'AbortError'});assert.deepEqual(front.window().location.assigned,[]); }
  finally { global.fetch=previous; }
 });

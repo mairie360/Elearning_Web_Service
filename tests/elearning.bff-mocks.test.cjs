@@ -620,6 +620,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.equal(state.error, null);
     assert.deepEqual(runtime.frontCalls.map(({ method, pathname, route, status }) => [method, pathname, route, status]), [
       ['GET', '/elearning/catalog', 'src/app/[...path]/route.ts', 401],
+      ['POST', '/api/auth/refresh', 'src/app/api/auth/refresh/route.ts', 401],
     ]);
     assert.equal(front.window().localStorage.getItem('mairie360.auth.jwt'), null);
     assert.equal(front.window().localStorage.getItem('formation.draft'), 'unfinished lesson');
@@ -642,8 +643,8 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     const navigation = runtime.navigate('/?course=4');
     assert.equal(navigation.status, 307); assert.equal(navigation.setCookie, null);
     const target = new URL(navigation.location);
-    assert.equal(target.searchParams.get('redirect'), 'http://localhost:5006/?course=4');
-    assert.equal(target.searchParams.get('resumeSession'), '1');
+    assert.equal(target.searchParams.get('next'), '/?course=4');
+    assert.equal(target.pathname, '/api/auth/resume');
     assert.equal(runtime.upstreamCalls.length, 0);
   });
 

@@ -64,6 +64,7 @@ export function useMockedFront({ before, after, beforeEach, afterEach }: NodeTes
     process.env.BFF_ELEARNING_BASE_URL = bffElearning.url;
     runtime.accessToken = accessToken();
     process.env.ELEARNING_FRONT_URL = FRONT_ORIGIN;
+    process.env.LOGIN_FRONT_URL = 'https://login.mairie.test/';
     fakeWindow = installWindow();
     setBrowserFrontUrls({ ELEARNING_FRONT_URL: FRONT_ORIGIN, LOGIN_FRONT_URL: 'https://login.mairie.test/' });
   });

@@ -13,10 +13,10 @@ const previous = {
 const b64url = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
 const validCookie = `accessToken=${b64url({ alg: 'HS256', typ: 'JWT' })}.${b64url({ exp: Math.floor(Date.now() / 1000) + 3600 })}.signature`;
 
-test('missing or invalid Login configuration returns an uncached unavailable state', async () => {
+test('missing or invalid frontend configuration returns an uncached unavailable state', async () => {
   for (const value of [undefined, '', '  ', 'not a URL', 'ftp://login.mairie.test/', 'https://user:password@login.mairie.test/']) {
-    if (value === undefined) delete process.env.LOGIN_FRONT_URL;
-    else process.env.LOGIN_FRONT_URL = value;
+    if (value === undefined) delete process.env.ELEARNING_FRONT_URL;
+    else process.env.ELEARNING_FRONT_URL = value;
     const response = middleware(new NextRequest('http://internal:3000/'));
     assert.equal(response.status, 503, String(value));
     assert.equal(response.headers.get('location'), null);
@@ -28,12 +28,12 @@ test('missing or invalid Login configuration returns an uncached unavailable sta
 });
 
 test('an explicitly configured local destination is accepted without a hard-coded fallback', () => {
-  process.env.LOGIN_FRONT_URL = '  http://localhost:5010/login  ';
+  process.env.ELEARNING_FRONT_URL = '  http://localhost:5010/  ';
   const response = middleware(new NextRequest('http://internal:3000/'));
   assert.equal(response.status, 307);
   const target = new URL(response.headers.get('location'));
   assert.equal(target.origin, 'http://localhost:5010');
-  assert.equal(target.pathname, '/login');
+  assert.equal(target.pathname, '/api/auth/resume');
 });
 
 
@@ -52,8 +52,8 @@ test('an unauthenticated visit returns to the public Elearning URL, not the ingr
   const login = new URL(response.headers.get('location'));
 
   assert.equal(response.status, 307);
-  assert.equal(login.origin, 'https://login.mairie.test');
-  assert.equal(login.searchParams.get('redirect'), 'https://elearning.mairie.test/courses/42?chapter=2');
+  assert.equal(login.origin, 'https://elearning.mairie.test');
+  assert.equal(login.searchParams.get('next'), '/courses/42?chapter=2');
   assert.doesNotMatch(login.href, /internal:3000/);
 });
 

@@ -36,7 +36,7 @@ function scan() {
       if (ts.isCallExpression(node)) {
         const callee = node.expression;
         const name = ts.isIdentifier(callee) ? callee.text : ts.isPropertyAccessExpression(callee) ? callee.name.text : undefined;
-        if (name === 'fetch') findings.fetch.push({ file: relative, at, argument: node.arguments[0] });
+        if (['fetch', 'sessionFetch'].includes(name)) findings.fetch.push({ file: relative, at, argument: node.arguments[0] });
         if (name === 'requestBff') findings.requestBff.push({ file: relative, at, argument: node.arguments[0] });
         if (name === 'forwardToBff') findings.forwardToBff.push({ file: relative, at, baseUrl: node.arguments[1] });
       }
@@ -81,7 +81,7 @@ test('server-side forwarding only targets the configured BFF_Elearning URL, gate
   const proxyAst = policy.parse('src/lib/bff-proxy.ts');
   assert.ok(policy.imports(proxyAst).includes('../../contracts/openapi.json'));
   assert.deepEqual(findings.fetch.filter(({ file }) => file === 'src/lib/bff-proxy.ts'), []);
-  assert.ok(policy.imports(proxyAst).includes('@mairie360/lib-components/next'));
+  assert.ok(policy.imports(proxyAst).includes('@mairie360/front-kit/next'));
   assert.equal(policy.calls(proxyAst, 'proxyPublishedBffRequest').length, 1);
   assert.deepEqual(findings.forwardToBff.map(({ file }) => file), ['src/lib/bff-proxy.ts']);
   assert.ok(findings.forwardToBff.every(({ baseUrl }) => policy.configuredUrl(baseUrl)));
