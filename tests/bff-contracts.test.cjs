@@ -102,7 +102,7 @@ describe('single published BFF contract', () => {
       else if (/^route\.(ts|js)$/.test(entry.name)) routes.push(file.split(path.sep).join('/'));
     });
     walk('src/app');
-    assert.deepEqual(routes, ['src/app/[...path]/route.ts', 'src/app/api/auth/logout/route.ts']);
+    assert.deepEqual(routes, ['src/app/[...path]/route.ts', 'src/app/api/auth/logout/route.ts', 'src/app/api/auth/refresh/route.ts', 'src/app/api/auth/resume/route.ts']);
   });
 });
 

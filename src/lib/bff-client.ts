@@ -1,3 +1,4 @@
+import { sessionFetch } from '@mairie360/front-kit/browser';
 import axios, { type AxiosAdapter } from 'axios';
 import { getBffElearning } from '@mairie360/bff-elearning-openapi/endpoints/bffElearning';
 import { navigateToLogin } from './auth-session';
@@ -49,7 +50,7 @@ function createRequestHeaders(init: RequestInit) {
 
 export async function requestBff<T>(path: string, init: RequestInit = {}) {
   init.signal?.throwIfAborted();
-  const response = await fetch(path, {
+  const response = await sessionFetch(path, {
     ...init,
     headers: createRequestHeaders(init),
     redirect: "manual",

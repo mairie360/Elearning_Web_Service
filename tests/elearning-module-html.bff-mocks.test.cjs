@@ -189,9 +189,9 @@ test('a pending write and a contract-shaped unconfirmed deletion never announce 
   assert.equal(view.props('ElearningCatalog').courses.length, 1);
 });
 
-async function renderLoadedCatalog(body = f.catalogResponse(), Component = Home) {
+async function renderLoadedCatalog(body = f.catalogResponse(), Component = Home, displayRole = 'Guest') {
   bffElearning.on('get', '/elearning/catalog', { body });
-  view = mount(React.createElement(Component));
+  view = mount(React.createElement(require('@mairie360/front-kit/react').InstanceProvider, { role: displayRole, timeZone: 'UTC' }, React.createElement(Component)));
   return view.waitFor((html) => !html.includes('role="status"'));
 }
 
@@ -225,7 +225,7 @@ test('the first pass renders the loading state, the next one the catalogue of GE
 });
 
 test('an administrator sees the catalogue with the administrator role', async () => {
-  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ name: 'Admin Mairie', initials: 'AM', role: 'Admin', isAdmin: true })));
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ name: 'Admin Mairie', initials: 'AM', role: 'Admin', isAdmin: true })), Home, 'Admin');
 
   assert.equal(view.props('ElearningCatalog').currentUserRole, 'administrator');
   assert.equal(view.props('Sidebar').isAdmin, true);
@@ -939,4 +939,68 @@ test('with every capability the module wires the rating and administration callb
   const props = view.props('ElearningCatalog');
   for (const name of ['onCreateCourse', 'onUpdateCourse', 'onDeleteCourse', 'onCourseRatingSubmit']) assert.equal(typeof props[name], 'function', name);
   assert.doesNotMatch(view.html, /data-elearning-capability-notice/);
+});
+
+test('the module guards duplicate logout clicks, displays refusal and permits an explicit retry', async t => {
+  const previousLogin=process.env.LOGIN_FRONT_URL;
+  process.env.LOGIN_FRONT_URL='https://login.mairie.test/';
+  t.after(()=>{previousLogin===undefined?delete process.env.LOGIN_FRONT_URL:process.env.LOGIN_FRONT_URL=previousLogin;});
+  await renderLoadedCatalog();
+  let release;
+  const pending = new Promise(resolve => { release = resolve; });
+  runtime.owner = { origin:'https://login.mairie.test',calls:[],handle:async()=>{await pending;return Response.json({message:'Unconfirmed',session_revoked:false});} };
+  await view.act(() => { view.props('AccessibleShell').onLogout(); view.props('AccessibleShell').onLogout(); });
+  await view.waitFor(()=>runtime.owner.calls.length===1);
+  assert.deepEqual(front.window().location.assigned,[]);
+  release();
+  await view.waitFor(html=>html.includes('déconnexion n’a pas été confirmée'));
+  assert.equal(runtime.owner.calls.length,1);assert.deepEqual(front.window().location.assigned,[]);
+  runtime.owner.handle=async()=>Response.json({message:'Session revoked',session_revoked:true});
+  await view.act(()=>view.props('AccessibleShell').onLogout());
+  await view.waitFor(()=>front.window().location.assigned.length===1);
+  assert.equal(runtime.owner.calls.length,2);
+  assert.equal(new URL(front.window().location.assigned[0]).origin,'https://login.mairie.test');
+});
+
+test('the module wires course completion policy and downloads the authorized blob through a temporary link', async () => {
+  const course=f.course();const content=course.details.chapters[0].contents[0];
+  const file={blob:new Blob(['authorized document']),fileName:'authorized-support.pdf'};
+  const downloadCalls=[];
+  const learnerPort={
+    downloadResource:async(courseId,contentId,signal)=>{downloadCalls.push({courseId,contentId,signal});return file;},
+    canCompleteResource:(courseId,contentId)=>courseId===course.id&&contentId===content.id,
+  };
+  const Module=()=>React.createElement(ElearningModule,{learnerPort});
+  await renderLoadedCatalog(f.catalogResponse([course]),Module);
+  const catalog=view.props('ElearningCatalog');
+  assert.equal(catalog.canCompleteCourseContent(course,content),true);
+  assert.equal(catalog.canCompleteCourseContent(course,{id:'other'}),false);
+  const previousDocument=global.document,create=URL.createObjectURL,revoke=URL.revokeObjectURL;
+  const events=[];let downloaded;let createdBlob;
+  const link={href:'',download:'',click(){downloaded={href:this.href,name:this.download};events.push('click');},remove(){events.push('remove');}};
+  global.document={createElement:tag=>{assert.equal(tag,'a');return link;},body:{append:node=>{assert.equal(node,link);events.push('append');}}};
+  URL.createObjectURL=blob=>{createdBlob=blob;return 'blob:authorized-fixture';};
+  URL.revokeObjectURL=url=>events.push('revoke:'+url);
+  front.window().setTimeout=callback=>{callback();return 1;};
+  try{
+    assert.equal(await catalog.onCourseContentDownload(course,content),true);
+    assert.equal(createdBlob,file.blob);assert.deepEqual(downloaded,{href:'blob:authorized-fixture',name:'authorized-support.pdf'});
+    assert.deepEqual(events,['append','click','remove','revoke:blob:authorized-fixture']);
+    assert.equal(downloadCalls.length,1);assert.equal(downloadCalls[0].courseId,course.id);assert.equal(downloadCalls[0].contentId,content.id);assert.equal(downloadCalls[0].signal.aborted,false);
+    assert.deepEqual(operations(),['GET /elearning/catalog']);
+  }finally{URL.createObjectURL=create;URL.revokeObjectURL=revoke;previousDocument===undefined?delete global.document:global.document=previousDocument;}
+});
+
+test('a superseded module download is cancelled and cannot create a stale download link',async()=>{
+  const course=f.course();const content=course.details.chapters[0].contents[0];
+  const requests=[];
+  const learnerPort={downloadResource:(courseId,contentId,signal)=>new Promise(resolve=>requests.push({courseId,contentId,signal,resolve}))};
+  await renderLoadedCatalog(f.catalogResponse([course]),()=>React.createElement(ElearningModule,{learnerPort}));
+  const callback=view.props('ElearningCatalog').onCourseContentDownload;
+  const first=callback(course,content);const firstRejected=assert.rejects(first,/annulé/);
+  const second=callback(course,content);const secondRejected=assert.rejects(second,/annulé/);
+  assert.equal(requests[0].signal.aborted,true);assert.equal(requests[1].signal.aborted,false);
+  requests[0].resolve({blob:new Blob(['stale']),fileName:'stale.pdf'});await firstRejected;
+  view.unmount();view=undefined;assert.equal(requests[1].signal.aborted,true);
+  requests[1].resolve({blob:new Blob(['unmounted']),fileName:'unmounted.pdf'});await secondRejected;
 });
