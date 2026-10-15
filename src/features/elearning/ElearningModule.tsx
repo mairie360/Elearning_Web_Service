@@ -22,11 +22,11 @@ import { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, COURSE_MANAGEMENT_UNAVAILABLE
 import type { CatalogCapabilities } from "./bffCapabilities";
 import { withCategoryReset, withStatusReset } from "./catalogFilters";
 import { usePageUrlState } from '@/lib/use-page-url-state';
-import { urlText } from '@/lib/page-url-state';
+import { parseCatalogResponse, type InitialCatalog } from '@/lib/catalog-response';
+import { catalogUrlSchema } from './catalogQuery';
 
 type CatalogProps = ComponentProps<typeof ElearningCatalog>;
 type CatalogCourse = CatalogProps["courses"][number];
-const catalogUrlSchema = { q: urlText(200), category: { ...urlText(80), defaultValue: 'all' }, status: { ...urlText(80), defaultValue: 'all' } };
 type ContentCompletePayload = Parameters<
   NonNullable<CatalogProps["onCourseContentComplete"]>
 >[1];
@@ -48,19 +48,26 @@ function withChapterDurations(courses: ElearningCatalogResponse["catalog"]["cour
 export function ElearningModule({
   learnerPort = pendingLearnerPort,
   capabilities = pinnedBffCapabilities,
-}: { learnerPort?: LearnerFeaturePort; capabilities?: CatalogCapabilities } = {}) {
-  const pageUrl = usePageUrlState(catalogUrlSchema);
+  initialState,
+  initialSearch,
+}: { learnerPort?: LearnerFeaturePort; capabilities?: CatalogCapabilities; initialState?: InitialCatalog; initialSearch?: string } = {}) {
+  const [initial] = useState(() => {
+    if (!initialState?.data) return initialState;
+    try { return { ...initialState, data: parseCatalogResponse(initialState.data) }; }
+    catch { return { data: null, error: 'Les données des formations reçues sont incohérentes. Réessayez.', status: 502 }; }
+  });
+  const pageUrl = usePageUrlState(catalogUrlSchema, initialSearch ?? (initial === undefined ? undefined : ''));
   const [historyRevision, setHistoryRevision] = useState(0);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
   const downloadRef = useRef<AbortController | null>(null);
   useEffect(() => () => downloadRef.current?.abort(), []);
   const [catalogResponse, setCatalogResponse] =
-    useState<ElearningCatalogResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    useState<ElearningCatalogResponse | null>(() => initial?.data ?? null);
+  const [loading, setLoading] = useState(initial === undefined);
+  const [error, setError] = useState<string | null>(() => initial?.error ?? null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [mutationSuccess, setMutationSuccess] = useState<string | null>(null);
-  const [requestedCourseId, setRequestedCourseId] = useState<string | null>(null);
+  const [requestedCourseId, setRequestedCourseId] = useState<string | null>(() => courseIdFromSearch(initialSearch ?? ''));
 
   const [logoutError, setLogoutError] = useState("");
   const logoutPending = useRef(false);
@@ -85,8 +92,8 @@ export function ElearningModule({
   );
 
   useEffect(() => {
-    void actions.loadCatalog();
-  }, [actions]);
+    if (initial === undefined) void actions.loadCatalog();
+  }, [actions, initial]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;

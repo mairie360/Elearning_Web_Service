@@ -1,5 +1,6 @@
 import type { components } from "../contracts/bff";
 import { bffElearning } from "./bff-client";
+import { parseCatalogResponse } from './catalog-response';
 
 // Only entry point of the browser to the E-learning BFF. Every call goes through an operation of the
 // generated client of the published contract (@mairie360/bff-elearning-openapi): paths, methods and
@@ -38,8 +39,8 @@ export type ElearningProfileResponse = Schemas["ElearningProfileResponse"];
 export type ElearningCourse = Schemas["ElearningCourse"];
 export type CompleteContentBody = Schemas["CompleteContentBody"];
 
-export function getCatalog(init?: RequestInit) {
-  return withSignal(init, (options) => bffElearning.getElearningCatalog(undefined, options));
+export async function getCatalog(init?: RequestInit) {
+  return parseCatalogResponse(await withSignal(init, (options) => bffElearning.getElearningCatalog(undefined, options)));
 }
 
 export function getProfile(init?: RequestInit) {

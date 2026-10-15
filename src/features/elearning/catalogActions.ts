@@ -1,5 +1,6 @@
 import { navigateToLogin } from "../../lib/auth-session";
 import { BffRequestError } from "../../lib/bff-client";
+import { InvalidCatalogResponseError } from '../../lib/catalog-response';
 import {
   completeCourseContent,
   createCourse,
@@ -73,7 +74,7 @@ function confirmsContent(
 }
 
 export function getErrorMessage(error: unknown) {
-  if (error instanceof BffRequestError || error instanceof RatingNotConfirmedError ||
+  if (error instanceof BffRequestError || error instanceof InvalidCatalogResponseError || error instanceof RatingNotConfirmedError ||
       error instanceof LearnerNotConfirmedError || error instanceof CourseUpdateNotConfirmedError) return error.message;
   return "Une erreur inattendue est survenue.";
 }

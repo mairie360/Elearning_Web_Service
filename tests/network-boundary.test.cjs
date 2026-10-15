@@ -68,7 +68,12 @@ test('the browser-side fetch in bff-client.ts only receives the path built by th
   assert.equal(others.length, 0);
   assert.ok(policy.parameterReference(call.argument));
   // No caller of requestBff outside the axios adapter of bff-client.ts: elearning-api.ts only calls generated operations.
-  assert.deepEqual(findings.requestBff.map(({ file }) => file), ['src/lib/bff-client.ts']);
+  assert.deepEqual(findings.requestBff, []);
+  const adapterAst = policy.parse('src/lib/bff-client.ts');
+  const factory = policy.nodes(adapterAst, node => ts.isFunctionDeclaration(node) && node.name?.text === 'createElearningClient')[0];
+  assert.equal(factory.parameters[0].initializer.text, 'requestBff');
+  assert.equal(policy.calls(adapterAst, 'request').length, 1);
+  assert.deepEqual(policy.calls(policy.parse('src/lib/initial-catalog.ts'), 'createElearningClient').length, 1);
   const api = fs.readFileSync(path.join(root, 'src/lib/elearning-api.ts'), 'utf8');
   assert.doesNotMatch(api, /requestBff|contractUrl|["'`]\/(?:elearning|api|bff)\b/);
   const operations = [...api.matchAll(/bffElearning\.(\w+)\(/g)].map(([, name]) => name);
@@ -83,7 +88,7 @@ test('server-side forwarding only targets the configured BFF_Elearning URL, gate
   assert.deepEqual(findings.fetch.filter(({ file }) => file === 'src/lib/bff-proxy.ts'), []);
   assert.ok(policy.imports(proxyAst).includes('@mairie360/front-kit/next'));
   assert.equal(policy.calls(proxyAst, 'proxyPublishedBffRequest').length, 1);
-  assert.deepEqual(findings.forwardToBff.map(({ file }) => file), ['src/lib/bff-proxy.ts']);
+  assert.deepEqual(findings.forwardToBff.map(({ file }) => file).sort(), ['src/lib/bff-proxy.ts', 'src/lib/initial-catalog.ts']);
   assert.ok(findings.forwardToBff.every(({ baseUrl }) => policy.configuredUrl(baseUrl)));
   assert.deepEqual([...new Set(policy.envNames(proxyAst))].sort(), ['LOGIN_FRONT_URL', 'ELEARNING_FRONT_URL', 'BFF_ELEARNING_BASE_URL', 'ELEARNING_BFF_URL', 'NEXT_PUBLIC_BFF_ELEARNING_BASE_URL'].sort());
   const catchAll = policy.parse('src/app/[...path]/route.ts');

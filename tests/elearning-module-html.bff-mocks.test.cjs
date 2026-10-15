@@ -12,8 +12,9 @@ installReactRuntime();
 const React = require('react');
 const f = require('./support/elearning-fixtures.ts');
 const { errorReply, useMockedFront } = require('./support/mocked-front.ts');
-const Home = require('../src/app/page.tsx').default;
 const { ElearningModule } = require('../src/features/elearning/ElearningModule.tsx');
+// Client-only fallback/interactions; the async page's SSR contract is tested separately.
+const Home = ElearningModule;
 const { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE, fullCatalogCapabilities, pinnedBffCapabilities } = require('../src/features/elearning/bffCapabilities.ts');
 const { NOT_IMPLEMENTED_MESSAGE } = require('../src/lib/bff-client.ts');
 // The module once BFF_Elearning serves every contract operation (MAIR-513): the flows below that rate courses or
