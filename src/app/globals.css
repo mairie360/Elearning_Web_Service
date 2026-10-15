@@ -128,10 +128,10 @@ body {
   font-weight: 750;
   letter-spacing: -0.02em;
 }
-.elearning-catalog-shell > div > div:first-child p { font-size: 18px; color: var(--mairie-muted); }
+.elearning-catalog-shell > div:first-child > div:first-child > div:first-child > p { font-size: 18px; color: var(--mairie-muted); }
 @media (max-width: 767px) {
   .elearning-catalog-shell > div > div:first-child h2 { font-size: 30px; }
-  .elearning-catalog-shell > div > div:first-child p { font-size: 16px; }
+  .elearning-catalog-shell > div:first-child > div:first-child > div:first-child > p { font-size: 16px; }
 }
 
 .elearning-catalog-shell [aria-labelledby="elearning-admin-stats-title"] .grid > div {
