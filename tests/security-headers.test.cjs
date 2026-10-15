@@ -11,7 +11,7 @@ afterEach(() => {
 const { NextRequest } = require('next/server');
 require('./support/load-typescript.cjs');
 const { middleware } = require('../src/middleware.ts');
-const { buildContentSecurityPolicy } = require('../src/lib/content-security-policy.ts');
+const { buildContentSecurityPolicy } = require('@mairie360/front-kit/shared');
 const nextConfig = require('../next.config.ts').default;
 
 const b64url = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
