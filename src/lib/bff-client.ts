@@ -87,20 +87,23 @@ export async function requestBff<T>(path: string, init: RequestInit = {}) {
 
 // The generated operations of the published BFF E-learning contract own every path: axios only carries the
 // request through requestBff, which keeps the same-origin cookie, redirect handling, 401 and error class.
-const contractAdapter: AxiosAdapter = async (config) => {
-  const data = await requestBff<unknown>(axios.getUri(config), {
-    method: (config.method ?? 'get').toUpperCase(),
-    headers: config.headers.toJSON() as Record<string, string>,
-    body: typeof config.data === 'string' ? config.data : undefined,
-    signal: (config.signal as AbortSignal | undefined) ?? undefined,
-  });
-  return {
-    data,
-    status: data === undefined ? 204 : 200,
-    statusText: data === undefined ? 'No Content' : 'OK',
-    headers: {},
-    config,
+export function createElearningClient(request: typeof requestBff = requestBff) {
+  const contractAdapter: AxiosAdapter = async (config) => {
+    const data = await request<unknown>(axios.getUri(config), {
+      method: (config.method ?? 'get').toUpperCase(),
+      headers: config.headers.toJSON() as Record<string, string>,
+      body: typeof config.data === 'string' ? config.data : undefined,
+      signal: (config.signal as AbortSignal | undefined) ?? undefined,
+    });
+    return {
+      data,
+      status: data === undefined ? 204 : 200,
+      statusText: data === undefined ? 'No Content' : 'OK',
+      headers: {},
+      config,
+    };
   };
-};
+  return getBffElearning(axios.create({ adapter: contractAdapter, headers: { Accept: 'application/json' } }));
+}
 
-export const bffElearning = getBffElearning(axios.create({ adapter: contractAdapter, headers: { Accept: 'application/json' } }));
+export const bffElearning = createElearningClient();
