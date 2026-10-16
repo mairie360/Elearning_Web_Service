@@ -42,6 +42,13 @@ test('actual published drawer applies its lower layer and closes through its com
 
 test('actual course deep link opens the published chapter reader with sticky header and closes it', async t => {
   const dom = await elearningDom(t, { reader: true });
+  const main = dom.document.querySelector('main');
+  const skips = [...dom.document.querySelectorAll('a[href]')].filter(link => link.getAttribute('href') === `#${main.id}`);
+  assert.equal(skips.length, 1, 'The shared main has one skip link.');
+  const skip = skips[0];
+  assert.ok(skip.closest('[inert]'), 'The real course reader makes the shared skip link inactive.');
+  assert.ok(skip.compareDocumentPosition(dom.document.querySelector('.app-desktop-navigation button')) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.equal(dom.document.querySelector('.app-desktop-navigation').hasAttribute('inert'), true);
   const reader = dom.document.querySelector('.elearning-catalog-shell [role="dialog"]:has(> div > aside)'); assert.ok(reader);
   assert.ok(reader.querySelector(':scope > div > aside')); const header = reader.querySelector(':scope > header'); assert.ok(header);
   const computed = dom.style(header); assert.equal(computed.position, 'sticky'); assert.equal(computed.top, '-24px'); assert.equal(computed.zIndex, '35');
@@ -50,6 +57,11 @@ test('actual course deep link opens the published chapter reader with sticky hea
   assert.deepEqual(shadow(dom.window, dom.style(reader).boxShadow), [{ lengths: [0, 20, 60, 0], color: 'rgba(0, 0, 0, 0.32)' }]);
   await dom.click(dom.button('Fermer le détail du cours'));
   assert.ok(!dom.document.querySelector('.elearning-catalog-shell [role="dialog"]:has(> div > aside)'), 'Reader must close');
+  assert.equal(skip.closest('[inert]'), null);
+  assert.equal(dom.document.querySelector('main'), main);
+  assert.equal(dom.document.querySelector(`a[href="#${main.id}"]`), skip);
+  await dom.click(skip);
+  assert.equal(dom.document.activeElement, main);
   assert.ok(dom.bff.requests.every(request => request.method === 'GET'));
   // Native geometry, responsive scrolling, modal focus and hit testing remain separate.
 });

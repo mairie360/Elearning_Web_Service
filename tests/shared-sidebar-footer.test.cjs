@@ -4,21 +4,27 @@ const assert = require('node:assert/strict');
 const { join } = require('node:path');
 const { test } = require('node:test');
 const React = require('react');
+const { JSDOM } = require('jsdom');
 const { renderToStaticMarkup } = require('react-dom/server');
-const { AppShell, Footer } = require('@mairie360/lib-components');
+const { AppShell, Footer } = require('@mairie360/lib-components/shell');
 
 test('the installed shared UI matches the reviewed published artifact', () => {
   assertPublishedSharedUi(join(__dirname, '..'), sharedUiReleases);
 });
 
-test('the published shell keeps copyright inside the sidebar without a fictitious version', () => {
+test('sidebar information keeps copyright without creating a nested contentinfo landmark or fictitious version', () => {
   const html = renderToStaticMarkup(React.createElement(AppShell, {
     user: { name: '' },
     hrefs: { projects: 'https://projects.example/' },
     footerProps: { year: 2026 },
   }, React.createElement('p', null, 'Contenu du module')));
-  assert.match(html, /<aside\b[^]*?<footer\b[^]*?<\/footer>[^]*?<\/aside>/);
-  assert.match(html, /<footer\b[^>]*role="contentinfo"/);
+  const dom = new JSDOM(html);
+  try {
+    const sidebar = dom.window.document.querySelector('aside');
+    assert.match(sidebar.textContent, /© 2026 Mairie360/);
+    assert.equal(sidebar.querySelectorAll('footer, [role="contentinfo"]').length, 0);
+    assert.equal(dom.window.document.querySelectorAll('main').length, 1);
+  } finally { dom.window.close(); }
   assert.match(html, /© 2026 Mairie360/);
   assert.doesNotMatch(html, /<\/main>\s*<footer\b/);
   assert.doesNotMatch(html, /Version|Utilisateur/);
