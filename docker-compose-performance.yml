@@ -191,7 +191,7 @@ services:
       - backend
 
   bff-user:
-    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:dev-46a698b}
+    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:1.0.0}
     container_name: elearning-front-perf-bff-user
     depends_on:
       seeder:
@@ -226,7 +226,7 @@ services:
       - backend
 
   bff-elearning:
-    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:dev-c4c3f73}
+    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:1.0.0}
     container_name: elearning-front-perf-bff-elearning
     depends_on:
       seeder:
