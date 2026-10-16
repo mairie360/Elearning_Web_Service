@@ -64,7 +64,7 @@ test('the server seeds bounded URL filters and a new opaque client identity on e
 test('the immediate loading structure is accessible and respects reduced motion', () => {
   const Loading = require('../src/app/loading.tsx').default;
   const html = renderToStaticMarkup(React.createElement(Loading));
-  assert.match(html, /aria-busy="true"/); assert.match(html, /role="status"/); assert.match(html, /motion-reduce:animate-none/);
+  assert.match(html, /aria-busy="true"/); assert.match(html, /role="status"/); assert.match(html, /motion-safe:animate-pulse/);
 });
 
 for (const [label, prepare, pattern] of [

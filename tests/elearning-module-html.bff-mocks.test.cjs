@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { JSDOM } = require('jsdom');
 const { after, afterEach, before, beforeEach, test } = require('node:test');
 require('./support/load-typescript.cjs');
 const { installReactRuntime, mount } = require('./support/server-view.cjs');
@@ -32,6 +33,16 @@ afterEach(() => {
 
 const operations = () => bffElearning.requests.map((request) => `${request.method} ${request.template}`);
 
+function assertLiveMessage(html, role, message, label) {
+  const dom = new JSDOM(html);
+  try {
+    const notices = [...dom.window.document.querySelectorAll(`[role="${role}"]`)]
+      .filter(node => node.textContent.includes(message) && (!label || node.getAttribute('aria-label') === label));
+    assert.equal(notices.length, 1, 'The outcome has exactly one matching live announcement.');
+  } finally { dom.window.close(); }
+}
+
+
 for (const returnedId of ['unrelated', ' ']) {
   test(`the actual admin form keeps all edits after an uncorrelated receipt ${JSON.stringify(returnedId)}`, async () => {
     const initial = f.catalogResponse([f.course(), f.course('unrelated', { title: 'Independent course' })], f.currentUser({ isAdmin: true }));
@@ -53,7 +64,11 @@ for (const returnedId of ['unrelated', ' ']) {
     bffElearning.on('patch', '/elearning/admin/courses/{courseId}', {
       body: { course: f.course(returnedId, { title: 'Foreign course replacement' }) },
     });
-    await view.fire((props, _text, tag) => tag === 'form' && props.role === 'dialog', 'onSubmit');
+    const dialogDom = new JSDOM(view.html);
+    try { assert.ok(dialogDom.window.document.querySelector('[role="dialog"] form'), 'The dialog contains a native submit form.'); }
+    finally { dialogDom.window.close(); }
+    // The native form submit bubbles to the dialog's existing handler.
+    await view.fire(props => props.role === 'dialog', 'onSubmit');
     await view.waitFor(html => html.includes('La modification n’a pas été confirmée'));
     assert.equal(view.props('ElearningCourseFormModal').isOpen, true);
     assert.deepEqual(view.props('ElearningCatalog').courses, initial.catalog.courses);
@@ -118,7 +133,7 @@ for (const mode of ['create', 'update']) {
     bffElearning.on(method, path, { status: mode === 'create' ? 201 : 200, body: { course: canonical } });
     bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Catalogue après confirmation refusé'));
     assert.equal(await view.act(() => view.props('ElearningCatalog')[callback](draft)), true);
-    assert.match(view.html, /role="status"[^>]*aria-label="Confirmation de la formation"/);
+    assertLiveMessage(view.html, 'status', 'Titre canonique du serveur', 'Confirmation de la formation');
     assert.match(view.text(), new RegExp(`Formation "Titre canonique du serveur" ${mode === 'create' ? 'créée' : 'mise à jour'}\\.`));
     assert.doesNotMatch(view.text(), /Titre du brouillon/);
     assert.match(view.text(), /Catalogue après confirmation refusé/);
@@ -201,7 +216,7 @@ test('the first pass renders the loading state, the next one the catalogue of GE
   view = mount(React.createElement(Home));
 
   assert.equal(view.passes, 1);
-  assert.match(view.html, /<div[^>]*role="status"[^>]*>Chargement des formations…<\/div>/);
+  assertLiveMessage(view.html, 'status', 'Chargement des formations…');
   assert.equal(view.find('ElearningCatalog').length, 0);
   assert.equal(view.find('AppShell').length, 1);
   assert.equal(view.props('Header').user.name, '');
@@ -631,7 +646,7 @@ test('a failed refresh after a rating keeps the catalogue visible and offers a r
   const html = await view.waitFor((current) => current.includes('role="alert"'));
 
   assert.match(html, /Actualisation indisponible/);
-  assert.match(html, /class="fixed inset-x-4 bottom-4 z-\[60\]/);
+  assert.match(html, /data-elearning-feedback-stack[^>]*class="fixed inset-x-4 bottom-4 z-\[60\]/);
   assert.match(view.text(), /Les dernières données confirmées restent affichées/);
   assert.equal(view.find('ElearningCatalog').length, 1);
   assert.match(view.text(), /RGPD et collectivités/);
@@ -652,8 +667,8 @@ test('a refused mutation is shown as an alert above the catalogue, which stays d
   await view.act(() => view.props('ElearningCatalog').onCourseAction(view.props('ElearningCatalog').courses[0]));
   const html = await view.waitFor((current) => current.includes('role="alert"'));
 
-  assert.match(html, /<div[^>]*role="alert">Cette formation ne vous est pas ouverte<\/div>/);
-  assert.match(html, /class="fixed inset-x-4 bottom-4 z-\[60\]/);
+  assertLiveMessage(html, 'alert', 'Cette formation ne vous est pas ouverte');
+  assert.match(html, /data-elearning-feedback-stack[^>]*class="fixed inset-x-4 bottom-4 z-\[60\]/);
   assert.match(html, /data-elearning-catalog-feedback/);
   assert.equal(view.find('ElearningCatalog').length, 1);
   assert.match(view.text(), /RGPD et collectivités/);
@@ -908,7 +923,7 @@ test('un-ticking a completed content is refused locally in French, ticking it st
   const untick = { ...receipt, content: { ...receipt.content, completed: false } };
 
   assert.equal(await view.act(() => view.props('ElearningCatalog').onCourseContentComplete(view.props('ElearningCatalog').courses[0], untick)), false);
-  assert.match(view.html, new RegExp(`role="alert"[^>]*>${CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE.replace(/’/g, '&#x27;')}<`));
+  assertLiveMessage(view.html, 'alert', CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE);
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
 
   bffElearning.on('post', '/elearning/courses/{courseId}/contents/{contentId}/complete', { body: receipt });
