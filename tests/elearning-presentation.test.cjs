@@ -23,6 +23,14 @@ test('actual catalog cards keep the shadow binding and reference token values', 
   ]);
 });
 
+test('historical sidebar overrides leave the desktop navigation outside normal flow', async t => {
+  const dom = await elearningDom(t);
+  const navigation = dom.document.querySelector('.app-desktop-navigation');
+  assert.ok(navigation);
+  assert.notEqual(dom.style(navigation).position, 'relative',
+    'Mobile historical sidebar styling must not replace the shared fixed desktop layout.');
+});
+
 test('actual published historical sidebar receives reference shadow and seven rows', async t => {
   const dom = await elearningDom(t), sidebar = dom.document.querySelector('.app-published-sidebar');
   assert.equal(dom.style(sidebar).position, 'relative'); assert.equal(dom.style(sidebar).zIndex, '20');
