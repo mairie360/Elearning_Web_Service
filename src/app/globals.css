@@ -93,14 +93,14 @@ body {
   color: #2f3747;
 }
 
-/* Restore the measured prototype navigation without copying the shared shell. */
-.elearning-shell aside[aria-label="Navigation principale"] {
+/* Historical drawer styling must not override the shared fixed desktop navigation. */
+.elearning-shell aside.app-published-sidebar[aria-label="Navigation principale"] {
   position: relative;
   z-index: 20;
   box-shadow: 8px 0 24px rgb(12 28 48 / 28%);
 }
 
-.elearning-shell aside[aria-label="Navigation principale"] > nav button {
+.elearning-shell aside.app-published-sidebar[aria-label="Navigation principale"] > nav button {
   min-height: 44px;
   flex-shrink: 0;
 }
