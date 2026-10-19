@@ -86,7 +86,7 @@ test('server-side forwarding only targets the configured BFF_Elearning URL, gate
   const proxyAst = policy.parse('src/lib/bff-proxy.ts');
   assert.ok(policy.imports(proxyAst).includes('../../contracts/openapi.json'));
   assert.deepEqual(findings.fetch.filter(({ file }) => file === 'src/lib/bff-proxy.ts'), []);
-  assert.ok(policy.imports(proxyAst).includes('@mairie360/front-kit/next'));
+  assert.ok(policy.imports(proxyAst).includes('@mairie360/lib-components/next'));
   assert.equal(policy.calls(proxyAst, 'proxyPublishedBffRequest').length, 1);
   assert.deepEqual(findings.forwardToBff.map(({ file }) => file).sort(), ['src/lib/bff-proxy.ts', 'src/lib/initial-catalog.ts']);
   assert.ok(findings.forwardToBff.every(({ baseUrl }) => policy.configuredUrl(baseUrl)));

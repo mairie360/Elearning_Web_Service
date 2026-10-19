@@ -62,7 +62,7 @@ async function elearningDom(t, { reader = false } = {}) {
   React = require('react');
   const { createRoot } = require('react-dom/client'), { ElearningModule: Home } = require('../../src/features/elearning/ElearningModule.tsx');
   root = createRoot(dom.window.document.getElementById('root'));
-  await React.act(async () => root.render(React.createElement(require('@mairie360/front-kit/react').InstanceProvider, { role: 'Admin', timeZone: 'UTC' }, React.createElement(Home))));
+  await React.act(async () => root.render(React.createElement(require('@mairie360/lib-components/react').InstanceProvider, { role: 'Admin', timeZone: 'UTC' }, React.createElement(Home))));
   const loaded = () => !!dom.window.document.querySelector('.elearning-catalog-shell article');
   for (let attempt = 0; attempt < 100 && !loaded(); attempt += 1) {
     await React.act(async () => new Promise(resolve => setTimeout(resolve, 10)));
