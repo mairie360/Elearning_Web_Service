@@ -15,7 +15,7 @@ test('composed CI keeps matching release pins and the real blocking required sca
   assert.ok(reference);
   assert.ok(input);
   assert.equal(reference[1], input[1]);
-  assert.equal(reference[1], '5b7d127d46f95d8951935b6209ca7c2ca857a21d', 'only the integrated reviewed workflow commit is accepted');
+  assert.equal(reference[1], 'bbd2207256969f9f63e5477452d86e1f6c56339d', 'only the integrated reviewed workflow commit is accepted');
   assert.match(workflow, /required_security_scan:\s*\n\s+name: CICD \/ Code Security Audit \(Semgrep\)/);
   assert.match(workflow, /uses: \.\/cicd-repo\/actions\/frontend-semgrep-pypi/);
   assert.match(workflow, /uses: \.\/cicd-repo\/actions\/frontend-gitleaks/);
@@ -42,6 +42,9 @@ test('the reusable frontend workflow receives only its declared named secrets', 
   assert.deepEqual(mappings.map(([, name, source]) => [name, source]), [
     ['CODECOV_TOKEN', 'CODECOV_TOKEN'],
     ['N8N_WEBHOOK_SECRET', 'N8N_WEBHOOK_SECRET'],
+    ['ANTHROPIC_API_KEY', 'ANTHROPIC_API_KEY'],
+    ['RELEASE_APP_ID', 'RELEASE_APP_ID'],
+    ['RELEASE_APP_PK', 'RELEASE_APP_PK'],
   ]);
   assert.doesNotMatch(workflow, /semgrep_fail_on_findings:\s*false|semgrep_config:|continue-on-error:/);
 });
@@ -153,9 +156,15 @@ test('the exact required legacy status executes both real blocking scanners with
 test('the reusable frontend workflow retains blocking defaults and only declared secrets', () => {
   assert.deepEqual(workflow().jobs.CICD, {
     permissions: { contents: 'write', packages: 'write', 'id-token': 'write' },
-    uses: 'mairie360/CICD/.github/workflows/frontend-cicd.yml@5b7d127d46f95d8951935b6209ca7c2ca857a21d',
-    with: { package_name: 'elearning-front', node_version: '24.21.0', cicd_version: '5b7d127d46f95d8951935b6209ca7c2ca857a21d' },
-    secrets: { CODECOV_TOKEN: '${{ secrets.CODECOV_TOKEN }}', N8N_WEBHOOK_SECRET: '${{ secrets.N8N_WEBHOOK_SECRET }}' },
+    uses: 'mairie360/CICD/.github/workflows/frontend-cicd.yml@bbd2207256969f9f63e5477452d86e1f6c56339d',
+    with: { package_name: 'elearning-front', node_version: '24.21.0', cicd_version: 'bbd2207256969f9f63e5477452d86e1f6c56339d' },
+    secrets: {
+      CODECOV_TOKEN: '${{ secrets.CODECOV_TOKEN }}',
+      N8N_WEBHOOK_SECRET: '${{ secrets.N8N_WEBHOOK_SECRET }}',
+      ANTHROPIC_API_KEY: '${{ secrets.ANTHROPIC_API_KEY }}',
+      RELEASE_APP_ID: '${{ secrets.RELEASE_APP_ID }}',
+      RELEASE_APP_PK: '${{ secrets.RELEASE_APP_PK }}',
+    },
   });
   assert.doesNotMatch(read('.github/workflows/cicd.yml'), /secrets:\s*inherit|continue-on-error:|image_scan_fail_on_findings:|semgrep_fail_on_findings:\s*false/);
 });
