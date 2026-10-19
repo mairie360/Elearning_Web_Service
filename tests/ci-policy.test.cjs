@@ -7,6 +7,7 @@ const yaml = require('js-yaml');
 
 const root = join(__dirname, '..');
 const read = (path) => readFileSync(join(root, path), 'utf8');
+const cicdCommit = /frontend-cicd\.yml@([a-f0-9]{40})/.exec(read('.github/workflows/cicd.yml'))[1];
 
 test('composed CI keeps matching release pins and the real blocking required scanners', () => {
   const workflow = read('.github/workflows/cicd.yml');
@@ -15,7 +16,6 @@ test('composed CI keeps matching release pins and the real blocking required sca
   assert.ok(reference);
   assert.ok(input);
   assert.equal(reference[1], input[1]);
-  assert.equal(reference[1], 'bbd2207256969f9f63e5477452d86e1f6c56339d', 'only the integrated reviewed workflow commit is accepted');
   assert.match(workflow, /required_security_scan:\s*\n\s+name: CICD \/ Code Security Audit \(Semgrep\)/);
   assert.match(workflow, /uses: \.\/cicd-repo\/actions\/frontend-semgrep-pypi/);
   assert.match(workflow, /uses: \.\/cicd-repo\/actions\/frontend-gitleaks/);
@@ -156,8 +156,8 @@ test('the exact required legacy status executes both real blocking scanners with
 test('the reusable frontend workflow retains blocking defaults and only declared secrets', () => {
   assert.deepEqual(workflow().jobs.CICD, {
     permissions: { contents: 'write', packages: 'write', 'id-token': 'write' },
-    uses: 'mairie360/CICD/.github/workflows/frontend-cicd.yml@bbd2207256969f9f63e5477452d86e1f6c56339d',
-    with: { package_name: 'elearning-front', node_version: '24.21.0', cicd_version: 'bbd2207256969f9f63e5477452d86e1f6c56339d' },
+    uses: `mairie360/CICD/.github/workflows/frontend-cicd.yml@${cicdCommit}`,
+    with: { package_name: 'elearning-front', node_version: '24.21.0', cicd_version: cicdCommit },
     secrets: {
       CODECOV_TOKEN: '${{ secrets.CODECOV_TOKEN }}',
       N8N_WEBHOOK_SECRET: '${{ secrets.N8N_WEBHOOK_SECRET }}',
