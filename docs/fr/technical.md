@@ -232,9 +232,9 @@ Le générateur de types est fixé à `openapi-typescript@7.10.1` dans `scripts/
 
 ## CI/CD et exécution Docker
 
-Le job `contracts.yml` utilise Node.js 24 et checkout/setup-node figés sur leurs commits v7. Il s’exécute sur push, pull request et lancement manuel ; il installe avec `npm ci`, contrôle les contrats et lance les tests dédiés.
+Le job `contracts.yml` utilise Node.js 24.21.0 et checkout/setup-node figés sur leurs commits v7. Il s’exécute sur pull request, lancement manuel et push vers `main` uniquement (MAIR-436) ; il installe avec `npm ci`, contrôle les contrats et lance les tests dédiés.
 
-`cicd.yml` appelle `mairie360/CICD/.github/workflows/frontend-cicd.yml@v4.0.3`, avec `cicd_version: v4.0.3` et `node_version: "24.21.0"`. Seuls CODECOV_TOKEN et N8N_WEBHOOK_SECRET sont transmis explicitement. Le statut requis historique exécute réellement Semgrep et Gitleaks en mode bloquant. Les étapes réutilisables et les environnements GitHub déterminent les contrôles, publications et déploiements effectifs.
+`cicd.yml` appelle `mairie360/CICD/.github/workflows/frontend-cicd.yml` épinglé sur un commit CICD, avec le même `cicd_version` et `node_version: "24.21.0"`. Il s’exécute sur les pull requests, au déclenchement manuel et sur les push vers `main` uniquement ; son jeton est en lecture seule par défaut et seul le job qui appelle le pipeline de release reçoit les droits d’écriture `contents`, `packages` et `id-token` (MAIR-436, `tests/workflow-permissions.test.cjs`). Seuls CODECOV_TOKEN et N8N_WEBHOOK_SECRET sont transmis explicitement. Le statut requis historique exécute réellement Semgrep et Gitleaks en mode bloquant. Les étapes réutilisables et les environnements GitHub déterminent les contrôles, publications et déploiements effectifs.
 
 Le Dockerfile utilise par défaut `NODE_VERSION=24.21.0`, le digest officiel Bookworm-slim et le build Next.js `standalone` avec un runtime non-root ; la commande de l’image est `["node", "server.js"]`. L’installation verrouillée exige un secret BuildKit éphémère, pas un argument de build contenant le jeton. Le port de l’image et les mappings Compose peuvent différer du port local proposé plus haut. Cette politique vérifiée dans les sources ne certifie pas une image construite ou déployée.
 

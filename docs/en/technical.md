@@ -228,9 +228,9 @@ The type generator is pinned to `openapi-typescript@7.10.1` in `scripts/contract
 
 ## CI/CD and Docker execution
 
-The `contracts.yml` job uses Node.js 24 and commit-pinned checkout/setup-node actions (v7). It runs on pushes, pull requests and manual dispatch; it installs with `npm ci`, checks contracts and runs the associated tests.
+The `contracts.yml` job uses Node.js 24.21.0 and commit-pinned checkout/setup-node actions (v7). It runs on pull requests, manual dispatch and pushes to `main` only (MAIR-436); it installs with `npm ci`, checks contracts and runs the associated tests.
 
-`cicd.yml` calls `mairie360/CICD/.github/workflows/frontend-cicd.yml@v4.0.3`, with `cicd_version: v4.0.3` and `node_version: "24.21.0"`. Only CODECOV_TOKEN and N8N_WEBHOOK_SECRET are passed explicitly. The required legacy status runs real blocking Semgrep and Gitleaks scans. Reusable steps and GitHub environments determine actual checks, publications and deployments.
+`cicd.yml` calls `mairie360/CICD/.github/workflows/frontend-cicd.yml` pinned to a CICD commit, with the same `cicd_version` and `node_version: "24.21.0"`. It runs on pull requests, on manual dispatch and on pushes to `main` only; its token is read-only by default and only the job calling the release pipeline gets `contents`, `packages` and `id-token` write scopes (MAIR-436, `tests/workflow-permissions.test.cjs`). Only CODECOV_TOKEN and N8N_WEBHOOK_SECRET are passed explicitly. The required legacy status runs real blocking Semgrep and Gitleaks scans. Reusable steps and GitHub environments determine actual checks, publications and deployments.
 
 The Dockerfile defaults to `NODE_VERSION=24.21.0`, pins the official Bookworm-slim digest and uses the Next.js `standalone` build with a non-root runtime; the image command is `["node", "server.js"]`. The locked install requires an ephemeral BuildKit secret, not a credential build argument. Image ports and Compose mappings can differ from the local port suggested above. This source-level policy does not certify a built or deployed image.
 
