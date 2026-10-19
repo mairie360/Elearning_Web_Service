@@ -15,7 +15,7 @@ test('composed CI keeps matching release pins and the real blocking required sca
   assert.ok(reference);
   assert.ok(input);
   assert.equal(reference[1], input[1]);
-  assert.equal(reference[1], '16c63d21eedbf6c6e3b58ebc30c61231e49e2536', 'only the integrated reviewed workflow commit is accepted');
+  assert.equal(reference[1], '5b7d127d46f95d8951935b6209ca7c2ca857a21d', 'only the integrated reviewed workflow commit is accepted');
   assert.match(workflow, /required_security_scan:\s*\n\s+name: CICD \/ Code Security Audit \(Semgrep\)/);
   assert.match(workflow, /uses: \.\/cicd-repo\/actions\/frontend-semgrep-pypi/);
   assert.match(workflow, /uses: \.\/cicd-repo\/actions\/frontend-gitleaks/);
@@ -140,7 +140,7 @@ test('the exact required legacy status executes both real blocking scanners with
     steps: [
       { name: 'Checkout frontend history', uses: checkout, with: { 'fetch-depth': 0, 'persist-credentials': false } },
       { name: 'Checkout reviewed scanner actions', uses: checkout, with: {
-        repository: 'mairie360/CICD', ref: '16c63d21eedbf6c6e3b58ebc30c61231e49e2536', path: 'cicd-repo', 'persist-credentials': false,
+        repository: 'mairie360/CICD', ref: '5b7d127d46f95d8951935b6209ca7c2ca857a21d', path: 'cicd-repo', 'persist-credentials': false,
       } },
       { name: 'Run blocking Semgrep scan', uses: './cicd-repo/actions/frontend-semgrep-pypi', with: {
         config: 'p/typescript p/react p/owasp-top-ten p/secrets p/dockerfile p/github-actions', fail_on_findings: 'true', artifact_name: 'semgrep-required-check-sarif',
@@ -153,8 +153,8 @@ test('the exact required legacy status executes both real blocking scanners with
 test('the reusable frontend workflow retains blocking defaults and only declared secrets', () => {
   assert.deepEqual(workflow().jobs.CICD, {
     permissions: { contents: 'write', packages: 'write', 'id-token': 'write' },
-    uses: 'mairie360/CICD/.github/workflows/frontend-cicd.yml@16c63d21eedbf6c6e3b58ebc30c61231e49e2536',
-    with: { package_name: 'elearning-front', node_version: '24.21.0', cicd_version: '16c63d21eedbf6c6e3b58ebc30c61231e49e2536' },
+    uses: 'mairie360/CICD/.github/workflows/frontend-cicd.yml@5b7d127d46f95d8951935b6209ca7c2ca857a21d',
+    with: { package_name: 'elearning-front', node_version: '24.21.0', cicd_version: '5b7d127d46f95d8951935b6209ca7c2ca857a21d' },
     secrets: { CODECOV_TOKEN: '${{ secrets.CODECOV_TOKEN }}', N8N_WEBHOOK_SECRET: '${{ secrets.N8N_WEBHOOK_SECRET }}' },
   });
   assert.doesNotMatch(read('.github/workflows/cicd.yml'), /secrets:\s*inherit|continue-on-error:|image_scan_fail_on_findings:|semgrep_fail_on_findings:\s*false/);

@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@source "../../node_modules/@mairie360/lib-components/dist/index.js";
+@source "../../node_modules/@mairie360/lib-components/dist/";
 
 :root {
   --background: #f4f2ef;
@@ -93,14 +93,14 @@ body {
   color: #2f3747;
 }
 
-/* Restore the measured prototype navigation without copying the shared shell. */
-.elearning-shell aside[aria-label="Navigation principale"] {
+/* Historical drawer styling must not override the shared fixed desktop navigation. */
+.elearning-shell aside.app-published-sidebar[aria-label="Navigation principale"] {
   position: relative;
   z-index: 20;
   box-shadow: 8px 0 24px rgb(12 28 48 / 28%);
 }
 
-.elearning-shell aside[aria-label="Navigation principale"] > nav button {
+.elearning-shell aside.app-published-sidebar[aria-label="Navigation principale"] > nav button {
   min-height: 44px;
   flex-shrink: 0;
 }
@@ -128,10 +128,10 @@ body {
   font-weight: 750;
   letter-spacing: -0.02em;
 }
-.elearning-catalog-shell > div > div:first-child p { font-size: 18px; color: var(--mairie-muted); }
+.elearning-catalog-shell > div:first-child > div:first-child > div:first-child > p { font-size: 18px; color: var(--mairie-muted); }
 @media (max-width: 767px) {
   .elearning-catalog-shell > div > div:first-child h2 { font-size: 30px; }
-  .elearning-catalog-shell > div > div:first-child p { font-size: 16px; }
+  .elearning-catalog-shell > div:first-child > div:first-child > div:first-child > p { font-size: 16px; }
 }
 
 .elearning-catalog-shell [aria-labelledby="elearning-admin-stats-title"] .grid > div {

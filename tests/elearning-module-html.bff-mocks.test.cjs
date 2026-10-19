@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { JSDOM } = require('jsdom');
 const { after, afterEach, before, beforeEach, test } = require('node:test');
 require('./support/load-typescript.cjs');
 const { installReactRuntime, mount } = require('./support/server-view.cjs');
@@ -12,8 +13,9 @@ installReactRuntime();
 const React = require('react');
 const f = require('./support/elearning-fixtures.ts');
 const { errorReply, useMockedFront } = require('./support/mocked-front.ts');
-const Home = require('../src/app/page.tsx').default;
 const { ElearningModule } = require('../src/features/elearning/ElearningModule.tsx');
+// Client-only fallback/interactions; the async page's SSR contract is tested separately.
+const Home = ElearningModule;
 const { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE, fullCatalogCapabilities, pinnedBffCapabilities } = require('../src/features/elearning/bffCapabilities.ts');
 const { NOT_IMPLEMENTED_MESSAGE } = require('../src/lib/bff-client.ts');
 // The module once BFF_Elearning serves every contract operation (MAIR-513): the flows below that rate courses or
@@ -30,6 +32,16 @@ afterEach(() => {
 });
 
 const operations = () => bffElearning.requests.map((request) => `${request.method} ${request.template}`);
+
+function assertLiveMessage(html, role, message, label) {
+  const dom = new JSDOM(html);
+  try {
+    const notices = [...dom.window.document.querySelectorAll(`[role="${role}"]`)]
+      .filter(node => node.textContent.includes(message) && (!label || node.getAttribute('aria-label') === label));
+    assert.equal(notices.length, 1, 'The outcome has exactly one matching live announcement.');
+  } finally { dom.window.close(); }
+}
+
 
 for (const returnedId of ['unrelated', ' ']) {
   test(`the actual admin form keeps all edits after an uncorrelated receipt ${JSON.stringify(returnedId)}`, async () => {
@@ -52,7 +64,11 @@ for (const returnedId of ['unrelated', ' ']) {
     bffElearning.on('patch', '/elearning/admin/courses/{courseId}', {
       body: { course: f.course(returnedId, { title: 'Foreign course replacement' }) },
     });
-    await view.fire((props, _text, tag) => tag === 'form' && props.role === 'dialog', 'onSubmit');
+    const dialogDom = new JSDOM(view.html);
+    try { assert.ok(dialogDom.window.document.querySelector('[role="dialog"] form'), 'The dialog contains a native submit form.'); }
+    finally { dialogDom.window.close(); }
+    // The native form submit bubbles to the dialog's existing handler.
+    await view.fire(props => props.role === 'dialog', 'onSubmit');
     await view.waitFor(html => html.includes('La modification n’a pas été confirmée'));
     assert.equal(view.props('ElearningCourseFormModal').isOpen, true);
     assert.deepEqual(view.props('ElearningCatalog').courses, initial.catalog.courses);
@@ -117,7 +133,7 @@ for (const mode of ['create', 'update']) {
     bffElearning.on(method, path, { status: mode === 'create' ? 201 : 200, body: { course: canonical } });
     bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Catalogue après confirmation refusé'));
     assert.equal(await view.act(() => view.props('ElearningCatalog')[callback](draft)), true);
-    assert.match(view.html, /role="status"[^>]*aria-label="Confirmation de la formation"/);
+    assertLiveMessage(view.html, 'status', 'Titre canonique du serveur', 'Confirmation de la formation');
     assert.match(view.text(), new RegExp(`Formation "Titre canonique du serveur" ${mode === 'create' ? 'créée' : 'mise à jour'}\\.`));
     assert.doesNotMatch(view.text(), /Titre du brouillon/);
     assert.match(view.text(), /Catalogue après confirmation refusé/);
@@ -189,9 +205,9 @@ test('a pending write and a contract-shaped unconfirmed deletion never announce 
   assert.equal(view.props('ElearningCatalog').courses.length, 1);
 });
 
-async function renderLoadedCatalog(body = f.catalogResponse(), Component = Home) {
+async function renderLoadedCatalog(body = f.catalogResponse(), Component = Home, displayRole = 'Guest') {
   bffElearning.on('get', '/elearning/catalog', { body });
-  view = mount(React.createElement(Component));
+  view = mount(React.createElement(require('@mairie360/front-kit/react').InstanceProvider, { role: displayRole, timeZone: 'UTC' }, React.createElement(Component)));
   return view.waitFor((html) => !html.includes('role="status"'));
 }
 
@@ -200,7 +216,7 @@ test('the first pass renders the loading state, the next one the catalogue of GE
   view = mount(React.createElement(Home));
 
   assert.equal(view.passes, 1);
-  assert.match(view.html, /<div[^>]*role="status"[^>]*>Chargement des formations…<\/div>/);
+  assertLiveMessage(view.html, 'status', 'Chargement des formations…');
   assert.equal(view.find('ElearningCatalog').length, 0);
   assert.equal(view.find('AppShell').length, 1);
   assert.equal(view.props('Header').user.name, '');
@@ -225,7 +241,7 @@ test('the first pass renders the loading state, the next one the catalogue of GE
 });
 
 test('an administrator sees the catalogue with the administrator role', async () => {
-  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ name: 'Admin Mairie', initials: 'AM', role: 'Admin', isAdmin: true })));
+  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ name: 'Admin Mairie', initials: 'AM', role: 'Admin', isAdmin: true })), Home, 'Admin');
 
   assert.equal(view.props('ElearningCatalog').currentUserRole, 'administrator');
   assert.equal(view.props('Sidebar').isAdmin, true);
@@ -630,7 +646,7 @@ test('a failed refresh after a rating keeps the catalogue visible and offers a r
   const html = await view.waitFor((current) => current.includes('role="alert"'));
 
   assert.match(html, /Actualisation indisponible/);
-  assert.match(html, /class="fixed inset-x-4 bottom-4 z-\[60\]/);
+  assert.match(html, /data-elearning-feedback-stack[^>]*class="fixed inset-x-4 bottom-4 z-\[60\]/);
   assert.match(view.text(), /Les dernières données confirmées restent affichées/);
   assert.equal(view.find('ElearningCatalog').length, 1);
   assert.match(view.text(), /RGPD et collectivités/);
@@ -651,8 +667,8 @@ test('a refused mutation is shown as an alert above the catalogue, which stays d
   await view.act(() => view.props('ElearningCatalog').onCourseAction(view.props('ElearningCatalog').courses[0]));
   const html = await view.waitFor((current) => current.includes('role="alert"'));
 
-  assert.match(html, /<div[^>]*role="alert">Cette formation ne vous est pas ouverte<\/div>/);
-  assert.match(html, /class="fixed inset-x-4 bottom-4 z-\[60\]/);
+  assertLiveMessage(html, 'alert', 'Cette formation ne vous est pas ouverte');
+  assert.match(html, /data-elearning-feedback-stack[^>]*class="fixed inset-x-4 bottom-4 z-\[60\]/);
   assert.match(html, /data-elearning-catalog-feedback/);
   assert.equal(view.find('ElearningCatalog').length, 1);
   assert.match(view.text(), /RGPD et collectivités/);
@@ -907,7 +923,7 @@ test('un-ticking a completed content is refused locally in French, ticking it st
   const untick = { ...receipt, content: { ...receipt.content, completed: false } };
 
   assert.equal(await view.act(() => view.props('ElearningCatalog').onCourseContentComplete(view.props('ElearningCatalog').courses[0], untick)), false);
-  assert.match(view.html, new RegExp(`role="alert"[^>]*>${CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE.replace(/’/g, '&#x27;')}<`));
+  assertLiveMessage(view.html, 'alert', CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE);
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
 
   bffElearning.on('post', '/elearning/courses/{courseId}/contents/{contentId}/complete', { body: receipt });
@@ -939,4 +955,68 @@ test('with every capability the module wires the rating and administration callb
   const props = view.props('ElearningCatalog');
   for (const name of ['onCreateCourse', 'onUpdateCourse', 'onDeleteCourse', 'onCourseRatingSubmit']) assert.equal(typeof props[name], 'function', name);
   assert.doesNotMatch(view.html, /data-elearning-capability-notice/);
+});
+
+test('the module guards duplicate logout clicks, displays refusal and permits an explicit retry', async t => {
+  const previousLogin=process.env.LOGIN_FRONT_URL;
+  process.env.LOGIN_FRONT_URL='https://login.mairie.test/';
+  t.after(()=>{previousLogin===undefined?delete process.env.LOGIN_FRONT_URL:process.env.LOGIN_FRONT_URL=previousLogin;});
+  await renderLoadedCatalog();
+  let release;
+  const pending = new Promise(resolve => { release = resolve; });
+  runtime.owner = { origin:'https://login.mairie.test',calls:[],handle:async()=>{await pending;return Response.json({message:'Unconfirmed',session_revoked:false});} };
+  await view.act(() => { view.props('AccessibleShell').onLogout(); view.props('AccessibleShell').onLogout(); });
+  await view.waitFor(()=>runtime.owner.calls.length===1);
+  assert.deepEqual(front.window().location.assigned,[]);
+  release();
+  await view.waitFor(html=>html.includes('déconnexion n’a pas été confirmée'));
+  assert.equal(runtime.owner.calls.length,1);assert.deepEqual(front.window().location.assigned,[]);
+  runtime.owner.handle=async()=>Response.json({message:'Session revoked',session_revoked:true});
+  await view.act(()=>view.props('AccessibleShell').onLogout());
+  await view.waitFor(()=>front.window().location.assigned.length===1);
+  assert.equal(runtime.owner.calls.length,2);
+  assert.equal(new URL(front.window().location.assigned[0]).origin,'https://login.mairie.test');
+});
+
+test('the module wires course completion policy and downloads the authorized blob through a temporary link', async () => {
+  const course=f.course();const content=course.details.chapters[0].contents[0];
+  const file={blob:new Blob(['authorized document']),fileName:'authorized-support.pdf'};
+  const downloadCalls=[];
+  const learnerPort={
+    downloadResource:async(courseId,contentId,signal)=>{downloadCalls.push({courseId,contentId,signal});return file;},
+    canCompleteResource:(courseId,contentId)=>courseId===course.id&&contentId===content.id,
+  };
+  const Module=()=>React.createElement(ElearningModule,{learnerPort});
+  await renderLoadedCatalog(f.catalogResponse([course]),Module);
+  const catalog=view.props('ElearningCatalog');
+  assert.equal(catalog.canCompleteCourseContent(course,content),true);
+  assert.equal(catalog.canCompleteCourseContent(course,{id:'other'}),false);
+  const previousDocument=global.document,create=URL.createObjectURL,revoke=URL.revokeObjectURL;
+  const events=[];let downloaded;let createdBlob;
+  const link={href:'',download:'',click(){downloaded={href:this.href,name:this.download};events.push('click');},remove(){events.push('remove');}};
+  global.document={createElement:tag=>{assert.equal(tag,'a');return link;},body:{append:node=>{assert.equal(node,link);events.push('append');}}};
+  URL.createObjectURL=blob=>{createdBlob=blob;return 'blob:authorized-fixture';};
+  URL.revokeObjectURL=url=>events.push('revoke:'+url);
+  front.window().setTimeout=callback=>{callback();return 1;};
+  try{
+    assert.equal(await catalog.onCourseContentDownload(course,content),true);
+    assert.equal(createdBlob,file.blob);assert.deepEqual(downloaded,{href:'blob:authorized-fixture',name:'authorized-support.pdf'});
+    assert.deepEqual(events,['append','click','remove','revoke:blob:authorized-fixture']);
+    assert.equal(downloadCalls.length,1);assert.equal(downloadCalls[0].courseId,course.id);assert.equal(downloadCalls[0].contentId,content.id);assert.equal(downloadCalls[0].signal.aborted,false);
+    assert.deepEqual(operations(),['GET /elearning/catalog']);
+  }finally{URL.createObjectURL=create;URL.revokeObjectURL=revoke;previousDocument===undefined?delete global.document:global.document=previousDocument;}
+});
+
+test('a superseded module download is cancelled and cannot create a stale download link',async()=>{
+  const course=f.course();const content=course.details.chapters[0].contents[0];
+  const requests=[];
+  const learnerPort={downloadResource:(courseId,contentId,signal)=>new Promise(resolve=>requests.push({courseId,contentId,signal,resolve}))};
+  await renderLoadedCatalog(f.catalogResponse([course]),()=>React.createElement(ElearningModule,{learnerPort}));
+  const callback=view.props('ElearningCatalog').onCourseContentDownload;
+  const first=callback(course,content);const firstRejected=assert.rejects(first,/annulé/);
+  const second=callback(course,content);const secondRejected=assert.rejects(second,/annulé/);
+  assert.equal(requests[0].signal.aborted,true);assert.equal(requests[1].signal.aborted,false);
+  requests[0].resolve({blob:new Blob(['stale']),fileName:'stale.pdf'});await firstRejected;
+  view.unmount();view=undefined;assert.equal(requests[1].signal.aborted,true);
+  requests[1].resolve({blob:new Blob(['unmounted']),fileName:'unmounted.pdf'});await secondRejected;
 });

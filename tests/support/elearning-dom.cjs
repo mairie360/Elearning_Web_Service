@@ -60,9 +60,9 @@ async function elearningDom(t, { reader = false } = {}) {
     MESSAGE_FRONT_URL: 'https://messages.example/', ELEARNING_FRONT_URL: 'http://localhost:5006/',
     ADMINISTRATION_FRONT_URL: 'https://admin.example/', SETTINGS_FRONT_URL: 'https://settings.example/' });
   React = require('react');
-  const { createRoot } = require('react-dom/client'), { default: Home } = require('../../src/app/page.tsx');
+  const { createRoot } = require('react-dom/client'), { ElearningModule: Home } = require('../../src/features/elearning/ElearningModule.tsx');
   root = createRoot(dom.window.document.getElementById('root'));
-  await React.act(async () => root.render(React.createElement(Home)));
+  await React.act(async () => root.render(React.createElement(require('@mairie360/front-kit/react').InstanceProvider, { role: 'Admin', timeZone: 'UTC' }, React.createElement(Home))));
   const loaded = () => !!dom.window.document.querySelector('.elearning-catalog-shell article');
   for (let attempt = 0; attempt < 100 && !loaded(); attempt += 1) {
     await React.act(async () => new Promise(resolve => setTimeout(resolve, 10)));

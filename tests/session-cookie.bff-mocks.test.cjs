@@ -114,8 +114,8 @@ test('stored JWTs cannot replace a missing cookie on an API request', async () =
  let reads=0;front.window().localStorage.getItem=()=>{reads+=1;return 'stale-primary-token';};
  bffElearning.on('get','/elearning/catalog',errorReply(401,'UNAUTHORIZED','Session refusée.'));
  await assert.rejects(requestBff('/elearning/catalog'));
- assert.equal(reads,0);assert.equal(runtime.frontCalls[0].status,401);assert.equal(bffElearning.requests.length,1);
- assert.equal(bffElearning.requests[0].headers.authorization,undefined);
+ assert.equal(reads,0);assert.equal(runtime.frontCalls[0].status,401);assert.equal(bffElearning.requests.length,0);
+ assert.deepEqual(runtime.frontCalls.map(x=>[x.method,x.pathname]),[['GET','/elearning/catalog'],['POST','/api/auth/refresh']]);
  assert.equal(front.window().location.assigned.length,1);
  assert.equal(new URL(front.window().location.assigned[0]).searchParams.get('redirect'),front.window().location.href);
 });

@@ -5,7 +5,8 @@ import AccessibleShell from "@/components/accessible-shell";
 
 import {
   ElearningCatalog,
-} from "@mairie360/lib-components";
+} from "@mairie360/lib-components/elearning";
+import { Skeleton, Toast } from "@mairie360/lib-components/primitives";
 import type { ComponentProps } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { logout, navigateToLogin } from "@/lib/auth-session";
@@ -22,11 +23,11 @@ import { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, COURSE_MANAGEMENT_UNAVAILABLE
 import type { CatalogCapabilities } from "./bffCapabilities";
 import { withCategoryReset, withStatusReset } from "./catalogFilters";
 import { usePageUrlState } from '@/lib/use-page-url-state';
-import { urlText } from '@/lib/page-url-state';
+import { parseCatalogResponse, type InitialCatalog } from '@/lib/catalog-response';
+import { catalogUrlSchema } from './catalogQuery';
 
 type CatalogProps = ComponentProps<typeof ElearningCatalog>;
 type CatalogCourse = CatalogProps["courses"][number];
-const catalogUrlSchema = { q: urlText(200), category: { ...urlText(80), defaultValue: 'all' }, status: { ...urlText(80), defaultValue: 'all' } };
 type ContentCompletePayload = Parameters<
   NonNullable<CatalogProps["onCourseContentComplete"]>
 >[1];
@@ -48,19 +49,26 @@ function withChapterDurations(courses: ElearningCatalogResponse["catalog"]["cour
 export function ElearningModule({
   learnerPort = pendingLearnerPort,
   capabilities = pinnedBffCapabilities,
-}: { learnerPort?: LearnerFeaturePort; capabilities?: CatalogCapabilities } = {}) {
-  const pageUrl = usePageUrlState(catalogUrlSchema);
+  initialState,
+  initialSearch,
+}: { learnerPort?: LearnerFeaturePort; capabilities?: CatalogCapabilities; initialState?: InitialCatalog; initialSearch?: string } = {}) {
+  const [initial] = useState(() => {
+    if (!initialState?.data) return initialState;
+    try { return { ...initialState, data: parseCatalogResponse(initialState.data) }; }
+    catch { return { data: null, error: 'Les données des formations reçues sont incohérentes. Réessayez.', status: 502 }; }
+  });
+  const pageUrl = usePageUrlState(catalogUrlSchema, initialSearch ?? (initial === undefined ? undefined : ''));
   const [historyRevision, setHistoryRevision] = useState(0);
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
   const downloadRef = useRef<AbortController | null>(null);
   useEffect(() => () => downloadRef.current?.abort(), []);
   const [catalogResponse, setCatalogResponse] =
-    useState<ElearningCatalogResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    useState<ElearningCatalogResponse | null>(() => initial?.data ?? null);
+  const [loading, setLoading] = useState(initial === undefined);
+  const [error, setError] = useState<string | null>(() => initial?.error ?? null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [mutationSuccess, setMutationSuccess] = useState<string | null>(null);
-  const [requestedCourseId, setRequestedCourseId] = useState<string | null>(null);
+  const [requestedCourseId, setRequestedCourseId] = useState<string | null>(() => courseIdFromSearch(initialSearch ?? ''));
 
   const [logoutError, setLogoutError] = useState("");
   const logoutPending = useRef(false);
@@ -85,8 +93,8 @@ export function ElearningModule({
   );
 
   useEffect(() => {
-    void actions.loadCatalog();
-  }, [actions]);
+    if (initial === undefined) void actions.loadCatalog();
+  }, [actions, initial]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -189,6 +197,7 @@ export function ElearningModule({
           role="status"
         >
           Chargement des formations…
+          <Skeleton className="mt-4 !h-64" />
         </div>
       )}
 
@@ -199,33 +208,10 @@ export function ElearningModule({
             ? "fixed inset-x-4 bottom-4 z-[60] mx-auto flex max-h-[calc(100dvh-2rem)] max-w-[640px] flex-col gap-3 overflow-y-auto"
             : "mx-auto my-10 max-w-[1130px] space-y-3"}
         >
-          {mutationSuccess && (
-            <div
-              data-elearning-catalog-feedback
-              className="flex items-start justify-between gap-3 rounded-md border border-[#b9dfc8] bg-[#eefaf3] px-4 py-3 text-sm font-semibold text-[#167544] shadow-lg"
-              role="status"
-              aria-label="Confirmation de la formation"
-            >
-              <p className="min-w-0 break-words [overflow-wrap:anywhere]">{mutationSuccess}</p>
-              <button
-                type="button"
-                aria-label="Fermer la confirmation"
-                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md border border-[#b9dfc8] bg-white px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#167544]"
-                onClick={() => setMutationSuccess(null)}
-              >
-                Fermer
-              </button>
-            </div>
-          )}
-          {mutationError && (
-            <div
-              data-elearning-catalog-feedback
-              className="rounded-md border border-[#efb9bd] bg-[#fff1f2] px-4 py-3 text-sm font-semibold text-[#a4232c] shadow-lg"
-              role="alert"
-            >
-              {mutationError}
-            </div>
-          )}
+          {mutationSuccess && <Toast data-elearning-catalog-feedback message={mutationSuccess} variant="success"
+            aria-label="Confirmation de la formation" closeLabel="Fermer la confirmation" onClose={() => setMutationSuccess(null)} />}
+          {mutationError && <Toast data-elearning-catalog-feedback message={mutationError} variant="error"
+            closeLabel="Masquer l’erreur de la formation" onClose={() => setMutationError(null)} />}
           {error && (
             <div
               data-elearning-catalog-feedback
@@ -288,7 +274,7 @@ export function ElearningModule({
           defaultCategory={category}
           defaultStatus={statusFilter}
           onChangeCapture={event => {
-            // Published UI 0.8.0 owns its input state. Keep typing focused; only
+            // The shared catalogue owns its input state. Keep typing focused; only
             // history navigation remounts it, while review drafts stay in this parent.
             if (event.target instanceof HTMLInputElement && event.target.type === 'search') pageUrl.update({ q: event.target.value }, 'replace');
           }}

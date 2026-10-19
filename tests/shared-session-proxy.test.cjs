@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const { before,after,beforeEach,afterEach,test } = require('node:test');
 require('./support/load-typescript.cjs');
-const { createSessionRefreshHandler,createSessionLogoutHandler,forgetUserSession } = require('@mairie360/lib-components/next');
+const { createSessionRefreshHandler,createSessionLogoutHandler,forgetUserSession } = require('@mairie360/front-kit/next');
 const { OpenApiContract } = require('./support/openapi-contract.ts');
 const { ContractMockServer } = require('./support/contract-mock-server.ts');
 const { FrontRuntime,FRONT_ORIGIN } = require('./support/front-runtime.ts');
@@ -37,21 +37,22 @@ const renewed=()=>user.on('post','/auth/refresh',{body:{message:'JWT refreshed s
 test('the actual catalogue rotates once at Login and retries using only cookie-derived authorization',async()=>{
  renewed();training.on('get','/elearning/catalog',request=>request.headers.authorization===`Bearer ${access}`?{body:f.catalogResponse()}:rejected(401));
  assert.deepEqual(await requestBff('/elearning/catalog',{headers:{Authorization:'Bearer untrusted-browser'}}),f.catalogResponse());
- assert.equal(training.requests.length,2);assert.equal(user.requests.length,1);assert.equal(user.requests[0].template,'/auth/refresh');
+ assert.equal(training.requests.length,1);assert.equal(user.requests.length,1);assert.equal(user.requests[0].template,'/auth/refresh');
  assert.deepEqual(user.requests[0].body,{refresh_token:refresh});assert.equal(user.requests[0].headers.authorization,undefined);
  assert.equal(runtime.accessToken,access);assert.deepEqual(browser.location.assigned,[]);
- assert.deepEqual(runtime.frontCalls.map(x=>x.pathname),['/elearning/catalog']);
+ assert.deepEqual(runtime.frontCalls.map(x=>x.pathname),['/elearning/catalog','/api/auth/refresh','/elearning/catalog']);
 });
 for(const status of [401,503])test(`failed owner renewal${status} neither replays a learner mutation nor invokes logout`,async()=>{
  browser.localStorage.setItem('mairie360.auth.jwt','legacy');browser.localStorage.setItem('unrelated.preference','keep');
  training.on('post','/elearning/courses/{courseId}/start',rejected(401));owner.override=()=>Response.json({message:'Disposable refusal'},{status});
  await assert.rejects(requestBff('/elearning/courses/4/start',{method:'POST'}));
- assert.equal(training.requests.length,1);assert.equal(owner.calls.length,1);assert.equal(owner.calls[0].path,'/api/auth/refresh');
+ assert.equal(training.requests.length,0);assert.equal(owner.calls.length,1);assert.equal(owner.calls[0].path,'/api/auth/refresh');
  assert.equal(runtime.refreshToken,refresh);assert.equal(user.requests.length,0);assert.equal(browser.location.assigned.length,status===401?1:0);
  assert.equal(browser.localStorage.getItem('mairie360.auth.jwt'),status===401?null:'legacy');assert.equal(browser.localStorage.getItem('unrelated.preference'),'keep');
  if(status===401)assert.equal(new URL(browser.location.assigned[0]).searchParams.get('redirect'),browser.location.href);
 });
 test('foreign catalogue and logout requests are refused before any service or cookie change',async()=>{
+ runtime.accessToken=access;
  for(const [path,init] of [['/elearning/catalog',{}],['/api/auth/logout',{method:'POST',body:'{}'}]]){
   const response=await fetch(path,{...init,headers:{Origin:'https://foreign.test','Content-Type':'application/json'}});assert.equal(response.status,403);assert.equal(response.headers.get('set-cookie'),null);
  }
