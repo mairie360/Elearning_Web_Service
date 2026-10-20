@@ -1,49 +1,57 @@
 # Journal des releases — Elearning_Web_Service
 
-<!-- release-journal-state {"dev": "a2dd9c9b49f8b32f88229acbde05221d18eb82f3", "prod": "322e9d6bf39d06f3bc19e2298ce82653f51a743d", "prod_tag": "v0.3.0", "staging": "322e9d6bf39d06f3bc19e2298ce82653f51a743d", "updated": {"dev": "2026-10-19 22:13 UTC"}} -->
+<!-- release-journal-state {"dev": "36b3cb88f92fd05bfe65574b2df0f661a74550c4", "prod": "322e9d6bf39d06f3bc19e2298ce82653f51a743d", "prod_tag": "v0.3.0", "staging": "322e9d6bf39d06f3bc19e2298ce82653f51a743d", "updated": {"dev": "2026-10-20 12:23 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v0.3.0 | `322e9d6` | — |
 | staging | — | `322e9d6` | — |
-| dev | — | `a2dd9c9` | 2026-10-19 22:13 UTC |
+| dev | — | `36b3cb8` | 2026-10-20 12:23 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v0.3.0)
 
-#### Nouveautés
-- L'écran Formation adopte le thème commun de `@mairie360/lib-components` 0.9.0 (feuille de style partagée `@mairie360/lib-components/styles.css`, la copie locale `municipal-theme.css` est supprimée). Il affiche aussi les retours partagés : squelettes de chargement (`Skeleton`) pendant « Chargement des formations… », résultats vides libellés et confirmations d'action refermables. Les brouillons, les erreurs contextuelles et la reprise en lecture seule sont conservés, et le lien d'évitement unique précède la navigation répétée. (MAIR-526, MAIR-515, MAIR-540, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
+#### Changements de comportement
+- L'interface e-learning adopte le thème partagé de `@mairie360/lib-components` 0.9.0. La feuille de styles publiée `@mairie360/lib-components/styles.css` remplace le thème municipal local (`municipal-theme.css`, supprimé). L'écran de chargement « Chargement des formations… » affiche désormais les placeholders `Skeleton` partagés. ([#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
+- D'après la PR, l'interface reprend aussi plusieurs éléments partagés : résultats vides libellés, confirmations d'action refermables, lien d'évitement placé avant la navigation. Le diff de `ElearningModule.tsx` est tronqué, ce point n'est donc pas entièrement vérifié. ([#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
+
 #### Corrections
-- Navigation sur ordinateur : avant, l'ancien style du tiroir mobile s'appliquait aussi à la navigation de bureau et la passait en position relative, ce qui repoussait l'en-tête et le catalogue sous elle. Maintenant, ce style ne vise plus que la barre latérale publiée (`.app-published-sidebar`) et la navigation de bureau reste fixée au bord de l'écran. (MAIR-526, MAIR-547, [#210](https://github.com/mairie360/Elearning_Web_Service/pull/210))
+- Sur ordinateur, la navigation principale reste fixe, hors du flux de la page. Avant, un ancien style du tiroir de navigation la repassait en `position: relative`. Ce style ne s'applique plus qu'à la barre latérale `.app-published-sidebar`. ([#210](https://github.com/mairie360/Elearning_Web_Service/pull/210))
+
 #### Technique
-- Dépendances :
-  - Le socle partagé (session, proxy, garde, thème) est importé depuis les sous-chemins de `@mairie360/lib-components` 0.10.2 au lieu de l'archive `@mairie360/front-kit` vendorisée, sans changement de comportement annoncé.
-  - Nouveau contrôle `npm run test:bundle` du bundle client.
-  - `@mairie360/bff-elearning-openapi` passe en 1.0.0 (contenu du contrat inchangé) et les images Docker des stacks de test passent en versions prod.
-  - (MAIR-126, MAIR-569, [#216](https://github.com/mairie360/Elearning_Web_Service/pull/216), [#220](https://github.com/mairie360/Elearning_Web_Service/pull/220), [#212](https://github.com/mairie360/Elearning_Web_Service/pull/212))
+- Dépendances, sans changement de comportement annoncé :
+  - le socle partagé (session, proxy, garde d'authentification, thème, contexte d'instance) est importé depuis les sous-chemins de `@mairie360/lib-components` 0.10.2 au lieu de l'archive `@mairie360/front-kit` ;
+  - le contrat `@mairie360/bff-elearning-openapi` passe à 1.0.0, avec un contenu inchangé ;
+  - les stacks `docker-compose*.yml` utilisent les images prod (BFF, API, base).
+  (MAIR-126, MAIR-569, [#216](https://github.com/mairie360/Elearning_Web_Service/pull/216), [#220](https://github.com/mairie360/Elearning_Web_Service/pull/220), [#212](https://github.com/mairie360/Elearning_Web_Service/pull/212))
 - CI :
-  - Le jeton est en lecture seule par défaut, avec écriture réservée au job de release.
-  - Les workflows ne se déclenchent sur `push` que pour `main`.
-  - Passage à CICD v4.3.1, avec l'étape de journal de release.
-  - (MAIR-436, MAIR-571, [#205](https://github.com/mairie360/Elearning_Web_Service/pull/205), [#214](https://github.com/mairie360/Elearning_Web_Service/pull/214))
+  - jeton en lecture seule par défaut, pipelines lancés au push sur `main` uniquement ;
+  - CICD passé en v4.3.1 puis v4.3.2, avec le journal des releases ;
+  - suivi Renovate des épinglages ;
+  - nouveau test `npm run test:bundle` sur le bundle client.
+  (MAIR-436, MAIR-571, MAIR-126, [#205](https://github.com/mairie360/Elearning_Web_Service/pull/205), [#214](https://github.com/mairie360/Elearning_Web_Service/pull/214), [#218](https://github.com/mairie360/Elearning_Web_Service/pull/218), [#220](https://github.com/mairie360/Elearning_Web_Service/pull/220))
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
-#### Nouveautés
-- L'écran Formation adopte le thème commun de `@mairie360/lib-components` 0.9.0 (feuille de style partagée `@mairie360/lib-components/styles.css`, la copie locale `municipal-theme.css` est supprimée). Il affiche aussi les retours partagés : squelettes de chargement (`Skeleton`) pendant « Chargement des formations… », résultats vides libellés et confirmations d'action refermables. Les brouillons, les erreurs contextuelles et la reprise en lecture seule sont conservés, et le lien d'évitement unique précède la navigation répétée. (MAIR-526, MAIR-515, MAIR-540, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
+#### Changements de comportement
+- L'interface e-learning adopte le thème partagé de `@mairie360/lib-components` 0.9.0. La feuille de styles publiée `@mairie360/lib-components/styles.css` remplace le thème municipal local (`municipal-theme.css`, supprimé). L'écran de chargement « Chargement des formations… » affiche désormais les placeholders `Skeleton` partagés. ([#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
+- D'après la PR, l'interface reprend aussi plusieurs éléments partagés : résultats vides libellés, confirmations d'action refermables, lien d'évitement placé avant la navigation. Le diff de `ElearningModule.tsx` est tronqué, ce point n'est donc pas entièrement vérifié. ([#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
+
 #### Corrections
-- Navigation sur ordinateur : avant, l'ancien style du tiroir mobile s'appliquait aussi à la navigation de bureau et la passait en position relative, ce qui repoussait l'en-tête et le catalogue sous elle. Maintenant, ce style ne vise plus que la barre latérale publiée (`.app-published-sidebar`) et la navigation de bureau reste fixée au bord de l'écran. (MAIR-526, MAIR-547, [#210](https://github.com/mairie360/Elearning_Web_Service/pull/210))
+- Sur ordinateur, la navigation principale reste fixe, hors du flux de la page. Avant, un ancien style du tiroir de navigation la repassait en `position: relative`. Ce style ne s'applique plus qu'à la barre latérale `.app-published-sidebar`. ([#210](https://github.com/mairie360/Elearning_Web_Service/pull/210))
+
 #### Technique
-- Dépendances :
-  - Le socle partagé (session, proxy, garde, thème) est importé depuis les sous-chemins de `@mairie360/lib-components` 0.10.2 au lieu de l'archive `@mairie360/front-kit` vendorisée, sans changement de comportement annoncé.
-  - Nouveau contrôle `npm run test:bundle` du bundle client.
-  - `@mairie360/bff-elearning-openapi` passe en 1.0.0 (contenu du contrat inchangé) et les images Docker des stacks de test passent en versions prod.
-  - (MAIR-126, MAIR-569, [#216](https://github.com/mairie360/Elearning_Web_Service/pull/216), [#220](https://github.com/mairie360/Elearning_Web_Service/pull/220), [#212](https://github.com/mairie360/Elearning_Web_Service/pull/212))
+- Dépendances, sans changement de comportement annoncé :
+  - le socle partagé (session, proxy, garde d'authentification, thème, contexte d'instance) est importé depuis les sous-chemins de `@mairie360/lib-components` 0.10.2 au lieu de l'archive `@mairie360/front-kit` ;
+  - le contrat `@mairie360/bff-elearning-openapi` passe à 1.0.0, avec un contenu inchangé ;
+  - les stacks `docker-compose*.yml` utilisent les images prod (BFF, API, base).
+  (MAIR-126, MAIR-569, [#216](https://github.com/mairie360/Elearning_Web_Service/pull/216), [#220](https://github.com/mairie360/Elearning_Web_Service/pull/220), [#212](https://github.com/mairie360/Elearning_Web_Service/pull/212))
 - CI :
-  - Le jeton est en lecture seule par défaut, avec écriture réservée au job de release.
-  - Les workflows ne se déclenchent sur `push` que pour `main`.
-  - Passage à CICD v4.3.1, avec l'étape de journal de release.
-  - (MAIR-436, MAIR-571, [#205](https://github.com/mairie360/Elearning_Web_Service/pull/205), [#214](https://github.com/mairie360/Elearning_Web_Service/pull/214))
+  - jeton en lecture seule par défaut, pipelines lancés au push sur `main` uniquement ;
+  - CICD passé en v4.3.1 puis v4.3.2, avec le journal des releases ;
+  - suivi Renovate des épinglages ;
+  - nouveau test `npm run test:bundle` sur le bundle client.
+  (MAIR-436, MAIR-571, MAIR-126, [#205](https://github.com/mairie360/Elearning_Web_Service/pull/205), [#214](https://github.com/mairie360/Elearning_Web_Service/pull/214), [#218](https://github.com/mairie360/Elearning_Web_Service/pull/218), [#220](https://github.com/mairie360/Elearning_Web_Service/pull/220))
 
 ## Différence staging → prod (en staging, pas encore en prod)
 
@@ -54,6 +62,7 @@ _Rien._
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-10-20 12:23 UTC | dev | — | `36b3cb8` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/39421306506) |
 | 2026-10-19 22:13 UTC | dev | — | `a2dd9c9` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/39332816489) |
 | 2026-10-19 21:58 UTC | dev | — | `9cd87f5` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/39330915338) |
 | 2026-10-19 20:40 UTC | dev | — | `6482090` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/39320707529) |
