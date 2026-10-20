@@ -1,7 +1,7 @@
 "use client";
 import { subscribePageReturn } from "@/lib/page-return";
 
-import AccessibleShell from "@/components/accessible-shell";
+import { AccessibleShell } from "@mairie360/lib-components/shell";
 
 import {
   ElearningCatalog,

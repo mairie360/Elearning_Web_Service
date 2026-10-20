@@ -51,7 +51,13 @@ npm run contracts:check     # fail if types are stale
 
 Then move `BFF_ELEARNING_IMAGE` defaults in every `docker-compose*.yml` to the image built from the same commit (`X.Y.Z`, `dev-<sha7>`, or `staging-<sha7>` for a staging package), which the tests enforce. The stacks also pin dev images of BFF User, Core API, E-learning API and the database: the dev Liquibase needs `-Dallow_template_admin=true`, the database enforces argon2id hashes in `init-test.sql`, the dev APIs need `JWT_ALLOW_WEAK_SECRET` for the shared test secret and `RATE_LIMIT_ENABLED=false` (plus a lifted `RATE_LIMIT_PER_SECOND` / `RATE_LIMIT_BURST` on E-learning API, whose per-IP token bucket otherwise answers 429 under load), BFF_Elearning needs `JWT_SECRET` at startup and BFF User `AUTH_RATE_LIMIT_ENABLED=false` for the ZAP scan. The published contract has no logout route. A logout endpoint is a proposed need in `BFF.md`. `contracts:*` run `npm exec` on `openapi-typescript`, so they need network access.
 
+## Figma mockup
+
+Figma is the source of truth: design and agree any UI change on **Mairie360 – Elearning_Web_Service** (https://www.figma.com/design/NqcDzK5hEfDIBEAx9xJE0o) first, then code it. Shared components come from the lib mockup https://www.figma.com/design/T7vetUfuzPEXk5TxjHRiO2 and are instantiated, never redrawn.
+
 ## Architecture
+
+- **Shell from the lib (MAIR-578)** — `src/features/elearning/ElearningModule.tsx` renders `AccessibleShell` from `@mairie360/lib-components/shell`; `src/lib/front-urls-provider.tsx` uses the lib `configureSidebarCookieDomain`. No local `accessible-shell.tsx`, `desktop-navigation.tsx` or `sidebar-preference.ts` (pinned by `tests/lib-shell-adoption.test.cjs`).
 
 - **Shared shell and profile routing (MAIR-180)** — `ElearningModule` uses the
   published library `AppShell` with BFF-supplied user, role and footer. It reads
