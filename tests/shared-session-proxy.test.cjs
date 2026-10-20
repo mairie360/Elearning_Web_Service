@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const { before,after,beforeEach,afterEach,test } = require('node:test');
 require('./support/load-typescript.cjs');
-const { createSessionRefreshHandler,createSessionLogoutHandler,forgetUserSession } = require('@mairie360/front-kit/next');
+const { createSessionRefreshHandler,createSessionLogoutHandler,forgetUserSession } = require('@mairie360/lib-components/next');
 const { OpenApiContract } = require('./support/openapi-contract.ts');
 const { ContractMockServer } = require('./support/contract-mock-server.ts');
 const { FrontRuntime,FRONT_ORIGIN } = require('./support/front-runtime.ts');

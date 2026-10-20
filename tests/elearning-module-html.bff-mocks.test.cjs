@@ -207,7 +207,7 @@ test('a pending write and a contract-shaped unconfirmed deletion never announce 
 
 async function renderLoadedCatalog(body = f.catalogResponse(), Component = Home, displayRole = 'Guest') {
   bffElearning.on('get', '/elearning/catalog', { body });
-  view = mount(React.createElement(require('@mairie360/front-kit/react').InstanceProvider, { role: displayRole, timeZone: 'UTC' }, React.createElement(Component)));
+  view = mount(React.createElement(require('@mairie360/lib-components/react').InstanceProvider, { role: displayRole, timeZone: 'UTC' }, React.createElement(Component)));
   return view.waitFor((html) => !html.includes('role="status"'));
 }
 
