@@ -204,7 +204,7 @@ Toutes les réponses portent `X-Frame-Options: DENY`, `X-Content-Type-Options: n
 
 ## Synchronisation et vérifications
 
-Le front ne consomme que des paquets publiés de BFF_Elearning : une release `X.Y.Z`, ou, tant qu’aucune release n’est coupée, le paquet `0.0.0-dev.<sha>` publié par la CICD pour le commit courant de son `main` (MAIR-509), ou, une fois ce commit livré en staging, le paquet `0.0.0-staging.<sha40>` du même commit, préféré lors d’une release staging pour la lisibilité (MAIR-600 ; jamais `0.0.0-staging.<sha court>` ni une plage ; les stacks démarrent alors l’image `staging-<sha7>` au lieu de `dev-<sha7>`), actuellement le paquet dev du commit `c4c3f73`. Pour passer à une nouvelle version, monter le paquet de contrat, copier le contrat du même commit puis régénérer les types:
+Le front ne consomme que des paquets publiés de BFF_Elearning : une release `X.Y.Z`, ou, tant qu’aucune release n’est coupée, le paquet `0.0.0-dev.<sha>` publié par la CICD pour le commit courant de son `main` (MAIR-509), ou, une fois ce commit livré en staging, le paquet `0.0.0-staging.<sha40>` du même commit, préféré lors d’une release staging pour la lisibilité (MAIR-600 ; jamais `0.0.0-staging.<sha court>` ni une plage ; les stacks démarrent alors l’image `staging-<sha7>` au lieu de `dev-<sha7>`), actuellement le paquet staging du commit `55dfd4b`. Pour passer à une nouvelle version, monter le paquet de contrat, copier le contrat du même commit puis régénérer les types:
 
 ```bash
 npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@<version>
@@ -216,7 +216,7 @@ npm run lint
 npm run build
 ```
 
-`contracts:generate` régénère `src/contracts/bff.d.ts` depuis la copie versionnée; `contracts:check` vérifie ces types et, avec `BFF_CONTRACT_DIR`, compare au contrat d’un checkout BFF (qui doit alors être sur le tag publié). Les stacks isolées utilisent l’image publiée `ghcr.io/mairie360/bff-elearning:0.4.0` (`BFF_ELEARNING_IMAGE`). `test:contracts` exécute tous les tests Node (`npm test` fait de même avec la couverture, minimum 60 % sur lignes, branches et fonctions).
+`contracts:generate` régénère `src/contracts/bff.d.ts` depuis la copie versionnée; `contracts:check` vérifie ces types et, avec `BFF_CONTRACT_DIR`, compare au contrat d’un checkout BFF (qui doit alors être sur le tag publié). Les stacks isolées utilisent l’image publiée `ghcr.io/mairie360/bff-elearning:staging-55dfd4b` (construite à partir du même commit que le paquet épinglé ; `X.Y.Z` pour une release) (`BFF_ELEARNING_IMAGE`). `test:contracts` exécute tous les tests Node (`npm test` fait de même avec la couverture, minimum 60 % sur lignes, branches et fonctions).
 
 ### Tests unitaires pilotés par les contrats
 

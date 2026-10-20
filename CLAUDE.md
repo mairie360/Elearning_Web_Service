@@ -43,7 +43,7 @@ Same approach as the BFFs' `*.upstream-mocks.test.ts`. `tests/support/openapi-co
 `contracts/openapi.json` is BFF_Elearning's contract **as of a published package**: a release tag, or, while no release is cut, the `main` commit whose `0.0.0-dev.<sha40>` package is pinned (MAIR-509), or whose `0.0.0-staging.<sha40>` package is pinned once that commit is released on staging (MAIR-600, preferred on a staging release for readability). It is the proxy allowlist, and `src/contracts/bff.d.ts` is generated from it (`openapi-typescript@7.10.1`, pinned in `scripts/contracts.mjs`). Never hand-edit either file. The devDependency `@mairie360/bff-elearning-openapi` (same version, used only by tests) is the published artifact both are checked against. Don't use `contracts:sync` from a BFF checkout: `BFFs/BFF_Elearning` usually sits on an unreleased branch that is ahead of the last release. To bump:
 
 ```bash
-npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@<version>   # a release X.Y.Z, a published 0.0.0-dev.<sha40> or 0.0.0-staging.<sha40> (MAIR-600)
+npm install --save-prod --save-exact @mairie360/bff-elearning-openapi@<version>   # a release X.Y.Z, a published 0.0.0-dev.<sha40> or 0.0.0-staging.<sha40> (MAIR-600)
 git -C ../../BFFs/BFF_Elearning show <vX.Y.Z or sha40>:contracts/openapi.json > contracts/openapi.json
 npm run contracts:generate  # regenerate types from the snapshot
 npm run contracts:check     # fail if types are stale

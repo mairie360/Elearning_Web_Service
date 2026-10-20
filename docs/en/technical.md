@@ -200,7 +200,7 @@ Every response carries `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff
 
 ## Synchronization and verification
 
-The front only consumes published packages of BFF_Elearning: a release `X.Y.Z`, or, while no release is cut, the `0.0.0-dev.<sha>` package the CICD publishes for the current commit of its `main` (MAIR-509), or, once that commit is released on staging, the `0.0.0-staging.<sha40>` package of the same commit, preferred on a staging release for readability (MAIR-600; never `0.0.0-staging.<short sha>` or a range; the stacks then run the `staging-<sha7>` image instead of `dev-<sha7>`), currently the dev package of commit `c4c3f73`. To move to a new version, bump the contract package, copy the contract from the same commit and regenerate the types:
+The front only consumes published packages of BFF_Elearning: a release `X.Y.Z`, or, while no release is cut, the `0.0.0-dev.<sha>` package the CICD publishes for the current commit of its `main` (MAIR-509), or, once that commit is released on staging, the `0.0.0-staging.<sha40>` package of the same commit, preferred on a staging release for readability (MAIR-600; never `0.0.0-staging.<short sha>` or a range; the stacks then run the `staging-<sha7>` image instead of `dev-<sha7>`), currently the staging package of commit `55dfd4b`. To move to a new version, bump the contract package, copy the contract from the same commit and regenerate the types:
 
 ```bash
 npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@<version>
@@ -212,7 +212,7 @@ npm run lint
 npm run build
 ```
 
-`contracts:generate` regenerates `src/contracts/bff.d.ts` from the committed copy; `contracts:check` checks those types and, with `BFF_CONTRACT_DIR`, compares against a BFF checkout (which must then be on the published tag). The isolated stacks use the published image `ghcr.io/mairie360/bff-elearning:dev-c4c3f73` (built from the same commit as the pinned package; `X.Y.Z` for a release) (`BFF_ELEARNING_IMAGE`). `test:contracts` runs every Node test (`npm test` does the same with coverage, 60% minimum on lines, branches and functions).
+`contracts:generate` regenerates `src/contracts/bff.d.ts` from the committed copy; `contracts:check` checks those types and, with `BFF_CONTRACT_DIR`, compares against a BFF checkout (which must then be on the published tag). The isolated stacks use the published image `ghcr.io/mairie360/bff-elearning:staging-55dfd4b` (built from the same commit as the pinned package; `X.Y.Z` for a release) (`BFF_ELEARNING_IMAGE`). `test:contracts` runs every Node test (`npm test` does the same with coverage, 60% minimum on lines, branches and functions).
 
 ### Contract-driven unit tests
 
