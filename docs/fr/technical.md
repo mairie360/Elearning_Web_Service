@@ -204,10 +204,10 @@ Toutes les réponses portent `X-Frame-Options: DENY`, `X-Content-Type-Options: n
 
 ## Synchronisation et vérifications
 
-Le front ne consomme que des paquets publiés de BFF_Elearning : une release `X.Y.Z`, ou, tant qu’aucune release n’est coupée, le paquet `0.0.0-dev.<sha>` publié par la CICD pour le commit courant de son `main` (MAIR-509), ou, une fois ce commit livré en staging, le paquet `0.0.0-staging.<sha40>` du même commit, préféré lors d’une release staging pour la lisibilité (MAIR-600 ; jamais `0.0.0-staging.<sha court>` ni une plage ; les stacks démarrent alors l’image `staging-<sha7>` au lieu de `dev-<sha7>`), actuellement le paquet staging du commit `55dfd4b`. Pour passer à une nouvelle version, monter le paquet de contrat, copier le contrat du même commit puis régénérer les types:
+Le front ne consomme que des paquets publiés de BFF_Elearning : une release `X.Y.Z`, ou, tant qu’aucune release n’est coupée, le paquet `0.0.0-dev.<sha40>` publié par la CICD pour le commit courant de son `main` (MAIR-509), ou, une fois ce commit livré en staging, le paquet `0.0.0-staging.<sha40>` du même commit, préféré lors d’une release staging pour la lisibilité (MAIR-600 ; jamais `0.0.0-staging.<sha court>` ni une plage ; les stacks démarrent alors l’image `staging-<sha7>` au lieu de `dev-<sha7>`), actuellement le paquet staging du commit `55dfd4b`. Pour passer à une nouvelle version, monter le paquet de contrat, copier le contrat du même commit puis régénérer les types:
 
 ```bash
-npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@<version>
+npm install --save-exact @mairie360/bff-elearning-openapi@<version>
 git -C ../../BFFs/BFF_Elearning show <vX.Y.Z ou sha40>:contracts/openapi.json > contracts/openapi.json
 npm run contracts:generate
 npm run contracts:check

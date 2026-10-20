@@ -200,10 +200,10 @@ Every response carries `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff
 
 ## Synchronization and verification
 
-The front only consumes published packages of BFF_Elearning: a release `X.Y.Z`, or, while no release is cut, the `0.0.0-dev.<sha>` package the CICD publishes for the current commit of its `main` (MAIR-509), or, once that commit is released on staging, the `0.0.0-staging.<sha40>` package of the same commit, preferred on a staging release for readability (MAIR-600; never `0.0.0-staging.<short sha>` or a range; the stacks then run the `staging-<sha7>` image instead of `dev-<sha7>`), currently the staging package of commit `55dfd4b`. To move to a new version, bump the contract package, copy the contract from the same commit and regenerate the types:
+The front only consumes published packages of BFF_Elearning: a release `X.Y.Z`, or, while no release is cut, the `0.0.0-dev.<sha40>` package the CICD publishes for the current commit of its `main` (MAIR-509), or, once that commit is released on staging, the `0.0.0-staging.<sha40>` package of the same commit, preferred on a staging release for readability (MAIR-600; never `0.0.0-staging.<short sha>` or a range; the stacks then run the `staging-<sha7>` image instead of `dev-<sha7>`), currently the staging package of commit `55dfd4b`. To move to a new version, bump the contract package, copy the contract from the same commit and regenerate the types:
 
 ```bash
-npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@<version>
+npm install --save-exact @mairie360/bff-elearning-openapi@<version>
 git -C ../../BFFs/BFF_Elearning show <vX.Y.Z or sha40>:contracts/openapi.json > contracts/openapi.json
 npm run contracts:generate
 npm run contracts:check
