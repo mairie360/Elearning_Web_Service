@@ -49,11 +49,11 @@ function valid(method, pathname, status, body) {
 
 describe('single published BFF contract', () => {
   test('the contract package is a published version of bff_elearning pinned in package.json', async () => {
-    // Release X.Y.Z, or the 0.0.0-dev.<sha40> package published from BFF_Elearning main (scripts/contract-version.mjs).
+    // Release X.Y.Z, or the 0.0.0-dev.<sha40> / 0.0.0-staging.<sha40> package of a BFF_Elearning main commit (scripts/contract-version.mjs).
     const { isAcceptedContractVersion } = await import('../scripts/contract-version.mjs');
     const { dependencies = {}, devDependencies = {} } = JSON.parse(read('package.json'));
     const pinned = dependencies[PUBLISHED_CONTRACT_PACKAGE];
-    assert.ok(isAcceptedContractVersion(pinned), `${PUBLISHED_CONTRACT_PACKAGE}: version exacte attendue (X.Y.Z ou 0.0.0-dev.<sha>), reçu ${pinned}`);
+    assert.ok(isAcceptedContractVersion(pinned), `${PUBLISHED_CONTRACT_PACKAGE}: exact version expected (X.Y.Z, 0.0.0-dev.<sha> or 0.0.0-staging.<sha>), got ${pinned}`);
     assert.equal(resolveOrvalPackage(PUBLISHED_CONTRACT_PACKAGE).version, pinned);
     assert.equal(published.title, 'bff_elearning');
     assert.equal(devDependencies[PUBLISHED_CONTRACT_PACKAGE], undefined);
@@ -72,6 +72,18 @@ describe('single published BFF contract', () => {
       assert.deepEqual([...new Set(tags)], [version], file);
       // The other BFF images (BFF User) follow the same policy: a release tag or the dev-<sha7> image of a main commit.
       assert.ok(images.filter(image => !image.startsWith('ghcr.io/mairie360/bff-elearning:')).every(image => /^(\d+\.\d+\.\d+|dev-[0-9a-f]{7})$/.test(image.slice(image.lastIndexOf(':') + 1))), `${file}: other BFF images require a release or dev-<sha7> tag`);
+    }
+  });
+
+  test('the contract version policy accepts releases, dev and staging packages and maps them to image tags (MAIR-600)', async () => {
+    const { isAcceptedContractVersion, imageTagForContractVersion } = await import('../scripts/contract-version.mjs');
+    const sha = '55dfd4b4cb34e881c243d79394b807631879eca2';
+    assert.equal(imageTagForContractVersion('1.2.0'), '1.2.0');
+    assert.equal(imageTagForContractVersion(`0.0.0-dev.${sha}`), 'dev-55dfd4b');
+    assert.equal(isAcceptedContractVersion(`0.0.0-staging.${sha}`), true);
+    assert.equal(imageTagForContractVersion(`0.0.0-staging.${sha}`), 'staging-55dfd4b');
+    for (const rejected of ['^1.2.0', '1.2', '0.0.0-staging.55dfd4b', '0.0.0-dev.55dfd4b', '0.0.0-prod.' + sha, 'latest']) {
+      assert.equal(isAcceptedContractVersion(rejected), false, rejected);
     }
   });
 
