@@ -19,7 +19,7 @@ const installed = JSON.parse(readFileSync(resolve('node_modules', metadata.packa
 if (manifest.dependencies?.[metadata.package] !== metadata.version ||
     installed.version !== metadata.version ||
     lock.packages?.[`node_modules/${metadata.package}`]?.version !== metadata.version ||
-    (metadata.version.includes('-dev.') && metadata.version.split('-dev.')[1] !== metadata.commit)) {
+    (/-(dev|staging)\./.test(metadata.version) && metadata.version.split(/-(?:dev|staging)\./)[1] !== metadata.commit)) {
   throw new Error('The exported contract source does not match the pinned and installed published SDK.');
 }
 if (mode === '--sync') {

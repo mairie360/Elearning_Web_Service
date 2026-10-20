@@ -200,10 +200,10 @@ Every response carries `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff
 
 ## Synchronization and verification
 
-The front only consumes published packages of BFF_Elearning: a release `X.Y.Z`, or, while no release is cut, the `0.0.0-dev.<sha>` package the CICD publishes for the current commit of its `main` (MAIR-509; never a `staging` version), currently the dev package of commit `c4c3f73`. To move to a new version, bump the contract package, copy the contract from the same commit and regenerate the types:
+The front only consumes published packages of BFF_Elearning: a release `X.Y.Z`, or, while no release is cut, the `0.0.0-dev.<sha40>` package the CICD publishes for the current commit of its `main` (MAIR-509), or, once that commit is released on staging, the `0.0.0-staging.<sha40>` package of the same commit, preferred on a staging release for readability (MAIR-600; never `0.0.0-staging.<short sha>` or a range; the stacks then run the `staging-<sha7>` image instead of `dev-<sha7>`), currently the staging package of commit `55dfd4b`. To move to a new version, bump the contract package, copy the contract from the same commit and regenerate the types:
 
 ```bash
-npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@<version>
+npm install --save-exact @mairie360/bff-elearning-openapi@<version>
 git -C ../../BFFs/BFF_Elearning show <vX.Y.Z or sha40>:contracts/openapi.json > contracts/openapi.json
 npm run contracts:generate
 npm run contracts:check
@@ -212,7 +212,7 @@ npm run lint
 npm run build
 ```
 
-`contracts:generate` regenerates `src/contracts/bff.d.ts` from the committed copy; `contracts:check` checks those types and, with `BFF_CONTRACT_DIR`, compares against a BFF checkout (which must then be on the published tag). The isolated stacks use the published image `ghcr.io/mairie360/bff-elearning:dev-c4c3f73` (built from the same commit as the pinned package; `X.Y.Z` for a release) (`BFF_ELEARNING_IMAGE`). `test:contracts` runs every Node test (`npm test` does the same with coverage, 60% minimum on lines, branches and functions).
+`contracts:generate` regenerates `src/contracts/bff.d.ts` from the committed copy; `contracts:check` checks those types and, with `BFF_CONTRACT_DIR`, compares against a BFF checkout (which must then be on the published tag). The isolated stacks use the published image `ghcr.io/mairie360/bff-elearning:staging-55dfd4b` (built from the same commit as the pinned package; `X.Y.Z` for a release) (`BFF_ELEARNING_IMAGE`). `test:contracts` runs every Node test (`npm test` does the same with coverage, 60% minimum on lines, branches and functions).
 
 ### Contract-driven unit tests
 
@@ -220,7 +220,7 @@ The browser reaches BFF E-learning only through [src/lib/elearning-api.ts](../..
 
 - `tests/network-boundary.test.cjs` scans `src/` (TypeScript AST): `fetch` and `axios` are only allowed in `bff-client.ts` (the paths come from the generated client called by `elearning-api.ts`, which holds no path literal) and `fetch` in `bff-proxy.ts`, whose only target is `configuredBffUrl()`; no other HTTP client or network API.
 - `tests/elearning.bff-mocks.test.cjs` runs the real code end to end: browser `fetch` → real middleware → route handler picked like the App Router → proxy → mock BFF E-learning served over HTTP, the only reachable service. The mock is driven by the published `@mairie360/bff-elearning-openapi` package (orval output): it rejects paths, methods, parameters and bodies missing from the contract and validates its success responses; orval does not type errors, so error replies go through `errorReply`, which validates the body against `ApiError`. Any call from the browser to another origin, or from the server to another service, fails the test, and every consumed operation must be exercised.
-- `tests/bff-contracts.test.cjs` checks that the package is a pinned `X.Y.Z` release, that `contracts/openapi.json` declares exactly its operations, that `elearning-api.ts` calls the consumed operations through the generated client, that the catch-all proxy is the only route handler and that fixtures conform.
+- `tests/bff-contracts.test.cjs` checks that the package is an accepted exact version (`X.Y.Z`, `0.0.0-dev.<sha40>` or `0.0.0-staging.<sha40>`), that `contracts/openapi.json` declares exactly its operations, that `elearning-api.ts` calls the consumed operations through the generated client, that the catch-all proxy is the only route handler and that fixtures conform.
 
 The shared helpers `tests/support/openapi-contract.ts`, `contract-mock-server.ts` and `orval-contract.ts` are copied verbatim from the BFFs (`BFFs/BFF_Elearning/tests/support`); keep the copies identical.
 
