@@ -18,7 +18,7 @@
     "test:bundle": "node --test tests/bundle/*.test.cjs"
   },
   "dependencies": {
-    "@mairie360/bff-elearning-openapi": "1.0.0",
+    "@mairie360/bff-elearning-openapi": "0.0.0-dev.15082e063d46c3fcf9b31c697eeacdcd6858970c",
     "@mairie360/lib-components": "0.10.2",
     "axios": "1.20.0",
     "lucide-react": "^1.0.0",
