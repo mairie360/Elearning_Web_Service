@@ -57,6 +57,7 @@ Figma is the source of truth: design and agree any UI change on **Mairie360 – 
 
 ## Architecture
 
+- **E-learning components owned here (MAIR-607)** — `src/components/elearning/` holds `ElearningCatalog` and its sub-components (formerly `@mairie360/lib-components/elearning`, removed because Elearning was their only consumer); `src/features/elearning/ElearningModule.tsx` imports `@/components/elearning`. Their component tests are `tests/component/elearning/lib-*.test.tsx` (vitest + jsdom, `npm run test:components`); Node stays the coverage authority. `tests/lib-business-ownership.test.cjs` forbids any import of a removed library entry and checks the installed lib has no `./elearning` export.
 - **Shell from the lib (MAIR-578)** — `src/features/elearning/ElearningModule.tsx` renders `AccessibleShell` from `@mairie360/lib-components/shell`; `src/lib/front-urls-provider.tsx` uses the lib `configureSidebarCookieDomain`. No local `accessible-shell.tsx`, `desktop-navigation.tsx` or `sidebar-preference.ts` (pinned by `tests/lib-shell-adoption.test.cjs`).
 
 - **Shared shell and profile routing (MAIR-180)** — `ElearningModule` uses the

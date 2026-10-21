@@ -5,7 +5,7 @@ import { AccessibleShell } from "@mairie360/lib-components/shell";
 
 import {
   ElearningCatalog,
-} from "@mairie360/lib-components/elearning";
+} from "@/components/elearning";
 import { Skeleton, Toast } from "@mairie360/lib-components/primitives";
 import type { ComponentProps } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
