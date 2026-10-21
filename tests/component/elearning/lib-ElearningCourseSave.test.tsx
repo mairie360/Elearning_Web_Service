@@ -62,12 +62,15 @@ describe.each(['create', 'update'] as const)('confirmed Elearning %s', (mode) =>
     }).mockResolvedValue(true);
     render(<ElearningCatalog courses={[course]} currentUserRole="administrator" onCreateCourse={save} onUpdateCourse={save} />);
     const dialog = openAndFill(mode);
-    const scrollBody = dialog.querySelector('[data-elearning-form-scroll]');
+    // MAIR-608: lib Modal layout, only the body scrolls and the actions stay in its footer.
+    const form = dialog.querySelector('form');
     const fieldset = dialog.querySelector('fieldset');
-    expect(scrollBody).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto');
-    expect(fieldset?.parentElement).toBe(scrollBody);
+    expect(form?.parentElement).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto');
+    expect(fieldset?.parentElement).toBe(form);
     expect(fieldset).not.toHaveClass('flex-1', 'overflow-y-auto');
-    expect(within(dialog).getByRole('button', { name: 'Annuler' }).parentElement?.parentElement).toBe(within(dialog).getByRole('button', { name: 'Annuler' }).closest('form'));
+    const footer = within(dialog).getByRole('button', { name: 'Annuler' }).closest('footer');
+    expect(footer?.parentElement).toBe(dialog);
+    expect(within(footer!).getByRole('button', { name: submitLabel })).toHaveAttribute('form', form?.id);
     fireEvent.click(within(dialog).getByRole('button', { name: submitLabel }));
     await waitFor(() => expect(within(dialog).getByRole('alert')).toHaveTextContent('Vos saisies sont conservées'));
     expectDraft(dialog);
@@ -89,15 +92,16 @@ describe.each(['create', 'update'] as const)('confirmed Elearning %s', (mode) =>
     const props = { currentUserRole: 'administrator' as const, onCreateCourse: save, onUpdateCourse: save };
     const { rerender } = render(<ElearningCatalog courses={[course]} {...props} />);
     const dialog = openAndFill(mode);
-    fireEvent.submit(dialog);
+    fireEvent.submit(dialog.querySelector('form')!);
     expect(dialog).toHaveAttribute('aria-busy', 'true');
     expect(within(dialog).getByRole('button', { name: 'Enregistrement…' })).toBeDisabled();
     expect(within(dialog).getByRole('button', { name: 'Annuler' })).toBeDisabled();
-    expect(within(dialog).getByRole('button', { name: 'Fermer' })).toBeDisabled();
+    // The lib Modal keeps its close button enabled; a pending save ignores it (lib ConfirmModal rule).
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Fermer' }));
     expect(within(dialog).getByLabelText('Titre', { selector: '#elearning-course-title' })).toBeDisabled();
     expect(within(dialog).getByRole('button', { name: 'Ajouter un chapitre' })).toBeDisabled();
-    fireEvent.submit(dialog);
-    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.submit(dialog.querySelector('form')!);
+    fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(save).toHaveBeenCalledTimes(1);
     expect(dialog).toBeInTheDocument();
     rerender(<ElearningCatalog courses={[{ ...course, description: 'Catalogue actualisé' }]} {...props} />);
@@ -105,7 +109,7 @@ describe.each(['create', 'update'] as const)('confirmed Elearning %s', (mode) =>
     await act(async () => request.resolve(false));
     expectDraft(dialog);
     expect(within(dialog).getByRole('button', { name: submitLabel })).toBeEnabled();
-    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 

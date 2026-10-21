@@ -48,7 +48,7 @@ describe.each(['create', 'update'] as const)('Elearning author status in %s mode
     });
     fireEvent.change(within(dialog).getByLabelText('Catégorie'), { target: { value: 'Accueil' } });
     fireEvent.change(within(dialog).getByLabelText('Durée totale'), { target: { value: '20 min' } });
-    fireEvent.submit(dialog);
+    fireEvent.submit(dialog.querySelector('form')!);
     await waitFor(() => expect(within(dialog).getByRole('alert')).toBeInTheDocument());
     expect(save).toHaveBeenCalledTimes(1);
     expect(save.mock.calls[0][1].statusValue).toBe('not-started');
@@ -82,7 +82,7 @@ describe('Elearning author status choices', () => {
     expect(status).toHaveValue('not-started');
     fireEvent.change(status, { target: { value: 'in-progress' } });
     expect(status).toHaveValue('in-progress');
-    fireEvent.submit(screen.getByRole('dialog'));
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0][0].statusValue).toBe('in-progress');
   });
@@ -125,8 +125,8 @@ describe('Elearning author status choices', () => {
     fireEvent.change(screen.getByLabelText('Titre', { selector: '#elearning-course-title' }), {
       target: { value: 'Brouillon conservé' },
     });
-    fireEvent.submit(screen.getByRole('dialog'));
-    fireEvent.submit(screen.getByRole('dialog'));
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
     expect(save).toHaveBeenCalledTimes(1);
     fireEvent.change(status, { target: { value: 'not-started' } });
     expect(status).toHaveValue('in-progress');
@@ -138,7 +138,7 @@ describe('Elearning author status choices', () => {
     await act(async () => resolve(false));
     expect(status).toHaveValue('in-progress');
     expect(screen.getByLabelText('Titre', { selector: '#elearning-course-title' })).toHaveValue('Brouillon conservé');
-    fireEvent.submit(screen.getByRole('dialog'));
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
     await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
     expect(save.mock.calls[1][0]).toEqual(save.mock.calls[0][0]);
     rerender(<ElearningCourseFormModal {...props} statusOptions={limitedOptions} onSubmit={save} />);

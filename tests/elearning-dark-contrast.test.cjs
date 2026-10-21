@@ -191,7 +191,8 @@ test('light Elearning keeps unrelated surfaces while footer and metadata reach A
     assert.ok(view.contrast('chapter-duration') >= 4.5);
     assert.ok(view.contrast('content-type') >= 4.5);
     assert.deepEqual(view.background('reader-error'), [248, 247, 245]);
-    assert.deepEqual(view.background('reader-title'), [251, 250, 249]);
+    // MAIR-608: the lib Modal header has no override, the title sits on the reader surface.
+    assert.deepEqual(view.background('reader-title'), [248, 247, 245]);
     assert.deepEqual(view.background('accent-action'), [233, 241, 251]);
   } finally { view.dom.window.close(); }
 });

@@ -34,7 +34,8 @@ it('locks both card actions and the reader until the start promise settles, then
   expect(poster).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Commencer' })).toBeDisabled();
   expect(within(dialog).getByRole('button', { name: 'Marquer Ressource serveur comme terminé' })).toBeDisabled();
-  expect(within(dialog).getByRole('button', { name: 'Fermer le détail du cours' })).toBeDisabled();
+  // MAIR-608: the lib Modal keeps its close button enabled; a busy dialog ignores it (lib ConfirmModal rule).
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Fermer le détail du cours' }));
   fireEvent.click(poster);
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(start).toHaveBeenCalledTimes(1);

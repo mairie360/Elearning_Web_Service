@@ -21,6 +21,23 @@ test('MAIR-607 the e-learning front owns its components instead of importing a l
   assert.match(read('src/features/elearning/ElearningModule.tsx'), /from "@\/components\/elearning"/);
 });
 
+// MAIR-608: each large e-learning component is composed of sub-components in its own folder.
+test('MAIR-608 the e-learning components are split into one folder per area', () => {
+  const tree = {
+    'src/components/elearning/ElearningCourseDetailsModal.tsx': ['course-details/ChapterList', 'course-details/CourseFacts', 'course-details/CourseMediaPreview', 'course-details/CourseProgress', 'course-details/SelectedChapter', 'course-details/course-progress', 'course-details/course-rating'],
+    'src/components/elearning/ElearningCourseFormModal.tsx': ['course-form/CourseGeneralSection', 'course-form/CoursePresentationSection', 'course-form/CourseProgramSection', 'course-form/course-form-values'],
+    'src/components/elearning/ElearningCatalog.tsx': ['catalog/CatalogHeader', 'catalog/CatalogFilters', 'catalog/ManagedCourseCard', 'catalog/CatalogEmptyState', 'catalog/SelectedCourseDetails', 'catalog/catalog-model'],
+    'src/features/elearning/ElearningModule.tsx': ['module/CatalogFeedbackStack', 'module/ModuleNotices', 'module/module-model', 'module/use-resource-download'],
+  };
+  for (const [file, parts] of Object.entries(tree)) {
+    const source = read(file);
+    for (const part of parts) assert.match(source, new RegExp(`['"]\\./${part}['"]`), `${file} composes ${part}`);
+  }
+  for (const file of ['src/components/elearning/ElearningCourseDetailsModal.tsx', 'src/components/elearning/ElearningCourseFormModal.tsx']) {
+    assert.match(read(file), /\bModal\b[^;]*from '@mairie360\/lib-components\/primitives'/, `${file} uses the lib Modal`);
+  }
+});
+
 test('MAIR-607 the installed library no longer publishes an elearning entry', () => {
   const pkg = JSON.parse(read('node_modules/@mairie360/lib-components/package.json'));
   assert.equal(pkg.exports['./elearning'], undefined, 'the installed lib-components must not expose ./elearning (bump the pin to the MAIR-607 major)');

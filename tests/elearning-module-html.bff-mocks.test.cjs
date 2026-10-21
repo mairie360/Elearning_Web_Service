@@ -68,7 +68,7 @@ for (const returnedId of ['unrelated', ' ']) {
     try { assert.ok(dialogDom.window.document.querySelector('[role="dialog"] form'), 'The dialog contains a native submit form.'); }
     finally { dialogDom.window.close(); }
     // The native form submit bubbles to the dialog's existing handler.
-    await view.fire(props => props.role === 'dialog', 'onSubmit');
+    await view.fire((props, _text, tag) => tag === 'form' && 'aria-busy' in props, 'onSubmit'); // MAIR-608: the course form inside the lib Modal
     await view.waitFor(html => html.includes('La modification n’a pas été confirmée'));
     assert.equal(view.props('ElearningCourseFormModal').isOpen, true);
     assert.deepEqual(view.props('ElearningCatalog').courses, initial.catalog.courses);
