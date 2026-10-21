@@ -172,7 +172,6 @@ export function ElearningModule({
   return (
     <AccessibleShell
       activeItem="training"
-      isAdmin={user?.isAdmin ?? false}
       user={user ?? { name: "" }}
       onLogout={() => void requestLogout()}
       hrefs={hrefs}

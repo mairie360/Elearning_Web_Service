@@ -1,6 +1,6 @@
 "use client";
 
-import { EmptyState, Skeleton, Toast } from "@mairie360/lib-components/primitives";
+import { DataState, Skeleton, Toast } from "@mairie360/lib-components/primitives";
 
 import { useEffect, useRef, useState } from 'react';
 import { pendingLearnerPort, validateReview } from './learnerFeatures';
@@ -30,7 +30,7 @@ export function CourseReviewPanel({ courseId, completed, draft, onDraftChange, p
 
   return <section className="mt-5 rounded border border-[#d8d2ca] bg-white p-4" aria-label="Avis écrits sur la formation">
     <h3 className="font-semibold">Avis des participants</h3>
-    {readState === 'loading' ? <Skeleton label="Chargement des avis…" className="mt-3 !h-24" /> : readState === 'unavailable' ? <p className="mt-2 text-sm">Les avis écrits ne sont pas encore disponibles.</p> : reviews.length ? <ul className="mt-3 space-y-3">{reviews.map(review => <li key={review.id} className="border-b pb-3 [overflow-wrap:anywhere]"><strong>{review.author} · {review.rating}/5</strong><p className="whitespace-pre-wrap">{review.comment}</p></li>)}</ul> : <EmptyState title="Aucun avis à afficher." className="mt-3" />}
+    {readState === 'loading' ? <Skeleton label="Chargement des avis…" className="mt-3 !h-24" /> : readState === 'unavailable' ? <p className="mt-2 text-sm">Les avis écrits ne sont pas encore disponibles.</p> : reviews.length ? <ul className="mt-3 space-y-3">{reviews.map(review => <li key={review.id} className="border-b pb-3 [overflow-wrap:anywhere]"><strong>{review.author} · {review.rating}/5</strong><p className="whitespace-pre-wrap">{review.comment}</p></li>)}</ul> : <DataState state="empty" size="s" title="Aucun avis à afficher." description={null} className="mt-3" />}
     <form className="mt-4 space-y-3" onSubmit={async event => {
       event.preventDefault(); if (pending.current || !completed) return; setError(''); setStatus('');
       const invalid = validateReview(draft); if (invalid) { setError(invalid); return; }
