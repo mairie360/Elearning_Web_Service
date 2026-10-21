@@ -1,61 +1,67 @@
 # Journal des releases — Elearning_Web_Service
 
-<!-- release-journal-state {"dev": "8f25850151f7d3d80c4f186dfe86de38e02342dd", "prod": "322e9d6bf39d06f3bc19e2298ce82653f51a743d", "prod_tag": "v0.3.0", "staging": "6f7aef7f9baa5592726ddfcf4bb6377b4faf7041", "updated": {"dev": "2026-10-21 01:35 UTC", "staging": "2026-10-20 21:28 UTC"}} -->
+<!-- release-journal-state {"dev": "7161388e038b05e0a48d3c70de586d66bd532bf0", "prod": "322e9d6bf39d06f3bc19e2298ce82653f51a743d", "prod_tag": "v0.3.0", "staging": "6f7aef7f9baa5592726ddfcf4bb6377b4faf7041", "updated": {"dev": "2026-10-21 01:41 UTC", "staging": "2026-10-20 21:28 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v0.3.0 | `322e9d6` | — |
 | staging | — | `6f7aef7` | 2026-10-20 21:28 UTC |
-| dev | — | `8f25850` | 2026-10-21 01:35 UTC |
+| dev | — | `7161388` | 2026-10-21 01:41 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v0.3.0)
 
 #### Nouveautés
-- Le lien d’évitement unique précède désormais la navigation répétée. Dans la fenêtre de cours, le lien d’évitement est isolé, le focus reste à l’intérieur et revient à l’élément d’origine à la fermeture. (MAIR-526, MAIR-540, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
-- Pendant le chargement de la page Formation, des placeholders `Skeleton` de la lib partagée remplacent les blocs animés locaux. Les résultats vides sont libellés, les accusés de confirmation peuvent être fermés et les brouillons sont conservés en cas d’échec. (MAIR-526, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
-- L’apparence (thème municipal, clair/sombre) vient de la feuille de style publiée de `@mairie360/lib-components` : `municipal-theme.css` est supprimé. (MAIR-515, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
+- Un lien d'évitement (skip link) précède désormais la navigation répétée et cible l'unique zone principale de la page. Le chargement affiche des placeholders partagés (`Skeleton`), et, selon la description de la PR, les résultats vides sont libellés et les confirmations d'action se ferment. (MAIR-526, MAIR-515, MAIR-540, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
 
 #### Changements de comportement
-- Le contrat BFF embarqué déclare une réponse `429` (limite de débit amont, en-tête `Retry-After`, corps `ErrorResponse`) sur neuf opérations. Les types générés l’intègrent, mais aucun code du front ne la traite spécifiquement dans ces diffs. (MAIR-575, [#222](https://github.com/mairie360/Elearning_Web_Service/pull/222))
-- Le paquet de contrat et l’image `bff-elearning` des stacks de test repassent de `1.0.0` (publiée, MAIR-569) à `0.0.0-dev.15082e0` (MAIR-575). Main n’est donc plus aligné sur la release prod. Le passage en staging (`0.0.0-staging.55dfd4b`, MAIR-600) ne change pas le contrat, qui reste identique. (MAIR-569, MAIR-575, MAIR-600, [#212](https://github.com/mairie360/Elearning_Web_Service/pull/212), [#222](https://github.com/mairie360/Elearning_Web_Service/pull/222), [#224](https://github.com/mairie360/Elearning_Web_Service/pull/224))
+- Un push sur `main` ne lance plus que la release dev : staging et prod se lancent à la main avec `promote-staging.yml` et `promote-prod.yml` (`workflow_dispatch`, `-f sha=<sha>` optionnel, approbation des environnements `Staging` et `Prod` maintenue). (MAIR-494, [#231](https://github.com/mairie360/Elearning_Web_Service/pull/231))
+- Le thème municipal local `src/app/municipal-theme.css` est supprimé. L'apparence vient désormais de la feuille publiée `@mairie360/lib-components/styles.css` (0.9.0, puis 0.10.2), donc les couleurs et l'aspect des écrans changent. (MAIR-526, MAIR-515, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
 
 #### Corrections
-- La navigation de bureau reste fixée au bord de la fenêtre. Avant : les règles du tiroir historique ciblaient aussi la navigation de bureau, la passaient en `position: relative` et poussaient l’en-tête et le catalogue dessous. Maintenant : ces règles ne visent que `aside.app-published-sidebar`. (MAIR-526, MAIR-547, [#210](https://github.com/mairie360/Elearning_Web_Service/pull/210))
+- Navigation desktop : avant, les règles de la barre latérale historique s'appliquaient aussi à la navigation desktop du shell et la passaient en `position: relative`, si bien que le header et le catalogue descendaient sous elle. Maintenant la navigation reste fixée au bord de la fenêtre et le header et le contenu principal sont alignés en haut. (MAIR-526, MAIR-547, [#210](https://github.com/mairie360/Elearning_Web_Service/pull/210))
 
 #### Technique
-- Pipeline : CICD est épinglé par SHA avec un commentaire de version (v4.3.1 puis v4.3.2), suivi par Renovate et `tests/cicd-pin.test.cjs`. Les secrets du journal de release sont transmis, le token est en lecture seule par défaut et `cicd.yml` et `contracts.yml` ne se lancent sur push que pour `main` (MAIR-436, MAIR-571, [#205](https://github.com/mairie360/Elearning_Web_Service/pull/205), [#214](https://github.com/mairie360/Elearning_Web_Service/pull/214), [#218](https://github.com/mairie360/Elearning_Web_Service/pull/218)).
-- Dépendances : `@mairie360/front-kit` est remplacé par `@mairie360/lib-components` 0.10.2 (sous-chemins), avec test de bundle ; `braces` est backporté en dev et les images des stacks de test passent aux versions de release (MAIR-126, MAIR-569, [#216](https://github.com/mairie360/Elearning_Web_Service/pull/216), [#220](https://github.com/mairie360/Elearning_Web_Service/pull/220), [#212](https://github.com/mairie360/Elearning_Web_Service/pull/212), [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209)).
+- Contrat BFF_Elearning passé à la version `1.0.0` (commit `34ef96d`, contenu inchangé). Les stacks de test passent aux releases prod : core-api `2.1.0`, database et liquibase `3.2.0`, elearning-api `1.1.0`. (MAIR-569, [#212](https://github.com/mairie360/Elearning_Web_Service/pull/212))
+- Contrat épinglé sur des paquets `0.0.0-dev` puis `0.0.0-staging` (commit `55dfd4b`), avec `staging-<sha7>` dans les stacks et la politique de version mise à jour. Le contrat ajoute des réponses `429` à plusieurs opérations (neuf blocs dans le diff). (MAIR-575, MAIR-600, [#222](https://github.com/mairie360/Elearning_Web_Service/pull/222), [#224](https://github.com/mairie360/Elearning_Web_Service/pull/224))
+- Remplacement de `@mairie360/front-kit` (archive vendorée supprimée) par les sous-chemins de `@mairie360/lib-components` 0.10.2. Ajout de `test:bundle`, lancé après le build de performance, pour vérifier le contenu du bundle client. (MAIR-126, [#216](https://github.com/mairie360/Elearning_Web_Service/pull/216), [#220](https://github.com/mairie360/Elearning_Web_Service/pull/220))
+- Pipeline CICD mis à jour par étapes : v4.3.1 avec secrets du journal de release, v4.3.2 avec épinglage par SHA et commentaire de tag suivi par Renovate, et tests `cicd-pin` associés. (MAIR-571, [#214](https://github.com/mairie360/Elearning_Web_Service/pull/214), [#218](https://github.com/mairie360/Elearning_Web_Service/pull/218), [#230](https://github.com/mairie360/Elearning_Web_Service/pull/230))
+- CI durcie : jeton en lecture seule par défaut, écriture réservée au job d'appel du pipeline réutilisable, et `push` limité à `main` (les branches de PR ne tournent plus deux fois). (MAIR-436, [#205](https://github.com/mairie360/Elearning_Web_Service/pull/205))
+- Mise à jour de la documentation (`CLAUDE.md`, `docs/en|fr/technical.md`, `BFF.md`) et des tests de politique associés.
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
+#### Changements de comportement
+- Un push sur `main` ne lance plus que la release dev. Staging et prod se lancent à la main avec les workflows `promote-staging.yml` et `promote-prod.yml` (`gh workflow run ... -f sha=<sha>` optionnel, contrôles et approbations des environnements). (MAIR-494, [#231](https://github.com/mairie360/Elearning_Web_Service/pull/231))
+
 #### Technique
-- Renovate met à jour `mairie360/CICD` de v4.3.2 à v4.4.0 (SHA `038bd5b`) dans `cicd.yml` et `dev-dependency-exception.yml`. Selon les notes jointes à la PR, la promotion staging et prod est séparée du workflow de base (MAIR-494, [#230](https://github.com/mairie360/Elearning_Web_Service/pull/230)).
-- Aucun changement fonctionnel pour les agents, le front ou le BFF entre dev et staging à ce stade.
+- CICD passe à `mairie360/CICD` v4.4.0 (commit `038bd5b`) dans `cicd.yml`, `dev-dependency-exception.yml` et les deux nouveaux workflows de promotion. Renovate regroupe la mise à jour et le test `cicd-pin` vérifie les 8 références. (MAIR-494, [#230](https://github.com/mairie360/Elearning_Web_Service/pull/230), [#231](https://github.com/mairie360/Elearning_Web_Service/pull/231))
 
 ## Différence staging → prod (en staging, pas encore en prod)
 
 #### Nouveautés
-- Le lien d’évitement unique précède désormais la navigation répétée. Dans la fenêtre de cours, le lien d’évitement est isolé, le focus reste à l’intérieur et revient à l’élément d’origine à la fermeture. (MAIR-526, MAIR-540, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
-- Pendant le chargement de la page Formation, des placeholders `Skeleton` de la lib partagée remplacent les blocs animés locaux. Les résultats vides sont libellés, les accusés de confirmation peuvent être fermés et les brouillons sont conservés en cas d’échec. (MAIR-526, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
-- L’apparence (thème municipal, clair/sombre) vient de la feuille de style publiée de `@mairie360/lib-components` : `municipal-theme.css` est supprimé. (MAIR-515, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
+- Un lien d'évitement (skip link) précède désormais la navigation répétée et cible l'unique zone principale de la page. Le chargement affiche des placeholders partagés (`Skeleton`), et, selon la description de la PR, les résultats vides sont libellés et les confirmations d'action se ferment. (MAIR-526, MAIR-515, MAIR-540, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
 
 #### Changements de comportement
-- Le contrat BFF embarqué déclare une réponse `429` (limite de débit amont, en-tête `Retry-After`, corps `ErrorResponse`) sur neuf opérations. Les types générés l’intègrent, mais aucun code du front ne la traite spécifiquement dans ces diffs. (MAIR-575, [#222](https://github.com/mairie360/Elearning_Web_Service/pull/222))
-- Le contrat repasse sur le paquet dev `0.0.0-dev.15082e0` (MAIR-575) après la version `1.0.0` de MAIR-569, puis passe sur `0.0.0-staging.55dfd4b` (MAIR-600) sans changer son contenu. (MAIR-569, MAIR-575, MAIR-600, [#212](https://github.com/mairie360/Elearning_Web_Service/pull/212), [#222](https://github.com/mairie360/Elearning_Web_Service/pull/222), [#224](https://github.com/mairie360/Elearning_Web_Service/pull/224))
+- Le thème municipal local `src/app/municipal-theme.css` est supprimé. L'apparence vient désormais de la feuille publiée `@mairie360/lib-components/styles.css` (0.9.0, puis 0.10.2), donc les couleurs et l'aspect des écrans changent. (MAIR-526, MAIR-515, [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209))
 
 #### Corrections
-- La navigation de bureau reste fixée au bord de la fenêtre. Avant : les règles du tiroir historique ciblaient aussi la navigation de bureau, la passaient en `position: relative` et poussaient l’en-tête et le catalogue dessous. Maintenant : ces règles ne visent que `aside.app-published-sidebar`. (MAIR-526, MAIR-547, [#210](https://github.com/mairie360/Elearning_Web_Service/pull/210))
+- Navigation desktop : avant, les règles de la barre latérale historique s'appliquaient aussi à la navigation desktop du shell et la passaient en `position: relative`, si bien que le header et le catalogue descendaient sous elle. Maintenant la navigation reste fixée au bord de la fenêtre et le header et le contenu principal sont alignés en haut. (MAIR-526, MAIR-547, [#210](https://github.com/mairie360/Elearning_Web_Service/pull/210))
 
 #### Technique
-- Pipeline : CICD est épinglé par SHA avec un commentaire de version (v4.3.1 puis v4.3.2), les secrets du journal de release sont transmis, le token est en lecture seule par défaut et `cicd.yml` et `contracts.yml` ne se lancent sur push que pour `main` (MAIR-436, MAIR-571, [#205](https://github.com/mairie360/Elearning_Web_Service/pull/205), [#214](https://github.com/mairie360/Elearning_Web_Service/pull/214), [#218](https://github.com/mairie360/Elearning_Web_Service/pull/218)).
-- Dépendances : `@mairie360/front-kit` est remplacé par `@mairie360/lib-components` 0.10.2 (sous-chemins), avec test de bundle ; `braces` est backporté en dev et les images des stacks de test passent aux versions de release (MAIR-126, MAIR-569, [#216](https://github.com/mairie360/Elearning_Web_Service/pull/216), [#220](https://github.com/mairie360/Elearning_Web_Service/pull/220), [#212](https://github.com/mairie360/Elearning_Web_Service/pull/212), [#209](https://github.com/mairie360/Elearning_Web_Service/pull/209)).
+- Contrat BFF_Elearning passé à la version `1.0.0` (commit `34ef96d`, contenu inchangé). Les stacks de test passent aux releases prod : core-api `2.1.0`, database et liquibase `3.2.0`, elearning-api `1.1.0`. (MAIR-569, [#212](https://github.com/mairie360/Elearning_Web_Service/pull/212))
+- Contrat épinglé sur des paquets `0.0.0-dev` puis `0.0.0-staging` (commit `55dfd4b`), avec `staging-<sha7>` dans les stacks et la politique de version mise à jour. Le contrat ajoute des réponses `429` à plusieurs opérations (neuf blocs dans le diff). (MAIR-575, MAIR-600, [#222](https://github.com/mairie360/Elearning_Web_Service/pull/222), [#224](https://github.com/mairie360/Elearning_Web_Service/pull/224))
+- Remplacement de `@mairie360/front-kit` (archive vendorée supprimée) par les sous-chemins de `@mairie360/lib-components` 0.10.2. Ajout de `test:bundle`, lancé après le build de performance, pour vérifier le contenu du bundle client. (MAIR-126, [#216](https://github.com/mairie360/Elearning_Web_Service/pull/216), [#220](https://github.com/mairie360/Elearning_Web_Service/pull/220))
+- Pipeline CICD mis à jour par étapes : v4.3.1 avec secrets du journal de release, puis v4.3.2 avec épinglage par SHA et commentaire de tag suivi par Renovate, et tests `cicd-pin` associés. (MAIR-571, [#214](https://github.com/mairie360/Elearning_Web_Service/pull/214), [#218](https://github.com/mairie360/Elearning_Web_Service/pull/218))
+- CI durcie : jeton en lecture seule par défaut, écriture réservée au job d'appel du pipeline réutilisable, et `push` limité à `main` (les branches de PR ne tournent plus deux fois). (MAIR-436, [#205](https://github.com/mairie360/Elearning_Web_Service/pull/205))
+- Mise à jour de la documentation (`CLAUDE.md`, `docs/en|fr/technical.md`, `BFF.md`) et des tests de politique associés.
 
 ## Historique des passages
 
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-10-21 01:41 UTC | dev | — | `7161388` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/39528109678) |
 | 2026-10-21 01:35 UTC | dev | — | `8f25850` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/39527801944) |
 | 2026-10-20 21:28 UTC | staging | — | `6f7aef7` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/39499388823) |
 | 2026-10-20 21:24 UTC | dev | — | `6f7aef7` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/39499388823) |
