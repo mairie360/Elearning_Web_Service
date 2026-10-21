@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useRef } from "react";
 
 import { prepareResourceDownload, type LearnerFeaturePort } from '../../features/elearning/learnerFeatures';
