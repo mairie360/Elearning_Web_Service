@@ -142,7 +142,7 @@ services:
   elearning-api:
     profiles: ["legacy-stack"]
     container_name: elearning-api-front-elearning-developpement
-    image: ${ELEARNING_API_IMAGE:-ghcr.io/mairie360/elearning-api:1.1.0}
+    image: ${ELEARNING_API_IMAGE:-ghcr.io/mairie360/elearning-api:1.2.0}
     ports:
       - "3006:3006"
     networks:
