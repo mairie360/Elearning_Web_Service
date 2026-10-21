@@ -176,7 +176,7 @@ services:
   bff-user:
     profiles: ["legacy-stack"]
     container_name: bff-user-elearning-front-developpement
-    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:1.0.0}
+    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:1.1.0}
     ports:
       - "4000:4000"
     networks:
