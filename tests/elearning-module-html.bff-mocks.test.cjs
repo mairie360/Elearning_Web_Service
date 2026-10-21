@@ -13,7 +13,7 @@ installReactRuntime();
 const React = require('react');
 const f = require('./support/elearning-fixtures.ts');
 const { errorReply, useMockedFront } = require('./support/mocked-front.ts');
-const { ElearningModule } = require('../src/features/elearning/ElearningModule.tsx');
+const { ElearningModule } = require('../src/components/ElearningModule/index.ts');
 // Client-only fallback/interactions; the async page's SSR contract is tested separately.
 const Home = ElearningModule;
 const { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE, fullCatalogCapabilities, pinnedBffCapabilities } = require('../src/features/elearning/bffCapabilities.ts');

@@ -4,11 +4,11 @@ import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { ElearningCatalog, type ElearningCourse } from '@/components/elearning/ElearningCatalog';
-import { ElearningCourseCard } from '@/components/elearning/ElearningCourseCard';
-import { ElearningCourseDetailsModal } from '@/components/elearning/ElearningCourseDetailsModal';
-import { ElearningCourseRating } from '@/components/elearning/ElearningCourseRating';
-import { ElearningFilterSelect } from '@/components/elearning/ElearningFilterSelect';
+import { ElearningCatalog, type ElearningCourse } from '@/components/ElearningModule/components/ElearningCatalog';
+import { ElearningCourseCard } from '@/components/ElearningModule/components/ElearningCatalog/components/ManagedCourseCard/components/ElearningCourseCard';
+import { ElearningCourseDetailsModal } from '@/components/ElearningModule/components/ElearningCatalog/components/SelectedCourseDetails/components/ElearningCourseDetailsModal';
+import { ElearningCourseRating } from '@/components/ElearningModule/components/ElearningCatalog/components/SelectedCourseDetails/components/ElearningCourseDetailsModal/components/ElearningCourseRating';
+import { ElearningFilterSelect } from '@/components/ElearningModule/components/ElearningCatalog/components/ElearningFilterSelect';
 
 const courses: ElearningCourse[] = [
   {

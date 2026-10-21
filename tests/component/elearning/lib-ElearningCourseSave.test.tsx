@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
-import { ElearningCatalog, type ElearningCourse } from '@/components/elearning/ElearningCatalog';
+import { ElearningCatalog, type ElearningCourse } from '@/components/ElearningModule/components/ElearningCatalog';
 
 const course: ElearningCourse = {
   id: 'server-course', title: 'Formation existante', description: 'Description serveur',

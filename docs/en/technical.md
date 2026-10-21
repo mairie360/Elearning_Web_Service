@@ -245,7 +245,7 @@ For a proxy error, compare the path and method with the inventory, then check th
 ## Repository reference
 
 - [src/app/page.tsx](../../src/app/page.tsx)
-- [src/features/elearning/ElearningModule.tsx](../../src/features/elearning/ElearningModule.tsx)
+- [src/components/ElearningModule/ElearningModule.tsx](../../src/components/ElearningModule/ElearningModule.tsx)
 - [src/middleware.ts](../../src/middleware.ts)
 - [src/lib/bff-proxy.ts](../../src/lib/bff-proxy.ts)
 - [src/app/[...path]/route.ts](../../src/app/%5B...path%5D/route.ts)

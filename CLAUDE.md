@@ -55,10 +55,41 @@ Then move `BFF_ELEARNING_IMAGE` defaults in every `docker-compose*.yml` to the i
 
 Figma is the source of truth: design and agree any UI change on **Mairie360 – Elearning_Web_Service** (https://www.figma.com/design/NqcDzK5hEfDIBEAx9xJE0o) first, then code it. Shared components come from the lib mockup https://www.figma.com/design/T7vetUfuzPEXk5TxjHRiO2 and are instantiated, never redrawn.
 
+## Component tree convention
+
+Every component under `src/components/` is a **folder named after it**, and the folder tree
+mirrors the composition tree:
+
+```
+Name/
+  index.ts          # exports the component (and the helpers it owns)
+  Name.tsx          # imports ONLY its direct sub-components, through their index.ts
+  Name.test.tsx     # its tests, co-located (vitest + jsdom)
+  components/       # one such folder per direct sub-component, recursively
+```
+
+- A component needs nothing but the `index.ts` of its direct sub-components: `Name.tsx` imports
+  `./components/Sub`, never `./components/Sub/Sub` nor a sub-sub-component. Leaves are folders
+  too (without `components/`).
+- Helpers a component owns (models, hooks, `*.ts`) sit beside it and are exported by its
+  `index.ts`; a helper shared by two siblings sits in their closest common ancestor.
+- A big component is acceptable only for a technical reason stated in a comment; otherwise
+  split it so that each visible part is a component and what composes it a sub-component.
+- Page and journey tests stay in `tests/`; per-component tests are the co-located
+  `Name.test.tsx`. `tests/component-tree-convention.test.cjs` enforces the folder, the index,
+  the co-located test and the index-only imports.
+
+## Front tickets and the Figma mockup
+
+A front ticket (Jira + GitHub issue + PR) **must link the Figma frame that serves as the
+example** of what is being built or changed. Without that link the ticket cannot be worked
+on, unless the change does not affect the display (tooling, tests, proxy, contracts…). Update
+and agree the mockup first, then code it: the sync direction is Figma → code.
+
 ## Architecture
 
-- **E-learning components owned here (MAIR-607)** — `src/components/elearning/` holds `ElearningCatalog` and its sub-components (formerly `@mairie360/lib-components/elearning`, removed because Elearning was their only consumer); `src/features/elearning/ElearningModule.tsx` imports `@/components/elearning`. Their component tests are `tests/component/elearning/lib-*.test.tsx` (vitest + jsdom, `npm run test:components`); Node stays the coverage authority. `tests/lib-business-ownership.test.cjs` forbids any import of a removed library entry and checks the installed lib has no `./elearning` export.
-- **Shell from the lib (MAIR-578)** — `src/features/elearning/ElearningModule.tsx` renders `AccessibleShell` from `@mairie360/lib-components/shell`; `src/lib/front-urls-provider.tsx` uses the lib `configureSidebarCookieDomain`. No local `accessible-shell.tsx`, `desktop-navigation.tsx` or `sidebar-preference.ts` (pinned by `tests/lib-shell-adoption.test.cjs`).
+- **E-learning component tree (MAIR-607/608)** — `src/components/ElearningModule/` is the page root (`ElearningModule.tsx`, `module-model.ts`, `use-resource-download.ts`) and follows the component tree convention above: `components/{CatalogFeedbackStack, LogoutErrorNotice, CatalogLoading, CourseManagementNotice, MissingCourseNotice, CourseReviewPanel, ElearningCatalog}`, with `ElearningCatalog` (formerly `@mairie360/lib-components/elearning`, removed because Elearning was its only consumer) holding `CatalogHeader`, `CatalogFilters`, `ManagedCourseCard`, `CatalogEmptyState`, `ElearningAdminStats`, `SelectedCourseDetails` (→ `ElearningCourseDetailsModal` → facts, chapters, progress, media) and `ElearningCourseFormModal` (→ general/presentation/program sections → chapter and content editors). Page logic that is not a component stays in `src/features/elearning/*.ts` (`catalogActions`, `bffCapabilities`, `catalogFilters`, `catalogQuery`, `learnerFeatures`, `profileActions`); `src/app` imports `@/components/ElearningModule`. Component tests are the co-located `Name.test.tsx` (vitest + jsdom, `npm run test:components`); Node stays the coverage authority. `tests/lib-business-ownership.test.cjs` forbids any import of a removed library entry and checks the installed lib has no `./elearning` export.
+- **Shell from the lib (MAIR-578)** — `src/components/ElearningModule/ElearningModule.tsx` renders `AccessibleShell` from `@mairie360/lib-components/shell`; `src/lib/front-urls-provider.tsx` uses the lib `configureSidebarCookieDomain`. No local `accessible-shell.tsx`, `desktop-navigation.tsx` or `sidebar-preference.ts` (pinned by `tests/lib-shell-adoption.test.cjs`).
 
 - **Shared shell and profile routing (MAIR-180)** — `ElearningModule` uses the
   published library `AppShell` with BFF-supplied user, role and footer. It reads

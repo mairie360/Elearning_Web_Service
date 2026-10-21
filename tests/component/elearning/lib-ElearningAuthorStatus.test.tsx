@@ -3,9 +3,9 @@ import '@testing-library/jest-dom/vitest';
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
-import { ElearningCatalog, type ElearningCourse } from '@/components/elearning/ElearningCatalog';
-import { ElearningCourseFormModal, type ElearningCourseFormValues } from '@/components/elearning/ElearningCourseFormModal';
-import type { ElearningFilterOption } from '@/components/elearning/ElearningFilterSelect';
+import { ElearningCatalog, type ElearningCourse } from '@/components/ElearningModule/components/ElearningCatalog';
+import { ElearningCourseFormModal, type ElearningCourseFormValues } from '@/components/ElearningModule/components/ElearningCatalog/components/ElearningCourseFormModal';
+import type { ElearningFilterOption } from '@/components/ElearningModule/components/ElearningCatalog/components/ElearningFilterSelect';
 
 const course: ElearningCourse = {
   id: 'confirmed-course', title: 'Formation confirmée', description: 'Présentation',

@@ -3,10 +3,10 @@ const { test } = require('node:test');
 require('./support/load-typescript.cjs');
 
 // MAIR-608: the rules pulled out of the e-learning components while splitting them.
-const progress = require('../src/components/elearning/course-details/course-progress.ts');
-const rating = require('../src/components/elearning/course-details/course-rating.ts');
-const form = require('../src/components/elearning/course-form/course-form-values.ts');
-const catalog = require('../src/components/elearning/catalog/catalog-model.ts');
+const progress = require('../src/components/ElearningModule/components/ElearningCatalog/components/SelectedCourseDetails/components/ElearningCourseDetailsModal/course-progress.ts');
+const rating = require('../src/components/ElearningModule/components/ElearningCatalog/components/SelectedCourseDetails/components/ElearningCourseDetailsModal/course-rating.ts');
+const form = require('../src/components/ElearningModule/components/ElearningCatalog/components/ElearningCourseFormModal/course-form-values.ts');
+const catalog = require('../src/components/ElearningModule/components/ElearningCatalog/catalog-model.ts');
 
 const video = { id: 'v', title: 'Vidéo', type: 'video' };
 const optional = { id: 'o', title: 'Bonus', type: 'pdf', required: false };

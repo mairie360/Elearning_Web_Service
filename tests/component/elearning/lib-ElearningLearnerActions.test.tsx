@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { ElearningCatalog, type ElearningCourse } from '@/components/elearning/ElearningCatalog';
-import { ElearningCourseDetailsModal } from '@/components/elearning/ElearningCourseDetailsModal';
-import { ElearningCourseRating } from '@/components/elearning/ElearningCourseRating';
+import { ElearningCatalog, type ElearningCourse } from '@/components/ElearningModule/components/ElearningCatalog';
+import { ElearningCourseDetailsModal } from '@/components/ElearningModule/components/ElearningCatalog/components/SelectedCourseDetails/components/ElearningCourseDetailsModal';
+import { ElearningCourseRating } from '@/components/ElearningModule/components/ElearningCatalog/components/SelectedCourseDetails/components/ElearningCourseDetailsModal/components/ElearningCourseRating';
 
 const deferred = () => {
   let resolve!: (value: boolean) => void;

@@ -5,7 +5,7 @@ require('./support/load-typescript.cjs');
 const { installReactRuntime, mount } = require('./support/server-view.cjs');
 installReactRuntime();
 const React = require('react');
-const { CourseReviewPanel } = require('../src/features/elearning/CourseReviewPanel.tsx');
+const { CourseReviewPanel } = require('../src/components/ElearningModule/components/CourseReviewPanel/index.ts');
 
 test('a confirmed written-review receipt can be dismissed without resubmitting or discarding its attributed review', async t => {
   let confirm;
