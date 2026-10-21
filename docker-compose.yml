@@ -55,7 +55,7 @@ x-service: &service-template
 services:
   postgres:
     profiles: ["legacy-stack"]
-    image: ${DB_IMAGE:-ghcr.io/mairie360/database:3.2.0}
+    image: ${DB_IMAGE:-ghcr.io/mairie360/database:3.3.0}
     restart: always
     container_name: mairie360-db-elearning-front #change front name
     environment:
@@ -76,7 +76,7 @@ services:
 
   liquibase:
     profiles: ["legacy-stack"]
-    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:3.2.0}
+    image: ${LIQUIBASE_IMAGE:-ghcr.io/mairie360/liquibase-migrations:3.3.0}
     container_name: mairie360-liquibase-elearning-front #change front name
     depends_on:
       postgres:
@@ -115,7 +115,7 @@ services:
   core-api:
     profiles: ["legacy-stack"]
     container_name: core-api-elearning-front-developpement
-    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:2.1.0}
+    image: ${CORE_API_IMAGE:-ghcr.io/mairie360/core-api:2.2.0}
     ports:
       - "3000:3000"
     networks:
@@ -142,7 +142,7 @@ services:
   elearning-api:
     profiles: ["legacy-stack"]
     container_name: elearning-api-front-elearning-developpement
-    image: ${ELEARNING_API_IMAGE:-ghcr.io/mairie360/elearning-api:1.1.0}
+    image: ${ELEARNING_API_IMAGE:-ghcr.io/mairie360/elearning-api:1.2.0}
     ports:
       - "3006:3006"
     networks:
@@ -176,7 +176,7 @@ services:
   bff-user:
     profiles: ["legacy-stack"]
     container_name: bff-user-elearning-front-developpement
-    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:1.0.0}
+    image: ${BFF_USER_IMAGE:-ghcr.io/mairie360/bff-user:1.1.0}
     ports:
       - "4000:4000"
     networks:
@@ -198,7 +198,7 @@ services:
   bff-elearning:
     profiles: ["legacy-stack"]
     container_name: bff-elearning-elearning-front
-    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:staging-55dfd4b}
+    image: ${BFF_ELEARNING_IMAGE:-ghcr.io/mairie360/bff-elearning:1.1.0}
     ports:
       - "4006:4006"
     networks:
