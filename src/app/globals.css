@@ -40,35 +40,6 @@ body {
   background: #dcebed;
 }
 
-/* The published reader contains a chapter aside; author forms do not. Keep this
-   presentation override off author dialogs and retain the reader's grid. */
-.elearning-catalog-shell [role="dialog"]:has(> div > aside) {
-  box-shadow: 0 20px 60px rgb(0 0 0 / 32%);
-  overscroll-behavior: contain;
-}
-
-.elearning-catalog-shell [role="dialog"]:has(> div > aside) > header {
-  position: sticky;
-  top: -24px;
-  z-index: 35;
-  background: #fbfaf9;
-  margin: -24px -24px 0;
-  padding: 20px 24px;
-  border-bottom: 1px solid #d8d2ca;
-}
-
-@media (max-width: 767px) {
-  .elearning-catalog-shell [role="dialog"]:has(> div > aside) {
-    padding: 16px;
-  }
-
-  .elearning-catalog-shell [role="dialog"]:has(> div > aside) > header {
-    top: -16px;
-    margin: -16px -16px 0;
-    padding: 16px;
-  }
-}
-
 /* Keep the published catalog controls inside the narrower AppShell content area. */
 @media (min-width: 768px) and (max-width: 1023px) {
   .elearning-catalog-shell > div > .mt-7.grid.gap-4 {

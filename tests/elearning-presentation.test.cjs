@@ -48,7 +48,7 @@ test('actual published drawer applies its lower layer and closes through its com
   assert.equal(dom.document.querySelector('[role="dialog"][aria-label="Navigation mobile"]'), null);
 });
 
-test('actual course deep link opens the published chapter reader with sticky header and closes it', async t => {
+test('actual course deep link opens the published chapter reader with a fixed header and closes it', async t => {
   const dom = await elearningDom(t, { reader: true });
   const main = dom.document.querySelector('main');
   const skips = [...dom.document.querySelectorAll('a[href]')].filter(link => link.getAttribute('href') === `#${main.id}`);
@@ -57,14 +57,16 @@ test('actual course deep link opens the published chapter reader with sticky hea
   assert.ok(skip.closest('[inert]'), 'The real course reader makes the shared skip link inactive.');
   assert.ok(skip.compareDocumentPosition(dom.document.querySelector('.app-desktop-navigation button')) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
   assert.equal(dom.document.querySelector('.app-desktop-navigation').hasAttribute('inert'), true);
-  const reader = dom.document.querySelector('.elearning-catalog-shell [role="dialog"]:has(> div > aside)'); assert.ok(reader);
-  assert.ok(reader.querySelector(':scope > div > aside')); const header = reader.querySelector(':scope > header'); assert.ok(header);
-  const computed = dom.style(header); assert.equal(computed.position, 'sticky'); assert.equal(computed.top, '-24px'); assert.equal(computed.zIndex, '35');
-  assert.equal(computed.backgroundColor, 'rgb(251, 250, 249)'); assert.equal(computed.margin, '-24px -24px 0px'); assert.equal(computed.padding, '20px 24px');
-  assert.equal(dom.style(reader).overscrollBehavior, 'contain');
-  assert.deepEqual(shadow(dom.window, dom.style(reader).boxShadow), [{ lengths: [0, 20, 60, 0], color: 'rgba(0, 0, 0, 0.32)' }]);
+  // MAIR-608: the reader is the lib Modal; its header stays outside the scrolling body.
+  const reader = dom.document.querySelector('.elearning-catalog-shell [role="dialog"][aria-modal="true"]'); assert.ok(reader);
+  assert.ok(reader.querySelector('aside'), 'The reader keeps its chapter aside.');
+  const header = reader.querySelector(':scope > header'); assert.ok(header);
+  assert.ok(header.querySelector('button[aria-label="Fermer le détail du cours"]'));
+  const body = header.nextElementSibling; assert.ok(body?.contains(reader.querySelector('aside')));
+  assert.ok(body.classList.contains('overflow-y-auto') && reader.classList.contains('overflow-hidden'), 'Only the body scrolls.');
+  assert.equal(reader.dataset.size, 'xl');
   await dom.click(dom.button('Fermer le détail du cours'));
-  assert.ok(!dom.document.querySelector('.elearning-catalog-shell [role="dialog"]:has(> div > aside)'), 'Reader must close');
+  assert.ok(!dom.document.querySelector('.elearning-catalog-shell [role="dialog"][aria-modal="true"]'), 'Reader must close');
   assert.equal(skip.closest('[inert]'), null);
   assert.equal(dom.document.querySelector('main'), main);
   assert.equal(dom.document.querySelector(`a[href="#${main.id}"]`), skip);

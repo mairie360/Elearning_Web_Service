@@ -5,7 +5,7 @@ export default function Loading() {
     <h1 className="text-2xl font-semibold">Formation</h1>
     <p role="status">Chargement des formations…</p>
     <div aria-hidden="true" className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {[0, 1, 2].map(item => <Skeleton key={item} className="!h-64" />)}
+      {[0, 1, 2].map(item => <Skeleton key={item} shape="block" size="l" className="!h-64" />)}
     </div>
   </section>;
 }

@@ -4,7 +4,7 @@ require('./support/load-typescript.cjs');
 const { installReactRuntime,mount } = require('./support/server-view.cjs');
 installReactRuntime();
 const React = require('react');
-const { CourseReviewPanel } = require('../src/features/elearning/CourseReviewPanel.tsx');
+const { CourseReviewPanel } = require('../src/components/ElearningModule/components/CourseReviewPanel/index.ts');
 let view;
 afterEach(() => { view?.unmount(); view=null; });
 test('a written review draft is retained without misusing the published numeric-rating operation', async () => {

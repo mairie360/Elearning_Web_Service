@@ -18,13 +18,11 @@ function policy() {
   };
   return { parsed, value };
 }
-test('parsed reader policies preserve mobile inset and sticky header scoped to its chapter aside', () => {
-  const { value } = policy(), reader = '.elearning-catalog-shell [role="dialog"]:has(> div > aside)', media = '(max-width: 767px)';
-  assert.equal(value(reader, 'padding', media), '16px');
-  assert.equal(value(reader + ' > header', 'top', media), '-16px');
-  assert.equal(value(reader + ' > header', 'margin', media).replace(/\s+/g, ' '), '-16px -16px 0');
-  assert.equal(value(reader + ' > header', 'padding', media), '16px');
-  // Configuration does not establish native author/reader geometry.
+test('MAIR-608 the course reader has no stylesheet override: the lib Modal owns its header and scrolling body', () => {
+  const { parsed } = policy();
+  const readerRules = [];
+  parsed.walkRules(rule => { if (rule.selector.includes(':has(> div > aside)')) readerRules.push(rule.selector); });
+  assert.deepEqual(readerRules, []);
 });
 test('parsed catalog policies preserve tablet controls, desktop tracks and the system token', () => {
   const { parsed, value } = policy(), controls = '.elearning-catalog-shell > div > .mt-7.grid.gap-4';

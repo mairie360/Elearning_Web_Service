@@ -1,5 +1,21 @@
 # Elearning_Web_Service
 
+## Figma mockup / Maquette Figma
+
+Source of truth for every screen of this front: **[Mairie360 – Elearning_Web_Service](https://www.figma.com/design/NqcDzK5hEfDIBEAx9xJE0o)** (Mairie360 Figma team), built from the published **[Mairie360 – lib-components](https://www.figma.com/design/T7vetUfuzPEXk5TxjHRiO2)** library. A visual or behavioural change is designed and agreed in Figma first; the code then implements the mockup.
+
+Référence de chaque écran de ce front : **[Mairie360 – Elearning_Web_Service](https://www.figma.com/design/NqcDzK5hEfDIBEAx9xJE0o)**, construit à partir de la bibliothèque **[Mairie360 – lib-components](https://www.figma.com/design/T7vetUfuzPEXk5TxjHRiO2)**. Tout changement visuel ou de comportement est d’abord conçu et validé dans Figma ; le code implémente ensuite la maquette.
+
+## Shared shell — MAIR-578
+
+The application shell (collapsible sidebar, top bar, footer) comes from `@mairie360/lib-components/shell` (`AccessibleShell`, sidebar-preference helpers); this front keeps no local copy. `tests/lib-shell-adoption.test.cjs` pins that.
+
+## E-learning components — MAIR-607
+
+`ElearningCatalog` and its sub-components (course cards, details and form modals, filters, search, ratings, badges, statistics) used to come from `@mairie360/lib-components/elearning`. The library now keeps only components shared by several fronts, so they live in `src/components/ElearningModule/` (one folder per component, the catalogue under `components/ElearningCatalog/`) with their tests beside each component (`Name.test.tsx`) (vitest + jsdom, same rendered HTML). `tests/lib-business-ownership.test.cjs` pins that no removed library entry is imported.
+
+`ElearningCatalog` et ses sous-composants (cartes de cours, fenêtres de détail et de formulaire, filtres, recherche, notes, badges, statistiques) venaient de `@mairie360/lib-components/elearning`. La lib ne garde que les composants partagés par plusieurs fronts : ils vivent désormais dans `src/components/elearning/`, avec leurs tests dans `tests/component/elearning/` (rendu HTML identique).
+
 ## Current shared UI artifact — 10 October 2026
 
 This frontend consumes the published `@mairie360/lib-components@0.6.12` artifact from source commit `6c022cb53da535fd16d4fa80a5cdb943d3791f31`. The selected manifest version, root lock entry, installed package, registry integrity and recorded distribution hashes are checked together by the release tests. Application pins and published BFF contracts are unchanged by this documentation update. Historical 0.6.11 notes below describe the earlier delivery.

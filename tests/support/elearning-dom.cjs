@@ -60,7 +60,7 @@ async function elearningDom(t, { reader = false } = {}) {
     MESSAGE_FRONT_URL: 'https://messages.example/', ELEARNING_FRONT_URL: 'http://localhost:5006/',
     ADMINISTRATION_FRONT_URL: 'https://admin.example/', SETTINGS_FRONT_URL: 'https://settings.example/' });
   React = require('react');
-  const { createRoot } = require('react-dom/client'), { ElearningModule: Home } = require('../../src/features/elearning/ElearningModule.tsx');
+  const { createRoot } = require('react-dom/client'), { ElearningModule: Home } = require('../../src/components/ElearningModule/index.ts');
   root = createRoot(dom.window.document.getElementById('root'));
   await React.act(async () => root.render(React.createElement(require('@mairie360/lib-components/react').InstanceProvider, { role: 'Admin', timeZone: 'UTC' }, React.createElement(Home))));
   const loaded = () => !!dom.window.document.querySelector('.elearning-catalog-shell article');

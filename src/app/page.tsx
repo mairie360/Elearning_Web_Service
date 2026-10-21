@@ -1,4 +1,4 @@
-import { ElearningModule } from "@/features/elearning/ElearningModule";
+import { ElearningModule } from '../components/ElearningModule';
 import { readInitialCatalog } from '@/lib/initial-catalog';
 import { createNonce } from '@mairie360/lib-components/shared';
 import { catalogSearch } from '@/features/elearning/catalogQuery';
