@@ -15,12 +15,12 @@ npm ci
 npm run dev -- --port 5006         # needs BFF_Elearning reachable, see "BFF URL" below
 npm run build && npm run start -- --port 5006
 npm run lint                             # ESLint on src/
-npm test                                 # node:test on tests/*.test.cjs, coverage >= 60% lines/branches/functions, lcov in coverage/lcov.info (what CI runs)
+npm test                                 # node:test on tests/*.test.cjs + vitest on src/**/*.test.tsx, coverage >= 60% lines/branches/functions, lcov in coverage/lcov.info (what CI runs)
 npm run test:contracts                   # same tests, no coverage
 node --test --test-name-pattern="<name>" tests/elearning.bff-mocks.test.cjs   # single test
 ```
 
-Tests are plain CommonJS `node:test` files matching `tests/*.test.cjs`. No Jest/Vitest, no DOM. They `require('./support/load-typescript.cjs')` first: it installs a `require.extensions['.ts']` hook (`typescript.transpileModule` with inline source maps, which `--enable-source-maps` in `npm test` needs so coverage lines match the `.ts` files) and resolves the `@/*` alias, so real route handlers load unchanged. Coverage only counts files that some test loads: the `.tsx` modules are loaded by `tests/elearning-module-html.bff-mocks.test.cjs` only, so keep logic out of them (see `catalogActions.ts` / `profileActions.ts`).
+Tests are plain CommonJS `node:test` files matching `tests/*.test.cjs`. `tests/*.test.cjs` stay Node-only (no DOM); the co-located `src/**/*.test.tsx` run under Vitest + jsdom (`npm run test:components`). They `require('./support/load-typescript.cjs')` first: it installs a `require.extensions['.ts']` hook (`typescript.transpileModule` with inline source maps, which `--enable-source-maps` in `npm test` needs so coverage lines match the `.ts` files) and resolves the `@/*` alias, so real route handlers load unchanged. Coverage only counts files that some test loads: the `.tsx` modules are loaded by `tests/elearning-module-html.bff-mocks.test.cjs` only, so keep logic out of them (see `catalogActions.ts` / `profileActions.ts`).
 
 ### Contract-driven tests (mock BFF)
 

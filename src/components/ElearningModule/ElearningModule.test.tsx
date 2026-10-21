@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen } from '@testing-library/react';
 
 vi.mock('@/features/elearning/catalogActions', () => ({ createCatalogActions: () => ({ loadCatalog: vi.fn(), completeContent: vi.fn(), startCourse: vi.fn(), rateCourse: vi.fn(), createCourse: vi.fn(), updateCourse: vi.fn(), deleteCourse: vi.fn() }) }));
 vi.mock('@/lib/auth-session', () => ({ logout: vi.fn(), navigateToLogin: vi.fn() }));

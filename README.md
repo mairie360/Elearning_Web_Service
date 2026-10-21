@@ -12,7 +12,7 @@ The application shell (collapsible sidebar, top bar, footer) comes from `@mairie
 
 ## E-learning components — MAIR-607
 
-`ElearningCatalog` and its sub-components (course cards, details and form modals, filters, search, ratings, badges, statistics) used to come from `@mairie360/lib-components/elearning`. The library now keeps only components shared by several fronts, so they live in `src/components/elearning/` with their tests under `tests/component/elearning/` (vitest + jsdom, same rendered HTML). `tests/lib-business-ownership.test.cjs` pins that no removed library entry is imported.
+`ElearningCatalog` and its sub-components (course cards, details and form modals, filters, search, ratings, badges, statistics) used to come from `@mairie360/lib-components/elearning`. The library now keeps only components shared by several fronts, so they live in `src/components/ElearningModule/` (one folder per component, the catalogue under `components/ElearningCatalog/`) with their tests beside each component (`Name.test.tsx`) (vitest + jsdom, same rendered HTML). `tests/lib-business-ownership.test.cjs` pins that no removed library entry is imported.
 
 `ElearningCatalog` et ses sous-composants (cartes de cours, fenêtres de détail et de formulaire, filtres, recherche, notes, badges, statistiques) venaient de `@mairie360/lib-components/elearning`. La lib ne garde que les composants partagés par plusieurs fronts : ils vivent désormais dans `src/components/elearning/`, avec leurs tests dans `tests/component/elearning/` (rendu HTML identique).
 

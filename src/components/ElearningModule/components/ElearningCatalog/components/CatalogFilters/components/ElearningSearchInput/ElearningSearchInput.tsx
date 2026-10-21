@@ -36,6 +36,7 @@ export const ElearningSearchInput = ({
         className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--mairie-muted)]"
       />
       <input
+        aria-label="Rechercher une formation"
         type="search"
         value={value}
         onChange={handleChange}

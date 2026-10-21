@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 const content = { id: 'r1', title: 'Vidéo', type: 'video' as const, required: true };
 const chapter = { id: 'c1', title: 'Chapitre', duration: '10 min', description: '', contents: [content] };
 const values = { title: 'Accueil', subtitle: '', description: 'Présentation', category: 'RH', statusValue: 'not-started', instructor: '', duration: '1 h', deadline: '', requirement: 'none' as const, level: 'none' as const, chapters: [chapter] };

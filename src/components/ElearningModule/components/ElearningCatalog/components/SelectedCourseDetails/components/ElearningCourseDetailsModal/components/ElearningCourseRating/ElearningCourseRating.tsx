@@ -114,6 +114,7 @@ export const ElearningCourseRating = ({
       <div
         className="mt-3 grid grid-cols-5 gap-1"
         onMouseLeave={() => setHoveredValue(undefined)}
+        role="group"
         aria-label="Note de la formation"
       >
         {Array.from({ length: safeMax }, (_, index) => {
