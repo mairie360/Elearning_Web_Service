@@ -240,6 +240,17 @@ Le Dockerfile utilise par défaut `NODE_VERSION=24.21.0`, le digest officiel Boo
 
 Avant un lancement Docker, vérifier les variables de service, les secrets de build et les réseaux dans les fichiers du dépôt. Une CI verte valide ses jobs; elle ne prouve pas la disponibilité des services métier dans un environnement distant.
 
+### Parcours de bout en bout (MAIR-603)
+
+`./e2e_test.sh` démarre `docker-compose-e2e.yml` (la stack de performance avec un exécuteur
+Playwright à la place de k6) et lance les parcours de `e2e/` : cours du seed commencé puis terminé par un agent inscrit, invisible pour un agent non inscrit et refusé quand il le commence. La promotion prod lance
+le même script sur l'image `staging-<sha>` vérifiée (job `e2e_tests`, action `actions/e2e/fronts`
+de mairie360/CICD, MAIR-602) et bloque la release si un parcours échoue ou si le dossier manque.
+Le rapport (HTML, traces et vidéos des parcours en échec) est conservé dans `e2e-report/`. Pour
+itérer en local, démarrer la stack avec `docker compose -f docker-compose-e2e.yml up -d elearning-front`
+puis lancer `E2E_BASE_URL=http://localhost:5006 npm run e2e` (après `npm run e2e:install`) ; la
+supprimer avec `down -v` avant un nouveau lancement.
+
 ## Diagnostic
 
 Diagnostic du BFF associé: Si le catalogue refuse la session, vérifier BFF_Elearning et sa dépendance BFF User. Si une progression disparaît après redémarrage ou entre deux instances, cela correspond à la limite mémoire actuelle. Distinguer les fixtures du catalogue des données persistantes attendues à terme.

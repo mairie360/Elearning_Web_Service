@@ -236,6 +236,17 @@ The Dockerfile defaults to `NODE_VERSION=24.21.0`, pins the official Bookworm-sl
 
 Before running Docker, check service variables, build secrets and networks in the repository files. Green CI validates its jobs; it does not prove business-service availability in a remote environment.
 
+### End-to-end journeys (MAIR-603)
+
+`./e2e_test.sh` starts `docker-compose-e2e.yml` (the performance stack with a Playwright runner in
+place of k6) and runs the journeys of `e2e/`: the seeded course started and completed by an enrolled agent, hidden from an agent who is not enrolled and refused when they start it. The prod promotion runs the same script on
+the verified `staging-<sha>` image (`e2e_tests` job, mairie360/CICD `actions/e2e/fronts`,
+MAIR-602) and blocks the release when a journey fails or when the folder is missing. The report
+(HTML, traces and videos of the failed journeys) is kept in `e2e-report/`. For local iterations,
+start the stack with `docker compose -f docker-compose-e2e.yml up -d elearning-front` and run
+`E2E_BASE_URL=http://localhost:5006 npm run e2e` (after `npm run e2e:install`); tear it down with
+`down -v` before a new run.
+
 ## Troubleshooting
 
 Associated BFF diagnostics: If the catalogue rejects the session, check BFF_Elearning and its BFF User dependency. Progress disappearing after a restart or between instances is a consequence of the current in-memory design. Distinguish catalogue fixtures from the persistent data expected in a future implementation.
