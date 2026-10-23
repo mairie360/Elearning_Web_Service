@@ -61,8 +61,8 @@ test('npm resolution keeps the seven-day window except for the internal UI packa
 });
 
 test('CI uses Node 24 and the test toolchain supports npm release-age policy', () => {
-  assert.match(read('.github/workflows/cicd.yml'), /node_version:\s*"24\.21\.0"/);
-  assert.match(read('.github/workflows/contracts.yml'), /node-version:\s*'24\.21\.0'/);
+  assert.match(read('.github/workflows/cicd.yml'), /node_version:\s*"24\.22\.1"/);
+  assert.match(read('.github/workflows/contracts.yml'), /node-version:\s*'24\.22\.1'/);
   const version = execFileSync('npm', ['--version'], { cwd: root, encoding: 'utf8' }).trim();
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
   assert.ok(match, 'npm must report a stable version');
@@ -71,7 +71,7 @@ test('CI uses Node 24 and the test toolchain supports npm release-age policy', (
 });
 
 const workflow = () => yaml.load(read('.github/workflows/cicd.yml'));
-const digest = '0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6';
+const digest = '55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205';
 
 test('production and development install the lock with a required ephemeral secret and readonly npm policy', () => {
   for (const file of ['Dockerfile', 'development.Dockerfile']) {
@@ -90,12 +90,12 @@ test('production and development install the lock with a required ephemeral secr
 test('production, development and both consumer workflows pin the same exact official Node LTS', () => {
   for (const file of ['Dockerfile', 'development.Dockerfile']) {
     const dockerfile = read(file);
-    assert.match(dockerfile, /^ARG NODE_VERSION=24\.21\.0$/m);
+    assert.match(dockerfile, /^ARG NODE_VERSION=24\.22\.1$/m);
     const images = [...dockerfile.matchAll(/^FROM node:\$\{NODE_VERSION\}-bookworm-slim@sha256:([a-f0-9]{64}) AS ([\w-]+)$/gm)];
     assert.deepEqual(images.map(([, sha]) => sha), file === 'Dockerfile' ? [digest, digest] : [digest]);
   }
-  assert.equal(workflow().jobs.CICD.with.node_version, '24.21.0');
-  assert.match(read('.github/workflows/contracts.yml'), /node-version: '24\.21\.0'/);
+  assert.equal(workflow().jobs.CICD.with.node_version, '24.22.1');
+  assert.match(read('.github/workflows/contracts.yml'), /node-version: '24\.22\.1'/);
 });
 
 test('production keeps the non-root standalone Node and curl runtime without unused package managers', () => {
@@ -157,7 +157,7 @@ test('the reusable frontend workflow retains blocking defaults and only declared
   assert.deepEqual(workflow().jobs.CICD, {
     permissions: { contents: 'write', packages: 'write', 'id-token': 'write' },
     uses: `mairie360/CICD/.github/workflows/frontend-cicd.yml@${cicdCommit}`,
-    with: { package_name: 'elearning-front', node_version: '24.21.0', cicd_version: cicdCommit },
+    with: { package_name: 'elearning-front', node_version: '24.22.1', cicd_version: cicdCommit },
     secrets: {
       CODECOV_TOKEN: '${{ secrets.CODECOV_TOKEN }}',
       N8N_WEBHOOK_SECRET: '${{ secrets.N8N_WEBHOOK_SECRET }}',
