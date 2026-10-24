@@ -60,6 +60,7 @@
     "@vitest/coverage-v8": "^5.0.2",
     "jest-axe": "^11.0.0",
     "vitest": "^5.0.2",
-    "zod": "file:vendor/zod"
+    "zod": "file:vendor/zod",
+    "@jridgewell/trace-mapping": "0.3.31"
   }
 }
