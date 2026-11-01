@@ -1,29 +1,77 @@
 const assert = require('node:assert/strict');
-const { readFileSync } = require('node:fs');
-const path = require('node:path');
 const { test } = require('node:test');
-const React = require('react');
-const { renderToStaticMarkup } = require('react-dom/server');
-const { ElearningCourseDetailsModal } = require('@mairie360/lib-components');
+const { elearningDom, shadow } = require('./support/elearning-dom.cjs');
 
-const css = readFileSync(path.join(__dirname, '../src/app/globals.css'), 'utf8');
-
-test('catalog presentation retains the measured prototype typography and shadows', () => {
-  assert.match(css, /html\s*\{\s*font-size:\s*17px;/);
-  assert.match(css, /body\s*\{[^}]*font-family:\s*system-ui, sans-serif;/);
-  assert.match(css, /\.elearning-catalog-shell article\s*\{\s*box-shadow:\s*var\(--elearning-card-shadow\);/);
-  assert.match(css, /\.elearning-catalog-shell article > button:first-child\s*\{\s*background:\s*#eff6ff;/);
+test('actual historical catalog retains typography, width preparation and tinted course command', async t => {
+  const dom = await elearningDom(t);
+  assert.equal(dom.style(dom.document.documentElement).fontSize, '17px');
+  assert.equal(dom.style(dom.document.body).fontFamily, 'system-ui, sans-serif');
+  const catalog = dom.document.querySelector('.elearning-catalog-shell');
+  assert.equal(dom.style(catalog.firstElementChild).maxWidth, 'none');
+  assert.equal(dom.style(catalog.querySelector('article > button:first-child')).backgroundColor, 'rgb(239, 246, 255)');
+  assert.deepEqual(dom.bff.requests.map(({ method, template }) => `${method} ${template}`), ['GET /elearning/catalog']);
 });
 
-test('the installed reader keeps the semantic chapter aside targeted by the scoped sticky header', () => {
-  const html = renderToStaticMarkup(React.createElement(ElearningCourseDetailsModal, {
-    open: true, title: 'Reader presentation check', description: '', chapters: [], onClose() {},
-  }));
-  assert.match(html, /role="dialog"[^]*?<header\b[^]*?<\/header>\s*<div[^>]*grid[^>]*>[^]*?<aside\b/);
-  assert.match(html, /aria-label="Fermer le détail du cours"/);
-  assert.match(css, /\[role="dialog"\]:has\(> div > aside\) > header\s*\{\s*position:\s*sticky;\s*top:\s*-24px;/);
-  assert.match(css, /@media \(max-width: 767px\)[^]*?\[role="dialog"\]:has\(> div > aside\)\s*\{\s*padding:\s*16px;/);
-  assert.match(css, /top:\s*-16px;\s*margin:\s*-16px -16px 0;\s*padding:\s*16px;/);
-  // These markup/style checks guard the published component selector. Native
-  // desktop/mobile scrolling and closure remain required rendered evidence.
+test('actual catalog cards keep the shadow binding and reference token values', async t => {
+  const dom = await elearningDom(t), article = dom.document.querySelector('.elearning-catalog-shell article');
+  // JSDOM keeps var() unresolved: check the actual binding and root token,
+  // without claiming native painted-shadow measurement.
+  const binding = /^var\((--[\w-]+)\)$/.exec(dom.style(article).boxShadow.trim()); assert.ok(binding);
+  assert.deepEqual(shadow(dom.window, dom.style(dom.document.documentElement).getPropertyValue(binding[1])), [
+    { lengths: [0, 5, 15, 0], color: 'rgba(23, 32, 51, 0.14)' },
+    { lengths: [0, 1, 3, 0], color: 'rgba(23, 32, 51, 0.12)' },
+  ]);
+});
+
+test('historical sidebar overrides leave the desktop navigation outside normal flow', async t => {
+  const dom = await elearningDom(t);
+  const navigation = dom.document.querySelector('.app-desktop-navigation');
+  assert.ok(navigation);
+  assert.notEqual(dom.style(navigation).position, 'relative',
+    'Mobile historical sidebar styling must not replace the shared fixed desktop layout.');
+});
+
+test('actual published historical sidebar receives reference shadow and seven rows', async t => {
+  const dom = await elearningDom(t), sidebar = dom.document.querySelector('.app-published-sidebar');
+  assert.equal(dom.style(sidebar).position, 'relative'); assert.equal(dom.style(sidebar).zIndex, '20');
+  assert.deepEqual(shadow(dom.window, dom.style(sidebar).boxShadow), [{ lengths: [8, 0, 24, 0], color: 'rgba(12, 28, 48, 0.28)' }]);
+  const buttons = [...sidebar.querySelectorAll('nav button')];
+  assert.deepEqual(buttons.map(button => button.textContent), ['Tableau de bord', 'Projets', 'Messagerie', 'Formation', 'Calendrier', 'Administration', 'Paramètres']);
+  for (const button of buttons) { assert.equal(dom.style(button).minHeight, '44px'); assert.equal(dom.style(button).flexShrink, '0'); }
+});
+
+test('actual published drawer applies its lower layer and closes through its command', async t => {
+  const dom = await elearningDom(t); await dom.click(dom.button('Ouvrir la navigation'));
+  const drawer = dom.document.querySelector('[role="dialog"][aria-label="Navigation mobile"]'); assert.ok(drawer);
+  assert.equal(dom.style(drawer.querySelector('aside')).zIndex, '0');
+  await dom.click(dom.button('Fermer la navigation'));
+  assert.equal(dom.document.querySelector('[role="dialog"][aria-label="Navigation mobile"]'), null);
+});
+
+test('actual course deep link opens the published chapter reader with a fixed header and closes it', async t => {
+  const dom = await elearningDom(t, { reader: true });
+  const main = dom.document.querySelector('main');
+  const skips = [...dom.document.querySelectorAll('a[href]')].filter(link => link.getAttribute('href') === `#${main.id}`);
+  assert.equal(skips.length, 1, 'The shared main has one skip link.');
+  const skip = skips[0];
+  assert.ok(skip.closest('[inert]'), 'The real course reader makes the shared skip link inactive.');
+  assert.ok(skip.compareDocumentPosition(dom.document.querySelector('.app-desktop-navigation button')) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.equal(dom.document.querySelector('.app-desktop-navigation').hasAttribute('inert'), true);
+  // MAIR-608: the reader is the lib Modal; its header stays outside the scrolling body.
+  const reader = dom.document.querySelector('.elearning-catalog-shell [role="dialog"][aria-modal="true"]'); assert.ok(reader);
+  assert.ok(reader.querySelector('aside'), 'The reader keeps its chapter aside.');
+  const header = reader.querySelector(':scope > header'); assert.ok(header);
+  assert.ok(header.querySelector('button[aria-label="Fermer le détail du cours"]'));
+  const body = header.nextElementSibling; assert.ok(body?.contains(reader.querySelector('aside')));
+  assert.ok(body.classList.contains('overflow-y-auto') && reader.classList.contains('overflow-hidden'), 'Only the body scrolls.');
+  assert.equal(reader.dataset.size, 'xl');
+  await dom.click(dom.button('Fermer le détail du cours'));
+  assert.ok(!dom.document.querySelector('.elearning-catalog-shell [role="dialog"][aria-modal="true"]'), 'Reader must close');
+  assert.equal(skip.closest('[inert]'), null);
+  assert.equal(dom.document.querySelector('main'), main);
+  assert.equal(dom.document.querySelector(`a[href="#${main.id}"]`), skip);
+  await dom.click(skip);
+  assert.equal(dom.document.activeElement, main);
+  assert.ok(dom.bff.requests.every(request => request.method === 'GET'));
+  // Native geometry, responsive scrolling, modal focus and hit testing remain separate.
 });

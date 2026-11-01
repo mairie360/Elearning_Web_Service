@@ -11,11 +11,11 @@
 INSERT INTO users (id, first_name, last_name, email, password, status)
 VALUES
   -- admin: the catalogue with the administration controls ("Nouvelle formation", edit, delete).
-  (3, 'Rgaa', 'Admin', 'rgaa-admin@mairie360.fr', 'dummy', 'active'),
+  (3, 'Rgaa', 'Admin', 'rgaa-admin@mairie360.fr', NULL, 'active'),
   -- progress: only for the course-content-completed state.
-  (4, 'Rgaa', 'Progress', 'rgaa-progress@mairie360.fr', 'dummy', 'active'),
+  (4, 'Rgaa', 'Progress', 'rgaa-progress@mairie360.fr', NULL, 'active'),
   -- rater: only for the course-rated state.
-  (5, 'Rgaa', 'Rater', 'rgaa-rater@mairie360.fr', 'dummy', 'active')
+  (5, 'Rgaa', 'Rater', 'rgaa-rater@mairie360.fr', NULL, 'active')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO user_roles (user_id, role_id)

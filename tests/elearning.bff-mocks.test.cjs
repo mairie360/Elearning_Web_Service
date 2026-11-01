@@ -6,8 +6,8 @@ const f = require('./support/elearning-fixtures.ts');
 const { errorReply, useMockedFront } = require('./support/mocked-front.ts');
 const { createCatalogActions, replaceCatalogCourse, toContractCourse } = require('../src/features/elearning/catalogActions.ts');
 const { loadProfile } = require('../src/features/elearning/profileActions.ts');
-const { contractUrl } = require('../src/lib/elearning-api.ts');
-const { LOGOUT_PATH, logout } = require('../src/lib/auth-session.ts');
+const { pathSegment } = require('../src/lib/elearning-api.ts');
+const { logout } = require('../src/lib/auth-session.ts');
 const { clearStoredAuthJwtToken, formatBearerToken, getStoredAuthJwtToken, storeAuthJwtToken } = require('../src/lib/auth-token.ts');
 
 // Les actions du catalogue et les anciens helpers de profil sont
@@ -17,6 +17,8 @@ const { clearStoredAuthJwtToken, formatBearerToken, getStoredAuthJwtToken, store
 
 const front = useMockedFront({ before, after, beforeEach, afterEach });
 const { bffElearning, runtime } = front;
+const loginReturn = () => { const url = new URL('https://login.mairie.test/'); url.searchParams.set('redirect', front.window().location.href); return url.href; };
+const confirmedOwner = () => { runtime.owner = { origin: 'https://login.mairie.test', calls: [], handle: async () => Response.json({ message: 'Session revoked', session_revoked: true }) }; };
 const savedLoginUrl = process.env.LOGIN_FRONT_URL;
 beforeEach(() => { process.env.LOGIN_FRONT_URL = 'https://login.mairie.test/'; });
 afterEach(() => {
@@ -86,7 +88,7 @@ async function withDelayedLearnerResponse(pathname, run) {
   const ready = new Promise((resolve) => { received = resolve; });
   let first = true;
   global.fetch = async (...args) => {
-    const hold = args[0] === pathname && args[1]?.method === 'POST' && first;
+    const hold = args[0] === '' + pathname && args[1]?.method === 'POST' && first;
     if (hold) first = false;
     const response = await originalFetch(...args);
     if (hold) { received(); await held; }
@@ -97,6 +99,79 @@ async function withDelayedLearnerResponse(pathname, run) {
 }
 
 describe('catalog actions against the contract-driven BFF E-learning', () => {
+  for (const scenario of ['foreign-chapter', 'foreign-content', 'negative-completion', 'missing-target', 'repeated-chapter', 'repeated-content', 'contradictory-target']) {
+    test(`${scenario} progression receipt preserves every confirmation and does not trigger GET`, async () => {
+      const initial = f.catalogResponse([f.course(), f.course('independent')]);
+      const response = f.contentCompleteResponse();
+      const chapterId = response.chapter.id;
+      const contentId = response.content.id;
+      if (scenario === 'foreign-chapter') response.chapter = { ...response.chapter, id: 'foreign' };
+      if (scenario === 'foreign-content') response.content = { ...response.content, id: 'foreign' };
+      if (scenario === 'negative-completion') response.content = { ...response.content, completed: false };
+      if (scenario === 'missing-target') response.chapters = [];
+      if (scenario === 'repeated-chapter') response.chapters = [response.chapter, response.chapter];
+      if (scenario === 'repeated-content') response.chapters = [{ ...response.chapter, contents: [response.content, response.content] }];
+      if (scenario === 'contradictory-target') response.chapters = [{ ...response.chapter, contents: [{ ...response.content, completed: false }] }];
+      const { state, actions } = catalogState(initial);
+      const path = '/elearning/courses/{courseId}/contents/{contentId}/complete';
+      bffElearning.on('post', path, { body: response });
+      assert.equal(await actions.completeContent('4', chapterId, contentId), false);
+      assert.equal(state.catalogResponse, initial);
+      assert.match(state.mutationError, /progression.*confirmée/);
+      assert.equal(state.error, null);
+      assert.deepEqual(operations(), [`POST ${path}`]);
+    });
+  }
+
+  test('a rejected completion receipt permits a deliberate coherent confirmation, then GET-only recovery', async () => {
+    const { state, actions } = catalogState(f.catalogResponse());
+    const response = f.contentCompleteResponse();
+    const path = '/elearning/courses/{courseId}/contents/{contentId}/complete';
+    bffElearning.on('post', path, { body: { ...response, content: { ...response.content, completed: false } } });
+    assert.equal(await actions.completeContent('4', response.chapter.id, response.content.id), false);
+    bffElearning.on('post', path, { body: response });
+    bffElearning.on('get', '/elearning/catalog', errorReply(503, 'READ_REFUSED', 'Read refused'));
+    assert.equal(await actions.completeContent('4', response.chapter.id, response.content.id), true);
+    assert.equal(state.catalogResponse.catalog.courses[0].progress, response.progress);
+    assert.equal(state.mutationError, null);
+    assert.equal(state.error, 'Read refused');
+    bffElearning.on('get', '/elearning/catalog', { body: state.catalogResponse });
+    await actions.loadCatalog();
+    assert.deepEqual(operations(), [`POST ${path}`, `POST ${path}`, 'GET /elearning/catalog', 'GET /elearning/catalog']);
+  });
+
+  test('an explicit uncompletion trusts a coherent false state and official progress instead of computing counters', async () => {
+    const response = f.contentCompleteResponse();
+    response.progress = 37;
+    response.completed = false;
+    response.content.completed = false;
+    const { state, actions } = catalogState(f.catalogResponse());
+    bffElearning.on('post', '/elearning/courses/{courseId}/contents/{contentId}/complete', { body: response });
+    bffElearning.on('get', '/elearning/catalog', errorReply(503, 'READ_REFUSED', 'Read refused'));
+    assert.equal(await actions.completeContent('4', response.chapter.id, response.content.id, false), true);
+    assert.equal(state.catalogResponse.catalog.courses[0].progress, 37);
+    assert.deepEqual(state.catalogResponse.catalog.courses[0].details.chapters, response.chapters);
+    assert.equal(bffElearning.requests[0].body.completed, false);
+  });
+
+  for (const returnedId of ['independent', ' ']) {
+    test(`a start receipt with mismatched identity ${JSON.stringify(returnedId)} cannot overwrite another course`, async () => {
+      const initial = f.catalogResponse([f.course(), f.course('independent', { title: 'Keep this course' })]);
+      const { state, actions } = catalogState(initial);
+      bffElearning.on('post', '/elearning/courses/{courseId}/start', {
+        body: { course: f.course(returnedId, { title: 'Foreign replacement', progress: 100 }) },
+      });
+      assert.equal(await actions.startCourse('4'), false);
+      assert.equal(state.catalogResponse, initial);
+      assert.match(state.mutationError, /démarrage.*confirmé/);
+      assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/start']);
+      bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: f.course() } });
+      bffElearning.on('get', '/elearning/catalog', errorReply(503, 'READ_REFUSED', 'Read refused'));
+      assert.equal(await actions.startCourse('4'), true);
+      assert.equal(state.catalogResponse.catalog.courses[1].title, 'Keep this course');
+    });
+  }
+
   test('editing a submitted numeric note preserves the last confirmation on refusal and trusts the server distribution', async () => {
     const initialCourse = f.course();
     initialCourse.details.completionRating = { initialValue: 4, submitted: true };
@@ -126,27 +201,28 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
 
   for (const kind of ['start', 'complete', 'rating']) {
     test(`a repeated pending learner ${kind} dispatch performs only one write`, async () => {
-      const courseId = 'rgpd-collectivites';
+      const courseId = '4';
+      const completion = f.contentCompleteResponse();
       const pathname = kind === 'complete'
-        ? `/elearning/courses/${courseId}/contents/video-1/complete`
+        ? `/elearning/courses/${courseId}/contents/${completion.content.id}/complete`
         : `/elearning/courses/${courseId}/${kind}`;
       const template = kind === 'complete'
         ? '/elearning/courses/{courseId}/contents/{contentId}/complete'
         : `/elearning/courses/{courseId}/${kind}`;
       // Use the same valid responses as the existing operation recipes.
       if (kind === 'start') bffElearning.on('post', template, { body: { course: f.course(courseId) } });
-      else bffElearning.on('post', template, { body: kind === 'complete' ? f.contentCompleteResponse() : f.ratingResponse(5) });
+      else bffElearning.on('post', template, { body: kind === 'complete' ? completion : f.ratingResponse(5) });
       reloadCatalog();
       const { actions } = catalogState(f.catalogResponse());
       const dispatch = () => kind === 'start' ? actions.startCourse(courseId)
-        : kind === 'complete' ? actions.completeContent(courseId, 'chapter-1', 'video-1')
+        : kind === 'complete' ? actions.completeContent(courseId, completion.chapter.id, completion.content.id)
         : actions.rateCourse(courseId, 5);
       await withDelayedLearnerResponse(pathname, async ({ ready, release }) => {
         const first = dispatch();
         await ready;
         const second = dispatch();
         release();
-        await Promise.all([first, second]);
+        assert.deepEqual(await Promise.all([first, second]), [true, true]);
         assert.equal(operations().filter((operation) => operation === `POST ${template}`).length, 1,
           'pending repeated submissions must not emit duplicate learner writes');
       });
@@ -154,7 +230,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
   }
 
   test('a different learner action does not run while starting, and a refused start can be retried', async () => {
-    const courseId = 'rgpd-collectivites';
+    const courseId = '4';
     bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(503, 'UNAVAILABLE', 'Démarrage refusé'));
     const initial = f.catalogResponse();
     const { state, actions } = catalogState(initial);
@@ -180,7 +256,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
 
   for (const kind of ['complete', 'rating']) {
     test(`a confirmed ${kind} survives failed refresh without resending on GET retry`, async () => {
-      const courseId = 'rgpd-collectivites';
+      const courseId = '4';
       const response = kind === 'complete' ? f.contentCompleteResponse() : f.ratingResponse(5);
       const template = kind === 'complete'
         ? '/elearning/courses/{courseId}/contents/{contentId}/complete'
@@ -246,7 +322,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
 
   test('a late catalogue response cannot reset a server-confirmed course start', async () => {
     const old = f.catalogResponse();
-    const started = f.course('rgpd-collectivites', { statusValue: 'in-progress', progress: 10 });
+    const started = f.course('4', { statusValue: 'in-progress', progress: 10 });
     bffElearning.on('get', '/elearning/catalog', { body: old });
     bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: started } });
     const { state, actions } = catalogState(old);
@@ -254,14 +330,14 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
       const first = actions.loadCatalog();
       await received;
       bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse([started]) });
-      await actions.startCourse('rgpd-collectivites');
+      await actions.startCourse('4');
       release();
       await first;
       assert.deepEqual(state.catalogResponse.catalog.courses[0], started);
     });
   });
 
-  test('a superseded 401 still logs out instead of weakening session rejection', async () => {
+  test('a superseded 401 still returns to Login without logout instead of weakening session rejection', async () => {
     bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
     const { state, actions } = catalogState();
     await withDelayedCatalog(async ({ received, release }) => {
@@ -271,7 +347,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
       await actions.loadCatalog();
       release();
       await first;
-      assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+      assert.deepEqual(front.window().location.assigned, [loginReturn()]);
       assert.equal(state.error, null);
     });
   });
@@ -295,30 +371,30 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.deepEqual(runtime.upstreamCalls.map(({ url, route }) => [url.origin, route]), [[new URL(bffElearning.url).origin, 'src/app/[...path]/route.ts']]);
   });
 
-  test('a JWT stored in localStorage is sent instead of the cookie session', async () => {
+  test('a JWT stored in localStorage does not replace the current cookie session', async () => {
     front.window().localStorage.setItem('mairie360.auth.jwt', 'stored-jwt');
     reloadCatalog();
 
     await catalogState().actions.loadCatalog();
 
-    assert.equal(bffElearning.requests[0].headers.authorization, 'Bearer stored-jwt');
+    assert.equal(bffElearning.requests[0].headers.authorization, `Bearer ${runtime.accessToken}`);
   });
 
   test('startCourse retains the confirmed course and refreshes official catalogue statistics', async () => {
-    const started = f.course('rgpd-collectivites', { statusValue: 'in-progress', progress: 10 });
+    const started = f.course('4', { statusValue: 'in-progress', progress: 10 });
     bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: started } });
     const updated = f.catalogResponse([started, f.course('accueil')]);
     updated.catalog.stats = [{ label: 'En cours', value: 7 }];
     bffElearning.on('get', '/elearning/catalog', { body: updated });
     const { state, actions } = catalogState(f.catalogResponse([f.course(), f.course('accueil')]));
 
-    await actions.startCourse('rgpd-collectivites');
+    await actions.startCourse('4');
 
     assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/start', 'GET /elearning/catalog']);
-    assert.deepEqual(bffElearning.requests[0].pathParams, { courseId: 'rgpd-collectivites' });
+    assert.deepEqual(bffElearning.requests[0].pathParams, { courseId: '4' });
     assert.deepEqual(bffElearning.requests[0].body, {});
     assert.equal(bffElearning.requests[0].headers['content-type'], 'application/json');
-    assert.deepEqual(state.catalogResponse.catalog.courses.map((course) => [course.id, course.statusValue]), [['rgpd-collectivites', 'in-progress'], ['accueil', 'not-started']]);
+    assert.deepEqual(state.catalogResponse.catalog.courses.map((course) => [course.id, course.statusValue]), [['4', 'in-progress'], ['accueil', 'not-started']]);
     assert.equal(state.mutationError, null);
     assert.deepEqual(state.catalogResponse, updated, 'statistics are supplied by the server, not counted from visible courses');
   });
@@ -327,7 +403,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     const initial = f.catalogResponse();
     bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(403, 'FORBIDDEN', 'Formation refusée'));
     const { state, actions } = catalogState(initial);
-    await actions.startCourse('rgpd-collectivites');
+    await actions.startCourse('4');
     assert.deepEqual(state.catalogResponse, initial);
     assert.equal(state.mutationError, 'Formation refusée');
     assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/start']);
@@ -335,14 +411,14 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
 
   test('the course is confirmed while its uncached statistics refresh is still pending', async () => {
     const initial = f.catalogResponse();
-    const started = f.course('rgpd-collectivites', { statusValue: 'in-progress', progress: 10 });
+    const started = f.course('4', { statusValue: 'in-progress', progress: 10 });
     const updated = f.catalogResponse([started]);
     updated.catalog.stats = [{ label: 'En cours', value: 7 }];
     bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: started } });
     bffElearning.on('get', '/elearning/catalog', { body: updated });
     const { state, actions } = catalogState(initial);
     await withDelayedCatalog(async ({ received, release }) => {
-      const start = actions.startCourse('rgpd-collectivites');
+      const start = actions.startCourse('4');
       const requestInit = await received;
       assert.equal(requestInit.cache, 'no-store');
       assert.deepEqual(state.catalogResponse.catalog.courses, [started]);
@@ -354,12 +430,12 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
   });
 
   test('a failed start refresh retains the confirmation and retries only the catalogue', async () => {
-    const started = f.course('rgpd-collectivites', { statusValue: 'in-progress', progress: 10 });
+    const started = f.course('4', { statusValue: 'in-progress', progress: 10 });
     const initial = f.catalogResponse();
     bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: started } });
     bffElearning.on('get', '/elearning/catalog', errorReply(503, 'BFF_UNAVAILABLE', 'Actualisation indisponible'));
     const { state, actions } = catalogState(initial);
-    await actions.startCourse('rgpd-collectivites');
+    await actions.startCourse('4');
     assert.deepEqual(state.catalogResponse.catalog.courses, [started]);
     assert.deepEqual(state.catalogResponse.catalog.stats, initial.catalog.stats);
     assert.equal(state.mutationError, null);
@@ -373,27 +449,31 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/start', 'GET /elearning/catalog', 'GET /elearning/catalog']);
   });
 
-  test('a session refused during start refresh still logs out', async () => {
-    bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: f.course('rgpd-collectivites', { statusValue: 'in-progress' }) } });
+  test('a session refused during start refresh still returns to Login without logout', async () => {
+    bffElearning.on('post', '/elearning/courses/{courseId}/start', { body: { course: f.course('4', { statusValue: 'in-progress' }) } });
     bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
     const { state, actions } = catalogState(f.catalogResponse());
-    await actions.startCourse('rgpd-collectivites');
-    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+    await actions.startCourse('4');
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
     assert.equal(state.error, null);
   });
 
   test('completeContent encodes path parameters, sends CompleteContentBody, then reloads the catalogue', async () => {
-    bffElearning.on('post', '/elearning/courses/{courseId}/contents/{contentId}/complete', { body: f.contentCompleteResponse() });
+    const content = f.content('vidéo #2', { completed: false });
+    const chapter = f.chapter('11', [content]);
+    bffElearning.on('post', '/elearning/courses/{courseId}/contents/{contentId}/complete', {
+      body: { ...f.contentCompleteResponse(), completed: false, chapters: [chapter], chapter, content },
+    });
     reloadCatalog();
     const { state, actions } = catalogState();
 
-    await actions.completeContent('sécurité incendie', 'chapitre 1', 'vidéo #2', false);
+    await actions.completeContent('sécurité incendie', '11', 'vidéo #2', false);
 
     assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/contents/{contentId}/complete', 'GET /elearning/catalog']);
     const [complete] = bffElearning.requests;
     assert.equal(complete.url.pathname, '/elearning/courses/s%C3%A9curit%C3%A9%20incendie/contents/vid%C3%A9o%20%232/complete');
     assert.deepEqual(complete.pathParams, { courseId: 'sécurité incendie', contentId: 'vidéo #2' });
-    assert.deepEqual(complete.body, { chapterId: 'chapitre 1', completed: false });
+    assert.deepEqual(complete.body, { chapterId: '11', completed: false });
     assert.equal(state.mutationError, null);
     assert.ok(state.catalogResponse);
   });
@@ -412,7 +492,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     bffElearning.on('post', '/elearning/courses/{courseId}/rating', { body: f.ratingResponse(4) });
     reloadCatalog();
 
-    await catalogState().actions.rateCourse('rgpd-collectivites', 4);
+    await catalogState().actions.rateCourse('4', 4);
 
     assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/rating', 'GET /elearning/catalog']);
     assert.deepEqual(bffElearning.requests[0].body, { rating: 4 });
@@ -426,9 +506,9 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     const { state, actions } = catalogState();
 
     // Le formulaire de lib-components type statusValue en chaîne libre : une valeur hors enum n'est pas envoyée.
-    assert.equal(await actions.createCourse(f.course('nouvelle-formation', { statusValue: 'brouillon' })), true);
-    assert.equal(await actions.updateCourse(f.course('nouvelle-formation', { statusValue: 'completed', title: 'Renommée' })), true);
-    await actions.deleteCourse('nouvelle-formation');
+    assert.equal(await actions.createCourse(f.course('9', { statusValue: 'brouillon' })), true);
+    assert.equal(await actions.updateCourse(f.course('9', { statusValue: 'completed', title: 'Renommée' })), true);
+    await actions.deleteCourse('9');
 
     assert.deepEqual(operations(), [
       'POST /elearning/admin/courses', 'GET /elearning/catalog',
@@ -437,11 +517,22 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     ]);
     const [create, , update, , remove] = bffElearning.requests;
     assert.equal('statusValue' in create.body, false);
-    assert.deepEqual(update.pathParams, { courseId: 'nouvelle-formation' });
+    assert.deepEqual(update.pathParams, { courseId: '9' });
     assert.equal(update.body.statusValue, 'completed');
     assert.equal(update.body.title, 'Renommée');
     assert.equal(remove.body, undefined);
     assert.equal(state.mutationError, null);
+  });
+
+  test('a 501 of the BFF becomes the French not-implemented message and the catalogue is not reloaded (MAIR-513)', async () => {
+    const { NOT_IMPLEMENTED_MESSAGE } = require('../src/lib/bff-client.ts');
+    bffElearning.on('post', '/elearning/courses/{courseId}/rating', errorReply(501, 'NOT_IMPLEMENTED', 'Course ratings are not stored by the e-learning service yet.'));
+    const { state, actions } = catalogState(f.catalogResponse());
+
+    assert.equal(await actions.rateCourse('4', 5), false);
+
+    assert.equal(state.mutationError, NOT_IMPLEMENTED_MESSAGE);
+    assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/rating']);
   });
 
   test('a documented BFF error is shown as mutation error and the catalogue is not reloaded', async () => {
@@ -518,9 +609,10 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.equal(bffElearning.requests.length, 0);
   });
 
-  test('a 401 from the BFF logs out without calling any other service', async () => {
+  test('a 401 from the BFF returns to Login without logout without calling any other service', async () => {
     bffElearning.on('get', '/elearning/catalog', errorReply(401, 'UNAUTHORIZED', 'Session expirée ou invalide.'));
     front.window().localStorage.setItem('mairie360.auth.jwt', 'expired-jwt');
+    front.window().localStorage.setItem('formation.draft', 'unfinished lesson');
     const { state, actions } = catalogState();
 
     await actions.loadCatalog();
@@ -528,31 +620,31 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.equal(state.error, null);
     assert.deepEqual(runtime.frontCalls.map(({ method, pathname, route, status }) => [method, pathname, route, status]), [
       ['GET', '/elearning/catalog', 'src/app/[...path]/route.ts', 401],
+      ['POST', '/api/auth/refresh', 'src/app/api/auth/refresh/route.ts', 401],
     ]);
-    assert.equal(front.window().localStorage.length, 0);
-    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+    assert.equal(front.window().localStorage.getItem('mairie360.auth.jwt'), null);
+    assert.equal(front.window().localStorage.getItem('formation.draft'), 'unfinished lesson');
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
   });
 
-  test('a 401 on a mutation also logs out instead of showing an error', async () => {
+  test('a 401 on a mutation also returns to Login without logout instead of showing an error', async () => {
     bffElearning.on('post', '/elearning/courses/{courseId}/rating', errorReply(401, 'UNAUTHORIZED', 'Session expirée ou invalide.'));
     const { state, actions } = catalogState();
 
-    await actions.rateCourse('rgpd-collectivites', 5);
+    await actions.rateCourse('4', 5);
 
     assert.equal(state.mutationError, null);
-    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
     assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/rating']);
   });
 
-  test('an expired session is redirected to Login by the middleware before reaching any BFF', async () => {
+  test('an expired document returns through the canonical Login owner without cookie changes', () => {
     runtime.accessToken = f.accessToken(2, 1);
-    const { state, actions } = catalogState();
-
-    await actions.loadCatalog();
-
-    assert.equal(state.error, 'Une erreur inattendue est survenue.');
-    assert.equal(runtime.frontCalls[0].status, 307);
-    assert.match(runtime.frontCalls[0].redirectedTo, /^https:\/\/login\.mairie\.test\//);
+    const navigation = runtime.navigate('/?course=4');
+    assert.equal(navigation.status, 307); assert.equal(navigation.setCookie, null);
+    const target = new URL(navigation.location);
+    assert.equal(target.searchParams.get('next'), '/?course=4');
+    assert.equal(target.pathname, '/api/auth/resume');
     assert.equal(runtime.upstreamCalls.length, 0);
   });
 
@@ -593,14 +685,14 @@ describe('profile loading against the contract-driven BFF E-learning', () => {
     assert.deepEqual(state, { profile: null, loading: [false], error: 'Le service utilisateur est indisponible.' });
   });
 
-  test('logs out on 401', async () => {
+  test('returns to Login without logout on 401', async () => {
     bffElearning.on('get', '/elearning/profile', errorReply(401, 'UNAUTHORIZED', 'Session expirée ou invalide.'));
     const { state, view } = profileState();
 
     await loadProfile(view, new AbortController().signal);
 
     assert.equal(state.error, undefined);
-    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
   });
 
   test('an aborted load neither calls the network nor updates the view', async () => {
@@ -626,8 +718,9 @@ describe('profile loading against the contract-driven BFF E-learning', () => {
 });
 
 describe('contract helpers', () => {
-  test('contractUrl refuses a missing path parameter before any network call', () => {
-    assert.throws(() => contractUrl('/elearning/courses/{courseId}/start', {}), /Paramètre de chemin "courseId" manquant/);
+  test('pathSegment refuses a missing path parameter before any network call and encodes the others', () => {
+    assert.throws(() => pathSegment('', 'courseId'), /Missing path parameter "courseId"/);
+    assert.equal(pathSegment('a/b c', 'courseId'), 'a%2Fb%20c');
     assert.equal(runtime.frontCalls.length, 0);
   });
 
@@ -647,14 +740,15 @@ describe('contract helpers', () => {
       setCatalogResponse: () => { throw new Error('rendu impossible'); },
     });
 
-    await actions.startCourse('rgpd-collectivites');
+    await actions.startCourse('4');
 
     assert.equal(mutationError, 'Une erreur inattendue est survenue.');
   });
 });
 
 describe('logout and stored session without another BFF', () => {
-  test('logout clears only auth tokens, then /logout clears the cookie and redirects to Login', async () => {
+  test('confirmed POST logout clears only known auth storage and returns to Login', async () => {
+    confirmedOwner();
     storeAuthJwtToken(' session-jwt ');
     front.window().localStorage.setItem('mairie360.projects.jwt', 'legacy-jwt');
     front.window().localStorage.setItem('unrelated.preference', 'keep');
@@ -665,21 +759,19 @@ describe('logout and stored session without another BFF', () => {
     assert.equal(front.window().localStorage.getItem('mairie360.auth.jwt'), null);
     assert.equal(front.window().localStorage.getItem('mairie360.projects.jwt'), null);
     assert.equal(front.window().localStorage.getItem('unrelated.preference'), 'keep');
-    assert.deepEqual(front.window().location.assigned, ['/logout']);
-    const navigation = runtime.navigate(LOGOUT_PATH);
-    assert.equal(navigation.status, 307);
-    assert.match(navigation.location, /^https:\/\/login\.mairie\.test\//);
-    assert.match(navigation.setCookie, /accessToken=;/);
-    assert.equal(runtime.frontCalls.length, 0);
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
+    assert.deepEqual(runtime.owner.calls, [{ method: 'POST', path: '/api/auth/logout' }]);
+    assert.equal(runtime.frontCalls.length, 1);
     assert.equal(bffElearning.requests.length, 0);
   });
 
-  test('logout still navigates when storage is denied', async () => {
+  test('confirmed logout still navigates when storage is denied', async () => {
+    confirmedOwner();
     front.window().localStorage.removeItem = () => { throw new Error('refusé'); };
 
     await logout();
 
-    assert.deepEqual(front.window().location.assigned, [LOGOUT_PATH]);
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
   });
 
   test('stored JWT helpers migrate the legacy key and tolerate a missing window', () => {

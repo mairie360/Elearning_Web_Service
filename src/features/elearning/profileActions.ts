@@ -1,4 +1,4 @@
-import { logout } from "../../lib/auth-session";
+import { navigateToLogin } from "../../lib/auth-session";
 import { BffRequestError } from "../../lib/bff-client";
 import { getProfile, type ElearningProfileResponse } from "../../lib/elearning-api";
 
@@ -14,7 +14,7 @@ export type ProfileView = {
 export async function loadProfile(
   view: ProfileView,
   signal: AbortSignal,
-  onUnauthorized: () => Promise<void> = logout,
+  onUnauthorized: () => Promise<void> = async () => { navigateToLogin(); },
 ) {
   try {
     const response = await getProfile({ cache: "no-store", signal });

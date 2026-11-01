@@ -184,6 +184,13 @@ function staticText(node) {
   return '';
 }
 
+// React renders nested child arrays too (for example [null, chapters.map(...)])
+// even when the outer array contains no direct element. Keep ordinary DTO arrays
+// untouched while finding and wrapping actual elements at any array depth.
+function containsElement(value) {
+  return real.isValidElement(value) || (Array.isArray(value) && value.some(containsElement));
+}
+
 function displayName(type) {
   return type.displayName || type.name || 'Anonymous';
 }
@@ -413,7 +420,7 @@ class ServerView {
     let changed = false;
     const next = {};
     for (const [name, value] of Object.entries(props)) {
-      const wrapped = real.isValidElement(value) || (Array.isArray(value) && value.some(real.isValidElement)) ? this.wrap(value, name === 'children' ? `${path}>` : `${path}.${name}`) : value;
+      const wrapped = containsElement(value) ? this.wrap(value, name === 'children' ? `${path}>` : `${path}.${name}`) : value;
       if (wrapped !== value) changed = true;
       next[name] = wrapped;
     }
@@ -498,6 +505,11 @@ function ensureBrowserGlobals() {
       createElement: () => ({ style: {}, setAttribute() {}, appendChild() {}, remove() {} }),
     });
   }
+  const root = globalThis.document.documentElement ??= { clientWidth: 1280, clientHeight: 800 };
+  root.dataset ??= {};
+  root.style ??= {};
+  root.style.setProperty ??= function (name, value) { this[name] = value; };
+  root.style.removeProperty ??= function (name) { delete this[name]; };
   const window = globalThis.window;
   if (!window || typeof window !== 'object') return;
   if (!window.addEventListener) eventTarget(window);

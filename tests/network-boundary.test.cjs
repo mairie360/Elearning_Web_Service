@@ -3,16 +3,17 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { test } = require('node:test');
 const ts = require('typescript');
+const policy = require('./support/source-policy.cjs');
 
-// Garde-fou statique : le front ne joint qu'un service, son BFF (BFF_Elearning), et uniquement via son contrat.
-// - navigateur : src/lib/elearning-api.ts (opérations du contrat) -> requestBff -> fetch same-origin ;
+// Business requests use the published Elearning contract; auth operations delegate to the existing Login owner.
+// - browser: src/lib/elearning-api.ts (generated operations) -> axios adapter of bff-client.ts -> requestBff -> same-origin fetch;
 // - serveur : src/lib/bff-proxy.ts (allowlist contracts/openapi.json) vers la seule URL configuredBffUrl().
 // tests/elearning.bff-mocks.test.cjs vérifie ensuite ces chemins à l'exécution contre le BFF simulé.
 
 const root = path.join(__dirname, '..');
 const FETCH_ALLOWED = {
-  'src/lib/bff-client.ts': 'fetch same-origin des opérations de elearning-api.ts',
-  'src/lib/bff-proxy.ts': 'proxy serveur vers BFF_Elearning',
+  'src/lib/bff-client.ts': 'same-origin fetch of the generated operations of elearning-api.ts',
+  'src/lib/auth-session.ts': 'POST same-origin delegated to Login owner',
 };
 const FORBIDDEN_GLOBALS = new Set(['XMLHttpRequest', 'WebSocket', 'EventSource', 'sendBeacon', 'axios']);
 const FORBIDDEN_MODULES = /^(node:)?(http|https|net|tls|dgram)$|^(axios|ky|got|node-fetch|undici|swr)$/;
@@ -35,12 +36,12 @@ function scan() {
       if (ts.isCallExpression(node)) {
         const callee = node.expression;
         const name = ts.isIdentifier(callee) ? callee.text : ts.isPropertyAccessExpression(callee) ? callee.name.text : undefined;
-        if (name === 'fetch') findings.fetch.push({ file: relative, at, argument: node.arguments[0] });
+        if (['fetch', 'sessionFetch'].includes(name)) findings.fetch.push({ file: relative, at, argument: node.arguments[0] });
         if (name === 'requestBff') findings.requestBff.push({ file: relative, at, argument: node.arguments[0] });
         if (name === 'forwardToBff') findings.forwardToBff.push({ file: relative, at, baseUrl: node.arguments[1] });
       }
-      if (ts.isIdentifier(node) && FORBIDDEN_GLOBALS.has(node.text)) findings.forbidden.push(`${at} ${node.text}`);
-      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && FORBIDDEN_MODULES.test(node.moduleSpecifier.text)) {
+      if (ts.isIdentifier(node) && FORBIDDEN_GLOBALS.has(node.text) && !(relative === 'src/lib/bff-client.ts' && node.text === 'axios')) findings.forbidden.push(`${at} ${node.text}`);
+      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && FORBIDDEN_MODULES.test(node.moduleSpecifier.text) && !(relative === 'src/lib/bff-client.ts' && node.moduleSpecifier.text === 'axios')) {
         findings.forbidden.push(`${at} import ${node.moduleSpecifier.text}`);
       }
       if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) findings.forbidden.push(`${at} import() dynamique`);
@@ -62,24 +63,40 @@ test('fetch is only called by the contract-bound modules', () => {
   assert.deepEqual([...new Set(findings.fetch.map(({ file }) => file))].sort(), Object.keys(FETCH_ALLOWED).sort());
 });
 
-test('the browser-side fetch in bff-client.ts only receives the path built by elearning-api.ts', () => {
+test('the browser-side fetch in bff-client.ts only receives the path built by the generated client', () => {
   const [call, ...others] = findings.fetch.filter(({ file }) => file === 'src/lib/bff-client.ts');
   assert.equal(others.length, 0);
-  assert.equal(call.argument.getText(), 'path');
-  assert.deepEqual(findings.requestBff.map(({ file }) => file), ['src/lib/elearning-api.ts']);
-  const [request] = findings.requestBff;
-  assert.match(request.argument.getText(), /^contractUrl\(template,/);
+  assert.ok(policy.parameterReference(call.argument));
+  // No caller of requestBff outside the axios adapter of bff-client.ts: elearning-api.ts only calls generated operations.
+  assert.deepEqual(findings.requestBff, []);
+  const adapterAst = policy.parse('src/lib/bff-client.ts');
+  const factory = policy.nodes(adapterAst, node => ts.isFunctionDeclaration(node) && node.name?.text === 'createElearningClient')[0];
+  assert.equal(factory.parameters[0].initializer.text, 'requestBff');
+  assert.equal(policy.calls(adapterAst, 'request').length, 1);
+  assert.deepEqual(policy.calls(policy.parse('src/lib/initial-catalog.ts'), 'createElearningClient').length, 1);
+  const api = fs.readFileSync(path.join(root, 'src/lib/elearning-api.ts'), 'utf8');
+  assert.doesNotMatch(api, /requestBff|contractUrl|["'`]\/(?:elearning|api|bff)\b/);
+  const operations = [...api.matchAll(/bffElearning\.(\w+)\(/g)].map(([, name]) => name);
+  assert.ok(operations.length > 0);
+  const generated = fs.readFileSync(path.join(path.dirname(require.resolve('@mairie360/bff-elearning-openapi/package.json')), 'endpoints/bffElearning.ts'), 'utf8');
+  operations.forEach((name) => assert.match(generated, new RegExp(`const ${name} = \\(`), `${name} is not a generated operation`));
 });
 
 test('server-side forwarding only targets the configured BFF_Elearning URL, gated by the contract', () => {
-  const proxy = fs.readFileSync(path.join(root, 'src/lib/bff-proxy.ts'), 'utf8');
-  assert.match(proxy, /import contract from '\.\.\/\.\.\/contracts\/openapi\.json'/);
-  const [call, ...others] = findings.fetch.filter(({ file }) => file === 'src/lib/bff-proxy.ts');
-  assert.equal(others.length, 0);
-  assert.equal(call.argument.getText(), 'target');
-  assert.deepEqual(findings.forwardToBff.map(({ file, baseUrl }) => [file, baseUrl.getText()]), [['src/lib/bff-proxy.ts', 'configuredBffUrl()']]);
-  assert.deepEqual([...proxy.matchAll(/process\.env\.(\w+)/g)].map(([, name]) => name), ['BFF_ELEARNING_BASE_URL', 'ELEARNING_BFF_URL', 'NEXT_PUBLIC_BFF_ELEARNING_BASE_URL']);
-  const catchAll = fs.readFileSync(path.join(root, 'src/app/[...path]/route.ts'), 'utf8');
-  assert.match(catchAll, /from '@\/lib\/bff-proxy'/);
-  assert.doesNotMatch(catchAll, /forwardToBff/);
+  const proxyAst = policy.parse('src/lib/bff-proxy.ts');
+  assert.ok(policy.imports(proxyAst).includes('../../contracts/openapi.json'));
+  assert.deepEqual(findings.fetch.filter(({ file }) => file === 'src/lib/bff-proxy.ts'), []);
+  assert.ok(policy.imports(proxyAst).includes('@mairie360/lib-components/next'));
+  assert.equal(policy.calls(proxyAst, 'proxyPublishedBffRequest').length, 1);
+  assert.deepEqual(findings.forwardToBff.map(({ file }) => file).sort(), ['src/lib/bff-proxy.ts', 'src/lib/initial-catalog.ts']);
+  assert.ok(findings.forwardToBff.every(({ baseUrl }) => policy.configuredUrl(baseUrl)));
+  assert.deepEqual([...new Set(policy.envNames(proxyAst))].sort(), ['LOGIN_FRONT_URL', 'ELEARNING_FRONT_URL', 'BFF_ELEARNING_BASE_URL', 'ELEARNING_BFF_URL', 'NEXT_PUBLIC_BFF_ELEARNING_BASE_URL'].sort());
+  const catchAll = policy.parse('src/app/[...path]/route.ts');
+  assert.ok(policy.imports(catchAll).includes('@/lib/bff-proxy'));
+  assert.equal(policy.calls(catchAll, 'forwardToBff').length, 0);
+});
+
+test('explicit logout has a single same-origin POST and no browser bearer', () => {
+ const calls=findings.fetch.filter(({file})=>file==='src/lib/auth-session.ts');
+ assert.equal(calls.length,1);assert.equal(calls[0].argument.text,'/api/auth/logout');
 });

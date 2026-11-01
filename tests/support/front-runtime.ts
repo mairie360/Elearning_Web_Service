@@ -60,8 +60,11 @@ export class FrontRuntime {
   readonly violations: string[] = [];
   /** Cookie `accessToken` détenu par le navigateur (posé par Login en production). */
   accessToken?: string;
+  refreshToken?: string;
+  owner?: { origin: string; calls: Array<{method: string; path: string}>; handle: (request: NextRequest) => Promise<Response> | Response };
   private readonly routes = discoverRoutes();
   private originalFetch?: typeof fetch;
+  private previousFrontUrl?: string;
 
   /** @param upstreams origines des services simulés joignables depuis les route handlers. */
   constructor(private readonly upstreams: () => string[]) {}
@@ -72,11 +75,15 @@ export class FrontRuntime {
 
   install(): void {
     this.originalFetch = globalThis.fetch;
+    this.previousFrontUrl = process.env.ELEARNING_FRONT_URL;
+    process.env.ELEARNING_FRONT_URL = FRONT_ORIGIN;
     globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => this.fetch(input, init)) as typeof fetch;
   }
 
   restore(): void {
     if (this.originalFetch) globalThis.fetch = this.originalFetch;
+    if (this.previousFrontUrl === undefined) delete process.env.ELEARNING_FRONT_URL;
+    else process.env.ELEARNING_FRONT_URL = this.previousFrontUrl;
   }
 
   reset(): void {
@@ -84,6 +91,7 @@ export class FrontRuntime {
     this.upstreamCalls.length = 0;
     this.violations.length = 0;
     this.accessToken = undefined;
+    this.refreshToken = undefined;
   }
 
   /** Navigation de page (window.location.assign) : seul le middleware s'applique, les pages ne sont pas rendues. */
@@ -105,6 +113,10 @@ export class FrontRuntime {
       if (url.origin !== FRONT_ORIGIN) return this.refuse(`navigateur : ${method} ${url.href} ne vise pas l'origine du front`);
       return this.dispatch(method, url, init);
     }
+    if (this.owner && url.origin === this.owner.origin) {
+      this.owner.calls.push({ method, path: url.pathname });
+      return this.owner.handle(new NextRequest(url, { ...init, signal: init.signal ?? undefined }));
+    }
     if (!this.upstreams().includes(url.origin)) return this.refuse(`serveur (${scope.route}) : ${method} ${url.href} ne vise aucun service simulé`);
     this.upstreamCalls.push({ method, url, route: scope.route });
     return this.originalFetch!(input, init);
@@ -119,16 +131,32 @@ export class FrontRuntime {
     const call: FrontCall = { method, pathname: url.pathname, search: url.search };
     this.frontCalls.push(call);
     const headers = new Headers(init.headers);
-    if (this.accessToken) headers.set('cookie', `accessToken=${this.accessToken}`);
+    if (!headers.has('origin')) headers.set('origin', FRONT_ORIGIN);
+    if (!headers.has('sec-fetch-site')) headers.set('sec-fetch-site', 'same-origin');
+    const cookies = [this.accessToken ? `accessToken=${this.accessToken}` : '', this.refreshToken && (url.pathname === '/api' || url.pathname.startsWith('/api/')) ? `refreshToken=${this.refreshToken}` : ''].filter(Boolean);
+    if (cookies.length) headers.set('cookie', cookies.join('; '));
     let request = new NextRequest(url, { ...init, method, headers } as ConstructorParameters<typeof NextRequest>[1]);
 
     if (middlewareApplies(url.pathname)) {
       const response = middleware(request);
       if (response.headers.get('x-middleware-next') !== '1') {
-        // Le navigateur suit la redirection vers Login, autre origine sans CORS : le fetch échoue.
+        // Manual fetch redirects expose only an opaque response in a real browser.
+        // Follow-mode retains the previous cross-origin/CORS failure reproduction.
         call.status = response.status;
         call.redirectedTo = response.headers.get('location') ?? undefined;
-        throw new TypeError('Failed to fetch');
+        if (init.redirect === 'manual' && call.redirectedTo) {
+          return new Proxy(new Response(null), {
+            get(target, property) {
+              if (property === 'type') return 'opaqueredirect';
+              if (property === 'status') return 0;
+              if (property === 'ok') return false;
+              if (property === 'headers') return new Headers();
+              const value = Reflect.get(target, property, target);
+              return typeof value === 'function' ? value.bind(target) : value;
+            },
+          });
+        }
+        return response;
       }
       const overridden = new Headers();
       for (const name of (response.headers.get('x-middleware-override-headers') ?? '').split(',').filter(Boolean)) {
@@ -154,6 +182,11 @@ export class FrontRuntime {
       }
       const response = await serverScope.run({ route: relative }, () => handler(request, { params: Promise.resolve(params) }));
       call.status = response.status;
+      for (const cookie of response.headers.getSetCookie()) {
+        const [name,value] = cookie.split(';')[0].split('=');
+        if (name === 'accessToken') this.accessToken = /Max-Age=0/i.test(cookie) ? undefined : decodeURIComponent(value);
+        if (name === 'refreshToken') this.refreshToken = /Max-Age=0/i.test(cookie) ? undefined : decodeURIComponent(value);
+      }
       return response;
     }
     call.status = 404;

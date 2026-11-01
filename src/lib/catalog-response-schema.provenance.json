@@ -1,0 +1,17 @@
+{
+  "source": "contracts/openapi.json",
+  "sourceSha256": "c35bb33275e2d9bfdb949bfd9accc07eb807dd1cda799acb4e66a8972fda04a3",
+  "schema": "ElearningCatalogResponse",
+  "retainedKeywords": [
+    "type",
+    "properties",
+    "required",
+    "items",
+    "anyOf",
+    "enum",
+    "minimum",
+    "maximum",
+    "format"
+  ],
+  "reason": "Only the bounded published catalog shape; annotations removed. No complete OpenAPI document in the browser."
+}

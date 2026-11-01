@@ -1,0 +1,7 @@
+{
+  "package": "@mairie360/bff-elearning-openapi",
+  "version": "1.1.0",
+  "commit": "95dccbab07beecd9880bb4c05bd41fd07b87a9aa",
+  "source": "https://raw.githubusercontent.com/mairie360/BFF_Elearning/95dccbab07beecd9880bb4c05bd41fd07b87a9aa/contracts/openapi.json",
+  "sha256": "c35bb33275e2d9bfdb949bfd9accc07eb807dd1cda799acb4e66a8972fda04a3"
+}
