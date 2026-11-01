@@ -5,6 +5,10 @@
 # the front on ${IMAGE_REF} and the RGAA runner of mairie360/CICD (cicd-repo/tests/a11y) instead of
 # ZAP. It plays the states of rgaa.yaml with a JWT signed by the engine and writes rgaa-report/.
 
+# Own project name: the default one (the folder) is shared with docker-compose.yml, whose
+# postgres-data / redis-data volumes `down -v` would otherwise delete.
+name: elearning-front-a11y
+
 volumes:
   postgres-data:
   redis-data:
@@ -150,7 +154,8 @@ services:
       core-api:
         condition: service_started
     command: >
-      sh -c 'until curl -fsS http://core-api:3000/health >/dev/null; do
+      sh -c 'i=0; until curl -fsS http://core-api:3000/health >/dev/null; do
+      i=$$((i+1)); if [ $$i -ge 90 ]; then echo "core-api not ready after 3 min"; exit 1; fi;
       echo "waiting for core-api..."; sleep 2; done; echo "core-api ready"'
     networks:
       - backend
@@ -195,7 +200,8 @@ services:
       elearning-api:
         condition: service_started
     command: >
-      sh -c 'until curl -fsS http://elearning-api:3006/health >/dev/null; do
+      sh -c 'i=0; until curl -fsS http://elearning-api:3006/health >/dev/null; do
+      i=$$((i+1)); if [ $$i -ge 90 ]; then echo "elearning-api not ready after 3 min"; exit 1; fi;
       echo "waiting for elearning-api..."; sleep 2; done; echo "elearning-api ready"'
     networks:
       - backend
@@ -232,7 +238,8 @@ services:
       bff-user:
         condition: service_started
     command: >
-      sh -c 'until curl -fsS http://bff-user:4000/health >/dev/null; do
+      sh -c 'i=0; until curl -fsS http://bff-user:4000/health >/dev/null; do
+      i=$$((i+1)); if [ $$i -ge 90 ]; then echo "bff-user not ready after 3 min"; exit 1; fi;
       echo "waiting for bff-user..."; sleep 2; done; echo "bff-user ready"'
     networks:
       - backend
@@ -273,7 +280,8 @@ services:
       bff-elearning:
         condition: service_started
     command: >
-      sh -c 'until curl -fsS http://bff-elearning:4006/health >/dev/null; do
+      sh -c 'i=0; until curl -fsS http://bff-elearning:4006/health >/dev/null; do
+      i=$$((i+1)); if [ $$i -ge 90 ]; then echo "bff-elearning not ready after 3 min"; exit 1; fi;
       echo "waiting for bff-elearning..."; sleep 2; done; echo "bff-elearning ready"'
     networks:
       - backend

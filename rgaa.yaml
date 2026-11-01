@@ -10,24 +10,16 @@ target: http://elearning-front:5006
 session:
   jwt_secret: b"secret"
 
-# bff-elearning 0.4.0 keeps the catalogue in memory per user id: a state that writes only changes
-# the catalogue of its own user, hence one user per writing state.
+# bff-elearning reads the catalogue from the database (the course of init-test.sql). A state that
+# writes (content completion) uses its own user: states run in parallel and must not see it.
 users:
-  # Seed user of init-test.sql (role User): the learner view.
+  # Seed user of init-test.sql (role User, course 1 not started): the learner view.
   agent:
     id: 2
     role: user
-  # init-accessibility.sql (role Admin): "Nouvelle formation", edit and delete controls.
-  admin:
-    id: 3
-    role: admin
-  # init-accessibility.sql (role User), only for course-content-completed.
+  # init-accessibility.sql (role User, course 1 in progress), only for course-content-completed.
   progress:
     id: 4
-    role: user
-  # init-accessibility.sql (role User), only for course-rated.
-  rater:
-    id: 5
     role: user
 
 criteria:
@@ -105,13 +97,13 @@ states:
     as: agent
     route: /
     steps:
-      - wait_for: { role: button, name: Ouvrir la formation Accueil des nouveaux agents }
+      - wait_for: { role: button, name: Ouvrir la formation Isolated stack onboarding }
   - id: catalog-empty
     description: Search without result (empty state)
     as: agent
     route: /
     steps:
-      - wait_for: { role: button, name: Ouvrir la formation Accueil des nouveaux agents }
+      - wait_for: { role: button, name: Ouvrir la formation Isolated stack onboarding }
       - fill: { selector: 'input[type="search"]', value: zzz introuvable }
       - wait_for: { text: Aucune formation ne correspond }
   - id: category-filter-open
@@ -129,55 +121,24 @@ states:
       - click: { role: button, name: Tous les statuts }
       - wait_for: { role: listbox }
   - id: course-details
-    description: Details dialog of a course in progress, opened from the URL (no start request)
+    description: Details dialog of a course, opened from the URL (no start request)
     as: agent
-    route: /?course=accueil-agents
+    route: /?course=1
     steps:
       - wait_for: { role: dialog }
-  - id: course-details-completed
-    description: Details dialog of a completed course, with its rating form
-    as: agent
-    route: /?course=relation-usager
-    steps:
-      - wait_for: { role: button, name: Donner la note 5 sur 5 }
   - id: course-missing
     description: Link to a course that does not exist any more
     as: agent
     route: /?course=999
     steps:
       - wait_for: { text: Cette formation n’est plus disponible }
-  - id: admin-catalog
-    description: Catalogue of an administrator (statistics, create, edit and delete controls)
-    as: admin
-    route: /
-    steps:
-      - wait_for: { role: button, name: Nouvelle formation }
-  - id: admin-course-create-form
-    description: Course creation dialog (stops before saving)
-    as: admin
-    route: /
-    steps:
-      - click: { role: button, name: Nouvelle formation }
-      - wait_for: { role: dialog }
-  - id: admin-course-edit-form
-    description: Course edition dialog (stops before saving)
-    as: admin
-    route: /
-    steps:
-      - click: { role: button, name: Modifier Accueil des nouveaux agents }
-      - wait_for: { role: dialog }
   - id: course-content-completed
     description: A content marked as done (progress updated in the dialog)
     as: progress
-    route: /?course=accueil-agents
+    route: /?course=1
     steps:
-      - click: { role: button, name: Marquer Verifier ses premiers acquis comme terminé }
-      - wait_for: { role: button, name: Verifier ses premiers acquis terminé }
-  - id: course-rated
-    description: Rating sent for a completed course (confirmation message)
-    as: rater
-    route: /?course=relation-usager
-    steps:
-      - click: { role: button, name: Donner la note 4 sur 5 }
-      - click: { role: button, name: Envoyer la note }
-      - wait_for: { text: "Merci, votre note a bien été enregistrée." }
+      - click: { role: button, name: Marquer welcome.pdf comme terminé }
+      - wait_for: { role: button, name: welcome.pdf terminé }
+# No state for the course rating nor the administration (create, edit, delete): the pinned
+# BFF_Elearning answers 501 to them, so the front hides those controls (pinnedBffCapabilities,
+# MAIR-513). Add the states back with the BFF release that serves them.
