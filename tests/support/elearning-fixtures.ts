@@ -5,12 +5,13 @@ export function content(id: string, overrides: Record<string, unknown> = {}) {
   return { id, title: `Contenu ${id}`, type: 'video', duration: '5 min', completed: false, required: true, ...overrides };
 }
 
-export function chapter(id: string, contents = [content(`${id}-video`)]) {
+export function chapter(id: string, contents = [content(`${id}1`)]) {
   return { id, title: `Chapitre ${id}`, duration: '10 min', completed: false, active: false, contents };
 }
 
-export function course(id = 'rgpd-collectivites', overrides: Record<string, unknown> = {}) {
-  const chapters = [chapter(`${id}-1`)];
+// Identifiers are the numeric E-learning API ids (contract patterns ^[1-9]\d{0,14}$ on courses, chapters and contents).
+export function course(id = '4', overrides: Record<string, unknown> = {}) {
+  const chapters = [chapter(`${id}1`)];
   return {
     id,
     title: 'RGPD et collectivités',
@@ -59,7 +60,7 @@ export function profileResponse(user = currentUser()) {
 }
 
 export function contentCompleteResponse() {
-  const chapters = [chapter('rgpd-collectivites-1', [content('rgpd-collectivites-1-video', { completed: true })])];
+  const chapters = [chapter('41', [content('411', { completed: true })])];
   return {
     progress: 100, completedRequiredContents: 1, totalRequiredContents: 1, completedChapters: 1, totalChapters: 1, completed: true,
     chapters, chapter: chapters[0], content: chapters[0].contents[0],
@@ -70,9 +71,17 @@ export function ratingResponse(rating = 4) {
   return { rating, ratingCount: 13, ratingDistribution: { 1: 0, 2: 0, 3: 1, 4: 4, 5: 8 }, submitted: true };
 }
 
-/** Format d'erreur commun du BFF E-learning (`ApiError`). */
-export function apiError(code: string, message: string, details: Record<string, unknown> = {}) {
-  return { code, message, details };
+/** Codes publiés par ErrorResponseErrorCode (enveloppe d'erreur commune des BFFs, MAIR-234). */
+const ERROR_CODES = new Set(['BAD_REQUEST', 'UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND', 'CONFLICT', 'PAYLOAD_TOO_LARGE', 'UNPROCESSABLE_ENTITY', 'TOO_MANY_REQUESTS', 'INTERNAL_ERROR', 'BAD_GATEWAY', 'SERVICE_UNAVAILABLE', 'GATEWAY_TIMEOUT']);
+/** Codes de scénario historiques des tests, ramenés au code publié correspondant. */
+const LEGACY_CODES: Record<string, string> = {
+  UNAVAILABLE: 'SERVICE_UNAVAILABLE', BFF_UNAVAILABLE: 'SERVICE_UNAVAILABLE', USER_SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+  REFUSED: 'FORBIDDEN', READ_REFUSED: 'FORBIDDEN', COURSE_ALREADY_EXISTS: 'CONFLICT', COURSE_NOT_FOUND: 'NOT_FOUND', NOT_IMPLEMENTED: 'INTERNAL_ERROR',
+};
+
+/** Format d'erreur commun des BFFs (`ErrorResponse` : { error: { code, message, details } }), le code dans l'enum publié. */
+export function apiError(code: string, message: string, details: Array<{ path?: string; message: string }> = []) {
+  return { error: { code: ERROR_CODES.has(code) ? code : (LEGACY_CODES[code] ?? 'INTERNAL_ERROR'), message, details } };
 }
 
 /** Jeton au format JWT : le middleware du front ne lit que `exp`, la signature est vérifiée par les BFFs. */

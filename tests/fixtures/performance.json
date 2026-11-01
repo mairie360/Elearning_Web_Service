@@ -1,0 +1,207 @@
+{
+  "module": "Elearning",
+  "readyText": "RGPD et collectivités",
+  "routes": {
+    "/elearning/catalog": {
+      "user": {
+        "id": "agent-42",
+        "name": "Alice Martin",
+        "initials": "AM",
+        "email": "alice.martin@mairie.test",
+        "role": "User",
+        "isAdmin": false
+      },
+      "notifications": {
+        "unreadCount": 0
+      },
+      "catalog": {
+        "title": "Formations",
+        "subtitle": "Catalogue des agents",
+        "certificationCount": 1,
+        "emptyLabel": "Aucune formation",
+        "statuses": [
+          {
+            "label": "Tous",
+            "value": "all"
+          },
+          {
+            "label": "En cours",
+            "value": "in-progress"
+          }
+        ],
+        "categories": [
+          {
+            "label": "Juridique",
+            "value": "Juridique"
+          }
+        ],
+        "stats": [
+          {
+            "label": "Formations",
+            "value": 1
+          }
+        ],
+        "courses": [
+          {
+            "id": "4",
+            "title": "RGPD et collectivités",
+            "description": "Protéger les données personnelles des administrés.",
+            "instructor": "DPO Mairie",
+            "rating": 4.5,
+            "duration": "1 h",
+            "chapters": 1,
+            "learners": 12,
+            "category": "Juridique",
+            "statusValue": "not-started",
+            "statusBadge": {
+              "label": "Non commencé",
+              "variant": "notStarted"
+            },
+            "progress": 0,
+            "ratingDistribution": {
+              "1": 0,
+              "2": 0,
+              "3": 1,
+              "4": 3,
+              "5": 8
+            },
+            "details": {
+              "title": "RGPD et collectivités",
+              "description": "Parcours RGPD",
+              "instructor": "DPO Mairie",
+              "progress": 0,
+              "completed": false,
+              "chapters": [
+                {
+                  "id": "41",
+                  "title": "Chapitre 41",
+                  "duration": "10 min",
+                  "completed": false,
+                  "active": false,
+                  "contents": [
+                    {
+                      "id": "411",
+                      "title": "Contenu 411",
+                      "type": "video",
+                      "duration": "5 min",
+                      "completed": false,
+                      "required": true
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "footer": {
+        "productName": "Mairie360",
+        "version": "1.0.0",
+        "links": [
+          {
+            "label": "Aide",
+            "href": "/aide"
+          }
+        ]
+      }
+    },
+    "/elearning/profile": {
+      "user": {
+        "id": "agent-42",
+        "name": "Alice Martin",
+        "initials": "AM",
+        "email": "alice.martin@mairie.test",
+        "role": "User",
+        "isAdmin": false
+      },
+      "footer": {
+        "productName": "Mairie360",
+        "version": "1.0.0",
+        "links": [
+          {
+            "label": "Aide",
+            "href": "/aide"
+          }
+        ]
+      }
+    },
+    "/api/user/me": {
+      "user": {
+        "id": 1,
+        "first_name": "Alice",
+        "last_name": "Recette",
+        "email": "alice@example.invalid",
+        "phone": null,
+        "status": "active"
+      },
+      "groups": [
+        {
+          "id": 1,
+          "name": "Mairie",
+          "owner_id": 1,
+          "description": null
+        }
+      ],
+      "roles": [
+        {
+          "id": 1,
+          "name": "Admin"
+        }
+      ]
+    },
+    "/api/auth/me": {
+      "user": {
+        "id": 1,
+        "first_name": "Alice",
+        "last_name": "Recette",
+        "email": "alice@example.invalid",
+        "phone": null,
+        "status": "active"
+      },
+      "groups": [
+        {
+          "id": 1,
+          "name": "Mairie",
+          "owner_id": 1,
+          "description": null
+        }
+      ],
+      "roles": [
+        {
+          "id": 1,
+          "name": "Admin"
+        }
+      ]
+    },
+    "/api/auth/session": {
+      "user": {
+        "id": 1,
+        "first_name": "Alice",
+        "last_name": "Recette",
+        "email": "alice@example.invalid",
+        "phone": null,
+        "status": "active"
+      },
+      "groups": [
+        {
+          "id": 1,
+          "name": "Mairie",
+          "owner_id": 1,
+          "description": null
+        }
+      ],
+      "roles": [
+        {
+          "id": 1,
+          "name": "Admin"
+        }
+      ]
+    },
+    "/api/auth/role": {
+      "isAdmin": true
+    },
+    "/api/auth/current-user": {
+      "id": "1"
+    }
+  }
+}

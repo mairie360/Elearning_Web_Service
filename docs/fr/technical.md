@@ -1,8 +1,20 @@
 # Elearning_Web_Service — Documentation technique
 
+## Périmètre des tests du lecteur — MAIR-350
+
+Le harnais HTTP/HTML collecte récursivement les éléments dans les tableaux
+enfants imbriqués (`[null, chapters.map(...)]` inclus), sans recopier les tableaux
+DTO ordinaires. Deux régressions protègent l'actionnement réel des contrôles et
+l'identité des DTO. Cinq tests consommateur couvrent les données absentes et la
+sélection réelle d'un chapitre, puis sa progression officielle conservée après
+GET refusé. Ils ne prouvent ni rendu navigateur, téléchargement, autorisation
+déployée ni persistance. Sources produit, SDK `0.4.0`, lock des dépendances et
+workflows de sécurité/publication inchangés.
+
 ## Pied de page partagé — MAIR-180
 
-Le paquet est épinglé à `@mairie360/lib-components@0.6.5`, publié par
+Le paquet est maintenant épinglé à `@mairie360/lib-components@0.6.10` et conserve
+le changement de pied de page livré initialement en `0.6.5` par
 [lib-components #388](https://github.com/mairie360/lib-components/pull/388).
 L’AppShell affiche désormais le copyright dans la sidebar sombre, hors de la
 navigation défilante. Le tiroir mobile conserve sa gestion du focus. Aucun bandeau
@@ -15,22 +27,26 @@ Le suivi de l’adoption reste dans [l’issue partagée #387](https://github.co
 
 Les actions tierces checkout, setup-node et auto-approbation Renovate utilisent
 les SHA complets de leurs commits officiels. Le workflow partagé reste en
-v3.1.1 et ne reçoit que les références CODECOV_TOKEN et N8N_WEBHOOK_SECRET qu’il
+v4.0.3 et ne reçoit que les références CODECOV_TOKEN et N8N_WEBHOOK_SECRET qu’il
 déclare ; aucune valeur de secret n’est lue ni stockée. Permissions existantes,
 règles et verdicts Semgrep inchangés.
 
-Les deux workflows CI utilisent Node 24. Les tests exigent npm >=11.10, qui
-prend en charge `min-release-age=7`, sans exclusion de paquet. Cette fenêtre de
+Les deux workflows CI épinglent Node 24.21.0. Les tests exigent npm >=11.10, qui
+prend en charge `min-release-age=7`, avec la seule exclusion interne précédemment
+autorisée pour `@mairie360/lib-components`. Cette fenêtre de
 sept jours concerne les **nouvelles résolutions de dépendances**, pas une analyse
 ou réécriture du lockfile existant utilisé par `npm ci`. Voir la [documentation npm](https://docs.npmjs.com/cli/v11/using-npm/config/#min-release-age).
 Utiliser le même outillage Node/npm pour les mises à jour et tests locaux.
 `tests/ci-policy.test.cjs` vérifie les SHA des actions, les secrets explicitement
 transmis, la fenêtre d’âge et la version npm exécutant réellement les tests.
 
-Les versions de construction/runtime Docker et leur installation verrouillée
-restent inchangées ; aucune nouvelle variable runtime, aucun nouveau secret,
-contrat API/BFF ou changement du CICD partagé. Ces vérifications ne constituent
-pas une recette d’environnement déployé.
+MAIR-436 épingle les images Docker de production/développement au même digest
+officiel Node 24.21.0 Bookworm-slim et installe le lockfile avec un secret BuildKit
+éphémère obligatoire. La fusion du workflow actualisé indépendamment sur main
+conserve cette version exacte et les deux scanners requis réellement bloquants.
+Aucun audit, variable runtime, contrat API/BFF ni source du CICD partagé n’est
+modifié par cette fusion. Ces vérifications ne constituent pas une recette
+d’environnement déployé.
 
 ## Structure applicative partagée — MAIR-180
 
@@ -82,7 +98,7 @@ Le proxy générique lit le contrat OpenAPI versionné pour autoriser chemins et
 
 Les sources et limites suivantes concernent le BFF associé, dont dépend la sauvegarde des données affichées.
 
-Le catalogue initial est défini dans `elearning_helpers.ts`. Les formations modifiées, progressions, notes et surcharges de profil sont gérées en mémoire, notamment dans des Map indexées par utilisateur. BFF User fournit l’identité. Le client Elearning API et les diagnostics présents ne rendent pas ce stockage persistant.
+Depuis MAIR-401, le BFF lit le service E-learning : le catalogue correspond aux inscriptions de l’agent, les démarrages et la progression sont persistés par chapitre. La notation, l’administration des formations et `completed: false` répondent 501 (aucun service ne les persiste). `src/features/elearning/bffCapabilities.ts` (MAIR-513) liste ce que le BFF épinglé sert : `ElearningModule` ne câble les callbacks de notation et d’administration du catalogue partagé que si la capacité est active (le composant masque un contrôle sans callback), refuse un décochage localement et affiche une note aux administrateurs. `requestBff` traduit tout 501 en `NOT_IMPLEMENTED_MESSAGE`.
 
 Un redémarrage réinitialise les données en mémoire; plusieurs instances ne partagent pas cet état. La validation du contrat ou un succès HTTP ne prouve pas un enregistrement durable dans Elearning API.
 
@@ -149,14 +165,14 @@ Ces chemins de données sont exposés à la même origine par le proxy; les page
 | --- | --- | --- | --- |
 | GET | `/health` | — | 200 |
 | GET | `/check_apis` | — | 200, 502 |
-| POST | `/elearning/admin/courses` | application/json | 201, 400, 401, 403, 409 |
-| PATCH | `/elearning/admin/courses/{courseId}` | application/json | 200, 400, 401, 403, 404 |
-| DELETE | `/elearning/admin/courses/{courseId}` | — | 200, 401, 403, 404 |
+| POST | `/elearning/admin/courses` | application/json | 201, 400, 401, 403, 409, 501 (aujourd’hui : toujours 501, non proposé) |
+| PATCH | `/elearning/admin/courses/{courseId}` | application/json | 200, 400, 401, 403, 404, 501 |
+| DELETE | `/elearning/admin/courses/{courseId}` | — | 200, 401, 403, 404, 501 |
 | GET | `/elearning/catalog` | — | 200, 400, 500 |
-| POST | `/elearning/courses/{courseId}/contents/{contentId}/complete` | application/json | 200, 400, 404, 422, 500 |
+| POST | `/elearning/courses/{courseId}/contents/{contentId}/complete` | application/json | 200, 400, 404, 422, 500, 501 (`completed: false`) |
 | GET | `/elearning/profile` | — | 200, 500 |
 | PATCH | `/elearning/profile` | application/json | 200, 400, 500 |
-| POST | `/elearning/courses/{courseId}/rating` | application/json | 200, 400, 404, 500 |
+| POST | `/elearning/courses/{courseId}/rating` | application/json | 200, 400, 404, 500, 501 (aujourd’hui : toujours 501, non proposé) |
 | POST | `/elearning/courses/{courseId}/start` | application/json | 200, 400, 404, 422, 500 |
 
 ### Pages
@@ -170,7 +186,17 @@ Ces chemins de données sont exposés à la même origine par le proxy; les page
 
 ## Session, permissions et erreurs
 
-Le front ne joint qu’un service, BFF_Elearning, qui résout la session (auprès de BFF User) pour chaque route `/elearning/*`; l’utilisateur courant provient de ses réponses (`user`). Sur un 401, ou à la déconnexion, le front vide son stockage local et navigue vers `/logout`: le contrat publié du BFF ne propose pas de route de déconnexion (voir `BFF.md`), la session n’est donc pas révoquée côté serveur avant son expiration. Le proxy générique utilise le Bearer explicite ou, en son absence, le cookie `accessToken`. Les permissions métier restent celles du BFF et de ses sources.
+Le front ne joint qu’un service, BFF_Elearning, qui résout la session (auprès de BFF User) pour chaque route `/elearning/*`; l’utilisateur courant provient de ses réponses (`user`). Sur un 401, ou à la déconnexion, le front retire seulement les clés de JWT principale/héritée connues et navigue vers `/logout`, sans effacer les données navigateur sans rapport. Le contrat publié du BFF ne propose pas de route de déconnexion (voir `BFF.md`), la session n’est donc pas révoquée côté serveur avant son expiration. Les appels ordinaires `requestBff` ne lisent ni ne migrent les JWT localStorage (MAIR-410). Le proxy générique inchangé utilise le Bearer explicitement fourni ou, en son absence, le cookie `accessToken` courant. Ni cookie absent ni refus réel du service ne sont convertis en succès. Les permissions métier restent celles du BFF et de ses sources. La déconnexion en GET reste inchangée.
+
+`requestBff` utilise `redirect: "manual"`. Un `opaqueredirect` est traité avant
+statut/en-têtes/corps : recharger une fois le document courant par objet Location,
+jamais l'endpoint de données. Le middleware existant construit Login et le chemin/
+query public de retour. L'appel initial rejette une erreur307 typée, sans retry
+ni replay. AbortSignal est vérifié avant/après fetch et lecture du corps ; le
+vrai401 reste transmis au handler logout catalogue,400/403/503 restent typés.
+Le runtime de tests simule l'opacité seulement en mode manuel face au vrai
+middleware ; échecs CORS en mode follow et allowlist du contrat conservés.
+Aucune certification de l'authentification serveur.
 
 Le proxy générique répond 400 pour un chemin invalide, 404 pour un chemin hors contrat, 405 pour une méthode interdite et 502 si le service est injoignable ou dépasse le délai. Les réponses amont sont conservées, y compris les corps vides 204/205/304.
 
@@ -178,11 +204,11 @@ Toutes les réponses portent `X-Frame-Options: DENY`, `X-Content-Type-Options: n
 
 ## Synchronisation et vérifications
 
-Le front ne consomme que des versions publiées `X.Y.Z` de BFF_Elearning (jamais une branche ni une version `0.0.0-dev`/`staging`), actuellement **0.4.0**. Pour passer à une nouvelle release, monter le paquet de contrat, copier le contrat du même tag puis régénérer les types:
+Le front ne consomme que des paquets publiés de BFF_Elearning : une release `X.Y.Z`, ou, tant qu’aucune release n’est coupée, le paquet `0.0.0-dev.<sha40>` publié par la CICD pour le commit courant de son `main` (MAIR-509), ou, une fois ce commit livré en staging, le paquet `0.0.0-staging.<sha40>` du même commit, préféré lors d’une release staging pour la lisibilité (MAIR-600 ; jamais `0.0.0-staging.<sha court>` ni une plage ; les stacks démarrent alors l’image `staging-<sha7>` au lieu de `dev-<sha7>`), actuellement le paquet staging du commit `55dfd4b`. Pour passer à une nouvelle version, monter le paquet de contrat, copier le contrat du même commit puis régénérer les types:
 
 ```bash
-npm install --save-dev --save-exact @mairie360/bff-elearning-openapi@X.Y.Z
-git -C ../../BFFs/BFF_Elearning show vX.Y.Z:contracts/openapi.json > contracts/openapi.json
+npm install --save-exact @mairie360/bff-elearning-openapi@<version>
+git -C ../../BFFs/BFF_Elearning show <vX.Y.Z ou sha40>:contracts/openapi.json > contracts/openapi.json
 npm run contracts:generate
 npm run contracts:check
 npm test
@@ -190,15 +216,15 @@ npm run lint
 npm run build
 ```
 
-`contracts:generate` régénère `src/contracts/bff.d.ts` depuis la copie versionnée; `contracts:check` vérifie ces types et, avec `BFF_CONTRACT_DIR`, compare au contrat d’un checkout BFF (qui doit alors être sur le tag publié). Les stacks isolées utilisent l’image publiée `ghcr.io/mairie360/bff-elearning:0.4.0` (`BFF_ELEARNING_IMAGE`). `test:contracts` exécute tous les tests Node (`npm test` fait de même avec la couverture, minimum 60 % sur lignes, branches et fonctions).
+`contracts:generate` régénère `src/contracts/bff.d.ts` depuis la copie versionnée; `contracts:check` vérifie ces types et, avec `BFF_CONTRACT_DIR`, compare au contrat d’un checkout BFF (qui doit alors être sur le tag publié). Les stacks isolées utilisent l’image publiée `ghcr.io/mairie360/bff-elearning:staging-55dfd4b` (construite à partir du même commit que le paquet épinglé ; `X.Y.Z` pour une release) (`BFF_ELEARNING_IMAGE`). `test:contracts` exécute tous les tests Node (`npm test` fait de même avec la couverture, minimum 60 % sur lignes, branches et fonctions).
 
 ### Tests unitaires pilotés par les contrats
 
 Le navigateur n’atteint BFF E-learning que par [src/lib/elearning-api.ts](../../src/lib/elearning-api.ts): chemins, méthodes, paramètres, corps et réponses sont typés depuis `src/contracts/bff.d.ts`, donc une opération absente du contrat ne compile pas. La logique du catalogue et du profil vit dans `src/features/elearning/catalogActions.ts` et `profileActions.ts`, que les composants React se contentent de brancher sur leur état.
 
-- `tests/network-boundary.test.cjs` analyse `src/` (AST TypeScript): `fetch` n’est autorisé que dans `bff-client.ts` (chemins construits par `elearning-api.ts`) et `bff-proxy.ts`, dont l’unique cible est `configuredBffUrl()`; aucun autre client HTTP ni API réseau.
+- `tests/network-boundary.test.cjs` analyse `src/` (AST TypeScript): `fetch` et `axios` ne sont autorisés que dans `bff-client.ts` (les chemins viennent du client généré appelé par `elearning-api.ts`, qui ne contient aucun chemin littéral) et `fetch` dans `bff-proxy.ts`, dont l’unique cible est `configuredBffUrl()`; aucun autre client HTTP ni API réseau.
 - `tests/elearning.bff-mocks.test.cjs` exécute le vrai code de bout en bout: `fetch` navigateur → vrai middleware → route handler choisi comme par l’App Router → proxy → BFF E-learning simulé en HTTP, seul service joignable. Le mock est piloté par le paquet publié `@mairie360/bff-elearning-openapi` (sortie orval): il refuse chemins, méthodes, paramètres et corps absents du contrat et valide ses réponses de succès; orval ne typant pas les erreurs, les réponses d’erreur passent par `errorReply`, qui valide le corps contre `ApiError`. Tout appel du navigateur vers une autre origine, ou du serveur vers un autre service, fait échouer le test, et chaque opération consommée doit être rejouée.
-- `tests/bff-contracts.test.cjs` vérifie que le paquet est une version `X.Y.Z` épinglée, que `contracts/openapi.json` déclare exactement ses opérations, que `elearning-api.ts` appelle les opérations consommées, que le proxy catch-all est le seul route handler et que les fixtures sont conformes.
+- `tests/bff-contracts.test.cjs` vérifie que le paquet est une version exacte acceptée (`X.Y.Z`, `0.0.0-dev.<sha40>` ou `0.0.0-staging.<sha40>`), que `contracts/openapi.json` déclare exactement ses opérations, que `elearning-api.ts` appelle les opérations consommées via le client généré, que le proxy catch-all est le seul route handler et que les fixtures sont conformes.
 
 Les utilitaires `tests/support/openapi-contract.ts`, `contract-mock-server.ts` et `orval-contract.ts` sont copiés à l’identique depuis les BFFs (`BFFs/BFF_Elearning/tests/support`); garder les copies identiques.
 
@@ -206,11 +232,11 @@ Le générateur de types est fixé à `openapi-typescript@7.10.1` dans `scripts/
 
 ## CI/CD et exécution Docker
 
-Le job `contracts.yml` utilise Node.js 24 et checkout/setup-node figés sur leurs commits v7. Il s’exécute sur push, pull request et lancement manuel ; il installe avec `npm ci`, contrôle les contrats et lance les tests dédiés.
+Le job `contracts.yml` utilise Node.js 24.21.0 et checkout/setup-node figés sur leurs commits v7. Il s’exécute sur pull request, lancement manuel et push vers `main` uniquement (MAIR-436) ; il installe avec `npm ci`, contrôle les contrats et lance les tests dédiés.
 
-`cicd.yml` appelle `mairie360/CICD/.github/workflows/frontend-cicd.yml@v3.1.1`, avec `cicd_version: v3.1.1` et `node_version: "24"`. Seuls CODECOV_TOKEN et N8N_WEBHOOK_SECRET sont transmis explicitement. Les étapes réutilisables et les environnements GitHub déterminent les contrôles, publications et déploiements effectifs.
+`cicd.yml` appelle `mairie360/CICD/.github/workflows/frontend-cicd.yml` épinglé sur un commit CICD, avec le même `cicd_version` et `node_version: "24.21.0"`. Il s’exécute sur les pull requests, au déclenchement manuel et sur les push vers `main` uniquement ; son jeton est en lecture seule par défaut et seul le job qui appelle le pipeline de release reçoit les droits d’écriture `contents`, `packages` et `id-token` (MAIR-436, `tests/workflow-permissions.test.cjs`). Seuls CODECOV_TOKEN et N8N_WEBHOOK_SECRET sont transmis explicitement. Le statut requis historique exécute réellement Semgrep et Gitleaks en mode bloquant. Les étapes réutilisables et les environnements GitHub déterminent les contrôles, publications et déploiements effectifs.
 
-Le Dockerfile utilise par défaut `NODE_VERSION=23.10.0` et le build Next.js `standalone`; la commande de l’image est `["node", "server.js"]`. Le port de l’image et les mappings Compose peuvent différer du port local proposé plus haut.
+Le Dockerfile utilise par défaut `NODE_VERSION=24.21.0`, le digest officiel Bookworm-slim et le build Next.js `standalone` avec un runtime non-root ; la commande de l’image est `["node", "server.js"]`. L’installation verrouillée exige un secret BuildKit éphémère, pas un argument de build contenant le jeton. Le port de l’image et les mappings Compose peuvent différer du port local proposé plus haut. Cette politique vérifiée dans les sources ne certifie pas une image construite ou déployée.
 
 Avant un lancement Docker, vérifier les variables de service, les secrets de build et les réseaux dans les fichiers du dépôt. Une CI verte valide ses jobs; elle ne prouve pas la disponibilité des services métier dans un environnement distant.
 
@@ -223,7 +249,7 @@ En cas d’erreur de proxy, comparer la route et la méthode à l’inventaire, 
 ## Repères dans le dépôt
 
 - [src/app/page.tsx](../../src/app/page.tsx)
-- [src/features/elearning/ElearningModule.tsx](../../src/features/elearning/ElearningModule.tsx)
+- [src/components/ElearningModule/ElearningModule.tsx](../../src/components/ElearningModule/ElearningModule.tsx)
 - [src/middleware.ts](../../src/middleware.ts)
 - [src/lib/bff-proxy.ts](../../src/lib/bff-proxy.ts)
 - [src/app/[...path]/route.ts](../../src/app/%5B...path%5D/route.ts)
@@ -244,3 +270,5 @@ En cas d’erreur de proxy, comparer la route et la méthode à l’inventaire, 
 - [docker-compose.yml](../../docker-compose.yml)
 
 Compléments historiques: [BFF.md](../../BFF.md), [BACKEND.md](../../BACKEND.md). Les besoins proposés doivent rester distincts du comportement effectivement implémenté.
+
+Les contrôles de présentation de Formation historique montent la vraie page et ses hooks React avec UI publiée 0.6.12, middleware/routes frontend et fixtures catalogue contrôlées par le contrat E-learning 0.4.0. Ils vérifient typographie, cartes, navigation/tiroir et lecteur de chapitres ouvert par le lien direct existant puis fermé par sa commande. Les politiques analysées conservent le lecteur mobile et les breakpoints catalogue. JSDOM laisse la variable d’ombre non résolue : son lien et les valeurs du token racine sont contrôlés séparément de l’ombre peinte native. Ces tests ne démarrent pas de cours et ne changent pas la progression. JSDOM 30.1.1 reste réservé aux tests ; il ne compile pas Tailwind, ne mesure pas défilement/géométrie modale et ne certifie ni auth/persistance déployées ni RGAA. Les recettes natives et tests fonctionnels de démarrage/progression restent distincts.
