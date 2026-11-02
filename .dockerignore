@@ -23,4 +23,5 @@ init-accessibility.sql
 rgaa.yaml
 rgaa-report
 .rgaa-ai-cache
+.rgaa-run.lock
 cicd-repo
