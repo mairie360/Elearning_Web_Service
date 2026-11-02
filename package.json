@@ -17,7 +17,8 @@
     "test:node": "node scripts/test-node-coverage.cjs",
     "test:bundle": "node --test tests/bundle/*.test.cjs",
     "test:components": "vitest run",
-    "postinstall": "node vendor/verify-security-backports.mjs --installed --audit-upstream",
+    "postinstall": "node vendor/verify-security-backports.mjs --installed",
+    "audit:upstream": "node vendor/verify-security-backports.mjs --audit-upstream",
     "prebuild": "node vendor/verify-security-backports.mjs --installed",
     "pretest": "node vendor/verify-security-backports.mjs --installed"
   },
