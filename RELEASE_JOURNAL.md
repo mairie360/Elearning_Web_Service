@@ -1,59 +1,49 @@
 # Journal des releases — Elearning_Web_Service
 
-<!-- release-journal-state {"dev": "eab212c3a6650b63c2545ea27103aaf42385c348", "prod": "01faf1c8a991cbd6b64478c8b17e8e79a5a27e0b", "prod_tag": "v0.4.0", "staging": "01faf1c8a991cbd6b64478c8b17e8e79a5a27e0b", "updated": {"dev": "2026-11-02 18:21 UTC", "prod": "2026-10-21 11:18 UTC", "staging": "2026-10-21 11:16 UTC"}} -->
+<!-- release-journal-state {"dev": "718ab46e1a585fd1072c75c5ac93741bab04e154", "prod": "01faf1c8a991cbd6b64478c8b17e8e79a5a27e0b", "prod_tag": "v0.4.0", "staging": "01faf1c8a991cbd6b64478c8b17e8e79a5a27e0b", "updated": {"dev": "2026-11-02 19:53 UTC", "prod": "2026-10-21 11:18 UTC", "staging": "2026-10-21 11:16 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v0.4.0 | `01faf1c` | 2026-10-21 11:18 UTC |
 | staging | — | `01faf1c` | 2026-10-21 11:16 UTC |
-| dev | — | `eab212c` | 2026-11-02 18:21 UTC |
+| dev | — | `718ab46` | 2026-11-02 19:53 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v0.4.0)
 
-#### Nouveautés
-- Formulaire de formation et catalogue reconstruits sur `@mairie360/lib-components` 1.0.3 (MAIR-608) : champs TextField/TextArea et sélecteur de la lib, boutons Annuler, Enregistrer et Créer, confirmation par Toast, chargement en cartes Skeleton, états vides en DataState, bouton Réessayer en cas d'erreur, d'après la description de la PR. (MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
-- Barre latérale, barre supérieure et pied de page fournis par `AccessibleShell` de la lib, la préférence de barre latérale étant gérée par la lib. (MAIR-578, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
-
 #### Changements de comportement
-- Le chemin `@mairie360/lib-components/elearning` n'existe plus : les composants du catalogue vivent dans `src/components/ElearningModule/`. Tout import de l'ancien chemin ne se résout plus. (MAIR-607/608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
-- `src/features/elearning/ElearningModule.tsx` est déplacé vers `src/components/ElearningModule/ElearningModule.tsx`, et `src/app` importe `@/components/ElearningModule`. (MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
-- Validation Zod : les collections sont bornées par le backport de sécurité embarqué dans `vendor/zod`. Les bornes exactes ne sont pas visibles dans le diff fourni, qui est tronqué. (sans clé Jira, [#248](https://github.com/mairie360/Elearning_Web_Service/pull/248))
-- `npm install` lance désormais `postinstall` (`verify-security-backports --installed --audit-upstream`), et `prebuild` comme `pretest` lancent la vérification des backports : un écart fait échouer l'installation, le build ou les tests. (sans clé Jira, [#248](https://github.com/mairie360/Elearning_Web_Service/pull/248))
-- `npm test` lance aussi Vitest (`test:components`) sur `src/**/*.test.tsx`. (MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
+- `postinstall`, `prebuild` et `pretest` ne interrogent plus le service d'avis npm : une panne de ce service ou un nouvel avis ne font plus échouer `npm ci`, le build ni les tests. La vérification distante passe dans le nouveau script `npm run audit:upstream`, lancé chaque jour par `.github/workflows/upstream-advisories.yml`. (MAIR-744, [#259](https://github.com/mairie360/Elearning_Web_Service/pull/259))
+- Le shell (barre latérale, barre supérieure, pied de page) vient désormais de `@mairie360/lib-components/shell`. Les fichiers locaux `accessible-shell.tsx`, `desktop-navigation.tsx` et `sidebar-preference.ts`, ainsi que `globals.css`, sont supprimés. (MAIR-578 / MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
+- Le catalogue e-learning passe à `@mairie360/lib-components` 1.0.3 : les états vides utilisent `DataState` et les cartes en chargement affichent des `Skeleton`, animés seulement si `prefers-reduced-motion` n'est pas activé. Le composant `ElearningCatalog` quitte la lib et vit désormais dans le front. (MAIR-607 / MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
+- La validation Zod des collections est bornée : `zod` est résolu sur la copie vendorisée `vendor/zod` (backport de zod 3). (fa791a3, [#248](https://github.com/mairie360/Elearning_Web_Service/pull/248))
 
 #### Corrections
-- `follow-redirects`, tiré par axios : avant, les versions 1.16.0 à 1.16.1 pouvaient transmettre des identifiants personnalisés lors de redirections inter-origines (GHSA-mrwp-f3q8-3g9p) et `npm audit --omit=dev` échouait. Maintenant le lock résout 1.16.2. (sans clé Jira, [#256](https://github.com/mairie360/Elearning_Web_Service/pull/256))
-- Next.js : `next` et `eslint-config-next` passent de 16.3.8 à 16.4.2 pour le correctif GHSA-673q-mjm6-r5xr. Node passe de 24.21.0 à 24.22.1 dans les Dockerfile et la CI, pour le bulletin de sécurité Node d'octobre 2026. (sans clé Jira, [#247](https://github.com/mairie360/Elearning_Web_Service/pull/247))
+- Modales du catalogue : le focus est corrigé grâce à la lib 1.0.1 (mairie360/lib-components#471), référencée dans la PR MAIR-608. (MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
 
 #### Technique
-- Pipeline d'accessibilité RGAA : `accessibility_test.sh`, `docker-compose-accessibility.yml`, `rgaa.yaml` et `init-accessibility.sql`, moteur mairie360/CICD épinglé en v5.1.0, verrou `.rgaa-run.lock`, rapport vidé à chaque run et sondes de readiness bornées. (MAIR-316, MAIR-768, [#168](https://github.com/mairie360/Elearning_Web_Service/pull/168) et [#254](https://github.com/mairie360/Elearning_Web_Service/pull/254))
-- Mises à jour CI et dépendances : CICD passe de v4.4.3 à v4.5.0 ([#245](https://github.com/mairie360/Elearning_Web_Service/pull/245)) puis à v4.12.0 ([#250](https://github.com/mairie360/Elearning_Web_Service/pull/250)) ; jsdom 30.1.3 et playwright-core 1.64.1 ([#246](https://github.com/mairie360/Elearning_Web_Service/pull/246)).
-- Checklist RGPD des PR (`gdpr-pr.yml`, appel de mairie360/CICD v4.12.2) et règle Renovate associée. (MAIR-295, [#175](https://github.com/mairie360/Elearning_Web_Service/pull/175))
-- Tests et outillage : nouveaux tests de politique CI, de backport Zod et de provenance de la baseline de performance (`scripts/prepare-performance-baseline.cjs`, `productionBrowserSourceMaps` activé seulement dans la CI avec `MAIRIE360_BUNDLE_PROVENANCE`), et tests Vitest co-localisés. ([#248](https://github.com/mairie360/Elearning_Web_Service/pull/248), [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
+- Stack d'accessibilité RGAA : `accessibility_test.sh`, `docker-compose-accessibility.yml`, `rgaa.yaml`, `init-accessibility.sql` et le moteur `mairie360/CICD` épinglé en v5.1.0 ; garde-fous de verrou et de rapport vide ajoutés. ([#168](https://github.com/mairie360/Elearning_Web_Service/pull/168), [#254](https://github.com/mairie360/Elearning_Web_Service/pull/254))
+- Workflow `gdpr-pr.yml` (checklist RGPD sur les PR) et règle Renovate associée. ([#175](https://github.com/mairie360/Elearning_Web_Service/pull/175))
+- Mises à jour : CICD v4.5.0 puis v4.12.0 (Renovate, [#245](https://github.com/mairie360/Elearning_Web_Service/pull/245), [#250](https://github.com/mairie360/Elearning_Web_Service/pull/250)) ; Node 24.22.1 avec digests d'image ; Next 16.4.2 et `eslint-config-next` 16.4.2 ([#247](https://github.com/mairie360/Elearning_Web_Service/pull/247)) ; `follow-redirects` 1.16.2 pour GHSA-mrwp-f3q8-3g9p ([#256](https://github.com/mairie360/Elearning_Web_Service/pull/256)) ; `jsdom` 30.1.3 et `playwright-core` 1.64.1 ([#246](https://github.com/mairie360/Elearning_Web_Service/pull/246)).
+- Ajout de Vitest, Testing Library et jest-axe ; `npm test` lance désormais aussi `npm run test:components` (vitest). ([#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
+- Pipeline de performance : provenance du lock de la baseline et source maps seulement dans la mesure CI. ([#248](https://github.com/mairie360/Elearning_Web_Service/pull/248))
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
-#### Nouveautés
-- Formulaire de formation et catalogue reconstruits sur `@mairie360/lib-components` 1.0.3 (MAIR-608) : champs TextField/TextArea et sélecteur de la lib, boutons Annuler, Enregistrer et Créer, confirmation par Toast, chargement en cartes Skeleton, états vides en DataState, bouton Réessayer en cas d'erreur, d'après la description de la PR. (MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
-- Barre latérale, barre supérieure et pied de page fournis par `AccessibleShell` de la lib, la préférence de barre latérale étant gérée par la lib. (MAIR-578, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
-
 #### Changements de comportement
-- Le chemin `@mairie360/lib-components/elearning` n'existe plus : les composants du catalogue vivent dans `src/components/ElearningModule/`. Tout import de l'ancien chemin ne se résout plus. (MAIR-607/608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
-- `src/features/elearning/ElearningModule.tsx` est déplacé vers `src/components/ElearningModule/ElearningModule.tsx`, et `src/app` importe `@/components/ElearningModule`. (MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
-- Validation Zod : les collections sont bornées par le backport de sécurité embarqué dans `vendor/zod`. Les bornes exactes ne sont pas visibles dans le diff fourni, qui est tronqué. (sans clé Jira, [#248](https://github.com/mairie360/Elearning_Web_Service/pull/248))
-- `npm install` lance désormais `postinstall` (`verify-security-backports --installed --audit-upstream`), et `prebuild` comme `pretest` lancent la vérification des backports : un écart fait échouer l'installation, le build ou les tests. (sans clé Jira, [#248](https://github.com/mairie360/Elearning_Web_Service/pull/248))
-- `npm test` lance aussi Vitest (`test:components`) sur `src/**/*.test.tsx`. (MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
+- `postinstall`, `prebuild` et `pretest` ne interrogent plus le service d'avis npm : une panne de ce service ou un nouvel avis ne font plus échouer `npm ci`, le build ni les tests. La vérification distante passe dans le nouveau script `npm run audit:upstream`, lancé chaque jour par `.github/workflows/upstream-advisories.yml`. (MAIR-744, [#259](https://github.com/mairie360/Elearning_Web_Service/pull/259))
+- Le shell (barre latérale, barre supérieure, pied de page) vient désormais de `@mairie360/lib-components/shell`. Les fichiers locaux `accessible-shell.tsx`, `desktop-navigation.tsx` et `sidebar-preference.ts`, ainsi que `globals.css`, sont supprimés. (MAIR-578 / MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
+- Le catalogue e-learning passe à `@mairie360/lib-components` 1.0.3 : les états vides utilisent `DataState` et les cartes en chargement affichent des `Skeleton`, animés seulement si `prefers-reduced-motion` n'est pas activé. Le composant `ElearningCatalog` quitte la lib et vit désormais dans le front. (MAIR-607 / MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
+- La validation Zod des collections est bornée : `zod` est résolu sur la copie vendorisée `vendor/zod` (backport de zod 3). (fa791a3, [#248](https://github.com/mairie360/Elearning_Web_Service/pull/248))
 
 #### Corrections
-- `follow-redirects`, tiré par axios : avant, les versions 1.16.0 à 1.16.1 pouvaient transmettre des identifiants personnalisés lors de redirections inter-origines (GHSA-mrwp-f3q8-3g9p) et `npm audit --omit=dev` échouait. Maintenant le lock résout 1.16.2. (sans clé Jira, [#256](https://github.com/mairie360/Elearning_Web_Service/pull/256))
-- Next.js : `next` et `eslint-config-next` passent de 16.3.8 à 16.4.2 pour le correctif GHSA-673q-mjm6-r5xr. Node passe de 24.21.0 à 24.22.1 dans les Dockerfile et la CI, pour le bulletin de sécurité Node d'octobre 2026. (sans clé Jira, [#247](https://github.com/mairie360/Elearning_Web_Service/pull/247))
+- Modales du catalogue : le focus est corrigé grâce à la lib 1.0.1 (mairie360/lib-components#471), référencée dans la PR MAIR-608. (MAIR-608, [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
 
 #### Technique
-- Pipeline d'accessibilité RGAA : `accessibility_test.sh`, `docker-compose-accessibility.yml`, `rgaa.yaml` et `init-accessibility.sql`, moteur mairie360/CICD épinglé en v5.1.0, verrou `.rgaa-run.lock`, rapport vidé à chaque run et sondes de readiness bornées. (MAIR-316, MAIR-768, [#168](https://github.com/mairie360/Elearning_Web_Service/pull/168) et [#254](https://github.com/mairie360/Elearning_Web_Service/pull/254))
-- Mises à jour CI et dépendances : CICD passe de v4.4.3 à v4.5.0 ([#245](https://github.com/mairie360/Elearning_Web_Service/pull/245)) puis à v4.12.0 ([#250](https://github.com/mairie360/Elearning_Web_Service/pull/250)) ; jsdom 30.1.3 et playwright-core 1.64.1 ([#246](https://github.com/mairie360/Elearning_Web_Service/pull/246)).
-- Checklist RGPD des PR (`gdpr-pr.yml`, appel de mairie360/CICD v4.12.2) et règle Renovate associée. (MAIR-295, [#175](https://github.com/mairie360/Elearning_Web_Service/pull/175))
-- Tests et outillage : nouveaux tests de politique CI, de backport Zod et de provenance de la baseline de performance (`scripts/prepare-performance-baseline.cjs`, `productionBrowserSourceMaps` activé seulement dans la CI avec `MAIRIE360_BUNDLE_PROVENANCE`), et tests Vitest co-localisés. ([#248](https://github.com/mairie360/Elearning_Web_Service/pull/248), [#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
+- Stack d'accessibilité RGAA : `accessibility_test.sh`, `docker-compose-accessibility.yml`, `rgaa.yaml`, `init-accessibility.sql` et le moteur `mairie360/CICD` épinglé en v5.1.0 ; garde-fous de verrou et de rapport vide ajoutés. ([#168](https://github.com/mairie360/Elearning_Web_Service/pull/168), [#254](https://github.com/mairie360/Elearning_Web_Service/pull/254))
+- Workflow `gdpr-pr.yml` (checklist RGPD sur les PR) et règle Renovate associée. ([#175](https://github.com/mairie360/Elearning_Web_Service/pull/175))
+- Mises à jour : CICD v4.5.0 puis v4.12.0 (Renovate, [#245](https://github.com/mairie360/Elearning_Web_Service/pull/245), [#250](https://github.com/mairie360/Elearning_Web_Service/pull/250)) ; Node 24.22.1 avec digests d'image ; Next 16.4.2 et `eslint-config-next` 16.4.2 ([#247](https://github.com/mairie360/Elearning_Web_Service/pull/247)) ; `follow-redirects` 1.16.2 pour GHSA-mrwp-f3q8-3g9p ([#256](https://github.com/mairie360/Elearning_Web_Service/pull/256)) ; `jsdom` 30.1.3 et `playwright-core` 1.64.1 ([#246](https://github.com/mairie360/Elearning_Web_Service/pull/246)).
+- Ajout de Vitest, Testing Library et jest-axe ; `npm test` lance désormais aussi `npm run test:components` (vitest). ([#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
+- Pipeline de performance : provenance du lock de la baseline et source maps seulement dans la mesure CI. ([#248](https://github.com/mairie360/Elearning_Web_Service/pull/248))
 
 ## Différence staging → prod (en staging, pas encore en prod)
 
@@ -64,6 +54,7 @@ _Rien._
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-11-02 19:53 UTC | dev | — | `718ab46` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/41513014827) |
 | 2026-11-02 18:21 UTC | dev | — | `eab212c` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/41470529217) |
 | 2026-10-23 13:05 UTC | dev | — | `a57e4bd` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/39957326316) |
 | 2026-10-21 18:00 UTC | dev | — | `3a65d6f` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/39647858939) |
