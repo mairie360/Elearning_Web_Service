@@ -1,0 +1,91 @@
+# GDPR usage simulation journey of the e-learning front (MAIR-497), played by mairie360/CICD
+# tests/gdpr/simulation for every persona of gdpr-simulation.yaml (gdpr-marker.yaml format of
+# MAIR-290).
+#
+# The journey of BFF_Elearning's log marker test, sent to the front's own origin: the same-origin proxy
+# (src/lib/bff-proxy.ts) relays it to the BFF with the accessToken cookie as a Bearer token, as for
+# the browser, so the logs of the front see the persona's values in the bodies, the query strings
+# and the deliberate errors. The proxy only forwards same-origin requests (Origin) and the paths of
+# contracts/openapi.json; the first step defines the session headers the next ones reuse
+# (*session).
+version: 1
+target: http://elearning-front:5006
+wait: /
+# Session of the run (the seeded admin), signed by gdpr_simulation_test.sh.
+env: [ADMIN_JWT]
+steps:
+  - name: read the profile
+    request: {method: GET, path: /elearning/profile, headers: &session {Cookie: "accessToken={{env.ADMIN_JWT}}", Origin: "http://elearning-front:5006"}}
+  - name: save the marker's phone in the profile
+    request:
+      method: PATCH
+      path: /elearning/profile
+      headers: *session
+      # Core API (MAIR-480) takes an E.164 number only: the marker's national number behind +33 (Core drops
+      # the trunk 0 and stores +336..., whose national digits the scan looks for).
+      json: {phone: "+33{{marker.phone}}"}
+  - name: change the e-mail to the marker's (deliberate error)
+    request:
+      method: PATCH
+      path: /elearning/profile
+      headers: *session
+      json: {email: "{{marker.email}}", phone: "+33{{marker.phone}}"}
+    # Core API requires the current password for an e-mail change, which this route does not take.
+    expect: [400]
+  - name: save a refused e-mail in the profile (deliberate error)
+    request:
+      method: PATCH
+      path: /elearning/profile
+      headers: *session
+      json: {email: "{{marker.last_name}}", phone: "{{marker.phone}}"}
+    expect: [400]
+  - name: save an address no upstream stores (deliberate error)
+    request:
+      method: PATCH
+      path: /elearning/profile
+      headers: *session
+      json: {address: "1 rue {{marker.last_name}}", city: "{{marker.first_name}}ville"}
+    expect: [501]
+  - name: save a phone of the wrong type (deliberate error)
+    request:
+      method: PATCH
+      path: /elearning/profile
+      headers: *session
+      json: {email: "{{marker.email}}", phone: ["{{marker.phone}}"]}
+    expect: [400]
+  - name: search the catalog for the marker (query string)
+    request: {method: GET, path: "/elearning/catalog?search={{marker.last_name}}&page=1&pageSize=10", headers: *session}
+  - name: search the catalog with a refused status (deliberate error, query string)
+    request: {method: GET, path: "/elearning/catalog?search={{marker.email}}&status={{marker.first_name}}", headers: *session}
+    expect: [400]
+  - name: create a course naming the marker (not supported upstream, deliberate error)
+    request:
+      method: POST
+      path: /elearning/admin/courses
+      headers: *session
+      json: {id: "gdpr-marker", title: "Course of {{marker.last_name}}", description: "Ask {{marker.first_name}} at {{marker.email}}", instructor: "{{marker.first_name}} {{marker.last_name}}"}
+    expect: [501]
+  - name: create a course with a refused body (deliberate error)
+    request:
+      method: POST
+      path: /elearning/admin/courses
+      headers: *session
+      json: {title: "Course of {{marker.last_name}}", description: 5, instructor: "{{marker.email}}"}
+    expect: [400]
+  - name: rate a course with a value of the wrong type (deliberate error)
+    request:
+      method: POST
+      path: /elearning/courses/4/rating
+      headers: *session
+      json: {rating: "{{marker.phone}}"}
+    expect: [400]
+  - name: start a course that does not exist (deliberate error)
+    request:
+      method: POST
+      path: /elearning/courses/999999/start
+      headers: *session
+      json: {source: "{{marker.email}}"}
+    expect: [400, 404]
+  - name: read the profile with an invalid token (deliberate error)
+    request: {method: GET, path: /elearning/profile, headers: {Cookie: "accessToken={{marker.password}}", Origin: "http://elearning-front:5006"}}
+    expect: [401]
