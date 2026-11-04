@@ -93,7 +93,7 @@ services:
     environment:
       PGPASSWORD: password
     command: >
-      sh -c "psql -h postgres -U postgres -d mairie_360_database -f /init-test.sql"
+      sh -c "psql -v ON_ERROR_STOP=1 -h postgres -U postgres -d mairie_360_database -f /init-test.sql"
     networks:
       - backend
 
@@ -147,7 +147,8 @@ services:
       core-api:
         condition: service_started
     command: >
-      sh -c 'until curl -fsS http://core-api:3000/health >/dev/null; do
+      sh -c 'i=0; until curl -fsS --connect-timeout 2 --max-time 5 http://core-api:3000/health >/dev/null; do
+      i=$$((i+1)); if [ $$i -ge 90 ]; then echo "core-api not ready after 90 attempts"; exit 1; fi;
       echo "waiting for core-api..."; sleep 2; done; echo "core-api ready"'
     networks:
       - backend
@@ -192,7 +193,8 @@ services:
       elearning-api:
         condition: service_started
     command: >
-      sh -c 'until curl -fsS http://elearning-api:3006/health >/dev/null; do
+      sh -c 'i=0; until curl -fsS --connect-timeout 2 --max-time 5 http://elearning-api:3006/health >/dev/null; do
+      i=$$((i+1)); if [ $$i -ge 90 ]; then echo "elearning-api not ready after 90 attempts"; exit 1; fi;
       echo "waiting for elearning-api..."; sleep 2; done; echo "elearning-api ready"'
     networks:
       - backend
@@ -227,7 +229,8 @@ services:
       bff-user:
         condition: service_started
     command: >
-      sh -c 'until curl -fsS http://bff-user:4000/health >/dev/null; do
+      sh -c 'i=0; until curl -fsS --connect-timeout 2 --max-time 5 http://bff-user:4000/health >/dev/null; do
+      i=$$((i+1)); if [ $$i -ge 90 ]; then echo "bff-user not ready after 90 attempts"; exit 1; fi;
       echo "waiting for bff-user..."; sleep 2; done; echo "bff-user ready"'
     networks:
       - backend
@@ -266,7 +269,8 @@ services:
       bff-elearning:
         condition: service_started
     command: >
-      sh -c 'until curl -fsS http://bff-elearning:4006/health >/dev/null; do
+      sh -c 'i=0; until curl -fsS --connect-timeout 2 --max-time 5 http://bff-elearning:4006/health >/dev/null; do
+      i=$$((i+1)); if [ $$i -ge 90 ]; then echo "bff-elearning not ready after 90 attempts"; exit 1; fi;
       echo "waiting for bff-elearning..."; sleep 2; done; echo "bff-elearning ready"'
     networks:
       - backend
@@ -295,7 +299,7 @@ services:
     expose:
       - "5006"
     ports:
-      - "${E2E_FRONT_PORT:-5006}:5006"
+      - "127.0.0.1:${E2E_FRONT_PORT:-5006}:5006"
     networks:
       - backend
     # curl est installé dans l'image runner. Sans cookie, le middleware répond 307
