@@ -120,8 +120,8 @@ test('Docker excludes local environments and artifacts while retaining tracked n
   assert.ok(!patterns.includes('.npmrc') && !patterns.includes('.npmrc*'));
 });
 
-test('all three Compose frontend builds use the required secret without runtime credentials', () => {
-  for (const file of ['docker-compose.yml', 'docker-compose-security.yml', 'docker-compose-performance.yml']) {
+test('all four Compose frontend builds use the required secret without runtime credentials', () => {
+  for (const file of ['docker-compose.yml', 'docker-compose-security.yml', 'docker-compose-performance.yml', 'docker-compose-e2e.yml']) {
     const compose = yaml.load(read(file));
     assert.deepEqual(compose.secrets, { node_auth_token: { environment: 'NODE_AUTH_TOKEN' } });
     assert.deepEqual(compose.services['elearning-front'].build, {
@@ -143,7 +143,7 @@ test('the exact required legacy status executes both real blocking scanners with
     steps: [
       { name: 'Checkout frontend history', uses: checkout, with: { 'fetch-depth': 0, 'persist-credentials': false } },
       { name: 'Checkout reviewed scanner actions', uses: checkout, with: {
-        repository: 'mairie360/CICD', ref: '34889930cf42b20020d2e2f702a566ef7ebca1ec', path: 'cicd-repo', 'persist-credentials': false,
+        repository: 'mairie360/CICD', ref: 'ccf7d3acc8c6fb9d5f57b95347e6aceb94df6f69', path: 'cicd-repo', 'persist-credentials': false,
       } },
       { name: 'Run blocking Semgrep scan', uses: './cicd-repo/actions/security/semgrep-pypi', with: {
         config: 'p/typescript p/react p/owasp-top-ten p/secrets p/dockerfile p/github-actions', fail_on_findings: 'true', artifact_name: 'semgrep-required-check-sarif',
