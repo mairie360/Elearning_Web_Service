@@ -1,12 +1,12 @@
 # Journal des releases — Elearning_Web_Service
 
-<!-- release-journal-state {"dev": "8a76bd65038140c8366a953a6ce35c3ed7841038", "prod": "01faf1c8a991cbd6b64478c8b17e8e79a5a27e0b", "prod_tag": "v0.4.0", "staging": "01faf1c8a991cbd6b64478c8b17e8e79a5a27e0b", "updated": {"dev": "2026-11-12 17:08 UTC", "prod": "2026-10-21 11:18 UTC", "staging": "2026-10-21 11:16 UTC"}} -->
+<!-- release-journal-state {"dev": "8a76bd65038140c8366a953a6ce35c3ed7841038", "prod": "01faf1c8a991cbd6b64478c8b17e8e79a5a27e0b", "prod_tag": "v0.4.0", "staging": "8a76bd65038140c8366a953a6ce35c3ed7841038", "updated": {"dev": "2026-11-12 17:08 UTC", "prod": "2026-10-21 11:18 UTC", "staging": "2026-11-12 20:50 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v0.4.0 | `01faf1c` | 2026-10-21 11:18 UTC |
-| staging | — | `01faf1c` | 2026-10-21 11:16 UTC |
+| staging | — | `8a76bd6` | 2026-11-12 20:50 UTC |
 | dev | — | `8a76bd6` | 2026-11-12 17:08 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v0.4.0)
@@ -32,6 +32,10 @@
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
+_Rien._
+
+## Différence staging → prod (en staging, pas encore en prod)
+
 - fix: MAIR-816 Release dev: align internal versions and deploy ([#269](https://github.com/mairie360/Elearning_Web_Service/pull/269))
 - chore(deps): update dependency mairie360/cicd to v5.6.0 (#267) ([#267](https://github.com/mairie360/Elearning_Web_Service/pull/267))
 - feat: MAIR-603 E2E - Parcours utilisateurs Playwright des fronts (#244) ([#244](https://github.com/mairie360/Elearning_Web_Service/pull/244))
@@ -51,10 +55,6 @@
 - fix(security): patch Node.js and Next.js (#247) ([#247](https://github.com/mairie360/Elearning_Web_Service/pull/247))
 - feat!: MAIR-608 Lib UI - Normaliser la charte, les tailles et les composants partagés des fronts ([#239](https://github.com/mairie360/Elearning_Web_Service/pull/239))
 
-## Différence staging → prod (en staging, pas encore en prod)
-
-_Rien._
-
 > Résumé Claude indisponible pour ce passage : listes brutes des commits.
 
 ## Historique des passages
@@ -62,6 +62,7 @@ _Rien._
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-11-12 20:50 UTC | staging | — | `8a76bd6` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/43285915354) |
 | 2026-11-12 17:08 UTC | dev | — | `8a76bd6` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/43264229565) |
 | 2026-11-04 21:28 UTC | dev | — | `0586513` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/41915169326) |
 | 2026-11-04 18:29 UTC | dev | — | `44be9c8` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/41884403650) |
