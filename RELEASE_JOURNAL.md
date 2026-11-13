@@ -1,31 +1,34 @@
 # Journal des releases — Elearning_Web_Service
 
-<!-- release-journal-state {"dev": "8a76bd65038140c8366a953a6ce35c3ed7841038", "prod": "8a76bd65038140c8366a953a6ce35c3ed7841038", "prod_tag": "v0.5.0", "staging": "8a76bd65038140c8366a953a6ce35c3ed7841038", "updated": {"dev": "2026-11-12 17:08 UTC", "prod": "2026-11-13 01:41 UTC", "staging": "2026-11-12 20:50 UTC"}} -->
+<!-- release-journal-state {"dev": "0f75a5072cb62e1e32f9bff7445af34c9709878f", "prod": "8a76bd65038140c8366a953a6ce35c3ed7841038", "prod_tag": "v0.5.0", "staging": "8a76bd65038140c8366a953a6ce35c3ed7841038", "updated": {"dev": "2026-11-13 05:20 UTC", "prod": "2026-11-13 01:41 UTC", "staging": "2026-11-12 20:50 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v0.5.0 | `8a76bd6` | 2026-11-13 01:41 UTC |
 | staging | — | `8a76bd6` | 2026-11-12 20:50 UTC |
-| dev | — | `8a76bd6` | 2026-11-12 17:08 UTC |
+| dev | — | `0f75a50` | 2026-11-13 05:20 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v0.5.0)
 
-_Rien._
+- chore(deps): update ghcr.io/mairie360/bff-user docker tag to v1.2.0 (#272) ([#272](https://github.com/mairie360/Elearning_Web_Service/pull/272))
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
-_Rien._
+- chore(deps): update ghcr.io/mairie360/bff-user docker tag to v1.2.0 (#272) ([#272](https://github.com/mairie360/Elearning_Web_Service/pull/272))
 
 ## Différence staging → prod (en staging, pas encore en prod)
 
 _Rien._
+
+> Résumé Claude indisponible pour ce passage : listes brutes des commits.
 
 ## Historique des passages
 
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-11-13 05:20 UTC | dev | — | `0f75a50` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/43369707928) |
 | 2026-11-13 01:41 UTC | prod | v0.5.0 | `8a76bd6` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/43340577942) |
 | 2026-11-12 20:50 UTC | staging | — | `8a76bd6` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/43285915354) |
 | 2026-11-12 17:08 UTC | dev | — | `8a76bd6` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/43264229565) |
