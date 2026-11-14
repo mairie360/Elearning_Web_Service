@@ -1,21 +1,23 @@
 # Journal des releases — Elearning_Web_Service
 
-<!-- release-journal-state {"dev": "0c673b36873ed2e1a84bd921779e93aaf0e0be4c", "prod": "8a76bd65038140c8366a953a6ce35c3ed7841038", "prod_tag": "v0.5.0", "staging": "8a76bd65038140c8366a953a6ce35c3ed7841038", "updated": {"dev": "2026-11-13 15:50 UTC", "prod": "2026-11-13 01:41 UTC", "staging": "2026-11-12 20:50 UTC"}} -->
+<!-- release-journal-state {"dev": "9f79a01a567b36dd64c7330c40133b2ee5314085", "prod": "8a76bd65038140c8366a953a6ce35c3ed7841038", "prod_tag": "v0.5.0", "staging": "8a76bd65038140c8366a953a6ce35c3ed7841038", "updated": {"dev": "2026-11-14 01:54 UTC", "prod": "2026-11-13 01:41 UTC", "staging": "2026-11-12 20:50 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v0.5.0 | `8a76bd6` | 2026-11-13 01:41 UTC |
 | staging | — | `8a76bd6` | 2026-11-12 20:50 UTC |
-| dev | — | `0c673b3` | 2026-11-13 15:50 UTC |
+| dev | — | `9f79a01` | 2026-11-14 01:54 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v0.5.0)
 
+- chore(deps): update ghcr.io/mairie360/elearning-api docker tag to v1.3.0 (#274) ([#274](https://github.com/mairie360/Elearning_Web_Service/pull/274))
 - chore(deps): update ghcr.io/mairie360/core-api docker tag to v2.3.0 (#273) ([#273](https://github.com/mairie360/Elearning_Web_Service/pull/273))
 - chore(deps): update ghcr.io/mairie360/bff-user docker tag to v1.2.0 (#272) ([#272](https://github.com/mairie360/Elearning_Web_Service/pull/272))
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
+- chore(deps): update ghcr.io/mairie360/elearning-api docker tag to v1.3.0 (#274) ([#274](https://github.com/mairie360/Elearning_Web_Service/pull/274))
 - chore(deps): update ghcr.io/mairie360/core-api docker tag to v2.3.0 (#273) ([#273](https://github.com/mairie360/Elearning_Web_Service/pull/273))
 - chore(deps): update ghcr.io/mairie360/bff-user docker tag to v1.2.0 (#272) ([#272](https://github.com/mairie360/Elearning_Web_Service/pull/272))
 
@@ -30,6 +32,7 @@ _Rien._
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-11-14 01:54 UTC | dev | — | `9f79a01` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/43542674668) |
 | 2026-11-13 15:50 UTC | dev | — | `0c673b3` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/43455256503) |
 | 2026-11-13 05:20 UTC | dev | — | `0f75a50` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/43369707928) |
 | 2026-11-13 01:41 UTC | prod | v0.5.0 | `8a76bd6` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/43340577942) |
