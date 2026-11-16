@@ -60,28 +60,24 @@ describe('single published BFF contract', () => {
     assert.deepEqual(Object.keys({ ...dependencies, ...devDependencies }).filter((name) => /^@mairie360\/bff-.*-openapi$/.test(name)), [PUBLISHED_CONTRACT_PACKAGE]);
   });
 
-  test('every docker-compose file runs the BFF image built from the pinned package commit', async () => {
-    const { imageTagForContractVersion } = await import('../scripts/contract-version.mjs');
-    const version = imageTagForContractVersion(resolveOrvalPackage(PUBLISHED_CONTRACT_PACKAGE).version);
+  test('MAIR-998 every docker-compose file runs the BFF images on the moving tag of the stage', () => {
+    const version = '${UPSTREAM_TAG:-dev}';
     const files = fs.readdirSync(root).filter((file) => /^docker-compose.*\.ya?ml$/.test(file));
     assert.ok(files.length > 0);
     for (const file of files) {
-      const images = composePolicy.bffImages(composePolicy.compose(file));
-      const tags = images.filter(image => image.startsWith('ghcr.io/mairie360/bff-elearning:')).map(image => image.slice(image.lastIndexOf(':') + 1));
+      const images = composePolicy.bffImageRefs(composePolicy.compose(file));
+      const tags = images.filter(image => image.startsWith('ghcr.io/mairie360/bff-elearning:')).map(image => image.slice(image.indexOf(':') + 1));
       assert.ok(tags.length > 0, `${file}: missing bff-elearning image`);
       assert.deepEqual([...new Set(tags)], [version], file);
-      // The other BFF images (BFF User) follow the same policy: a release tag or the dev-<sha7> image of a main commit.
-      assert.ok(images.filter(image => !image.startsWith('ghcr.io/mairie360/bff-elearning:')).every(image => /^(\d+\.\d+\.\d+|dev-[0-9a-f]{7})$/.test(image.slice(image.lastIndexOf(':') + 1))), `${file}: other BFF images require a release or dev-<sha7> tag`);
+      // The other BFF images (BFF User) follow the stage too.
+      assert.ok(images.filter(image => !image.startsWith('ghcr.io/mairie360/bff-elearning:')).every(image => image.endsWith(':${UPSTREAM_TAG:-dev}')), `${file}: other BFF images must use \${UPSTREAM_TAG:-dev}`);
     }
   });
 
-  test('the contract version policy accepts releases, dev and staging packages and maps them to image tags (MAIR-600)', async () => {
-    const { isAcceptedContractVersion, imageTagForContractVersion } = await import('../scripts/contract-version.mjs');
+  test('the contract version policy accepts releases, dev and staging packages (MAIR-600)', async () => {
+    const { isAcceptedContractVersion } = await import('../scripts/contract-version.mjs');
     const sha = '55dfd4b4cb34e881c243d79394b807631879eca2';
-    assert.equal(imageTagForContractVersion('1.2.0'), '1.2.0');
-    assert.equal(imageTagForContractVersion(`0.0.0-dev.${sha}`), 'dev-55dfd4b');
     assert.equal(isAcceptedContractVersion(`0.0.0-staging.${sha}`), true);
-    assert.equal(imageTagForContractVersion(`0.0.0-staging.${sha}`), 'staging-55dfd4b');
     for (const rejected of ['^1.2.0', '1.2', '0.0.0-staging.55dfd4b', '0.0.0-dev.55dfd4b', '0.0.0-prod.' + sha, 'latest']) {
       assert.equal(isAcceptedContractVersion(rejected), false, rejected);
     }
