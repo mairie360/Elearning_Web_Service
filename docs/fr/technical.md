@@ -204,7 +204,7 @@ Toutes les réponses portent `X-Frame-Options: DENY`, `X-Content-Type-Options: n
 
 ## Synchronisation et vérifications
 
-Le front ne consomme que des paquets publiés de BFF_Elearning : une release `X.Y.Z`, ou, tant qu’aucune release n’est coupée, le paquet `0.0.0-dev.<sha40>` publié par la CICD pour le commit courant de son `main` (MAIR-509), ou, une fois ce commit livré en staging, le paquet `0.0.0-staging.<sha40>` du même commit, préféré lors d’une release staging pour la lisibilité (MAIR-600 ; jamais `0.0.0-staging.<sha court>` ni une plage ; les stacks démarrent alors l’image `staging-<sha7>` au lieu de `dev-<sha7>`), actuellement le paquet staging du commit `55dfd4b`. Pour passer à une nouvelle version, monter le paquet de contrat, copier le contrat du même commit puis régénérer les types:
+Le front ne consomme que des paquets publiés de BFF_Elearning : une release `X.Y.Z`, ou, tant qu’aucune release n’est coupée, le paquet `0.0.0-dev.<sha40>` publié par la CICD pour le commit courant de son `main` (MAIR-509), ou, une fois ce commit livré en staging, le paquet `0.0.0-staging.<sha40>` du même commit, préféré lors d’une release staging pour la lisibilité (MAIR-600 ; jamais `0.0.0-staging.<sha court>` ni une plage  ; les stacks ne suivent pas cet épinglage et démarrent les images amont sur `${UPSTREAM_TAG:-dev}`, MAIR-998), actuellement le paquet staging du commit `55dfd4b`. Pour passer à une nouvelle version, monter le paquet de contrat, copier le contrat du même commit puis régénérer les types:
 
 ```bash
 npm install --save-exact @mairie360/bff-elearning-openapi@<version>

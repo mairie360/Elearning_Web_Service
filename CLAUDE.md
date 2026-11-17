@@ -32,7 +32,7 @@ Same approach as the BFFs' `*.upstream-mocks.test.ts`. `tests/support/openapi-co
 - `tests/elearning.bff-mocks.test.cjs` asserts in `after()` that every operation listed in `CONSUMED` was exercised. `tests/bff-contracts.test.cjs` enforces several things:
   - the package is an accepted exact version (`scripts/contract-version.mjs`: a release `X.Y.Z`, a `0.0.0-dev.<sha40>` dev package of BFF_Elearning `main` or, since MAIR-600, the `0.0.0-staging.<sha40>` staging package of that commit; `0.0.0-staging.<short sha>` and ranges are refused) and the only `bff-*-openapi` dependency;
   - `contracts/openapi.json` declares exactly the package's operations;
-  - every `docker-compose*.yml` uses the `bff-elearning` image built from the pinned commit (`X.Y.Z`, `dev-<sha7>` for a dev package, or `staging-<sha7>` for a staging package) and release or `dev-<sha7>` tags for the other BFF images;
+  - every `docker-compose*.yml` runs `bff-elearning` and the other BFF images on the moving tag of the stage, `${UPSTREAM_TAG:-dev}` (MAIR-998);
   - the catch-all is the only route handler (no adapter to another BFF);
   - `src/lib/elearning-api.ts` calls the consumed operations only through the generated client (`bffElearning`, built in `bff-client.ts` from `getBffElearning` of `@mairie360/bff-elearning-openapi` with an axios adapter that delegates to `requestBff`); it holds no path string.
 
@@ -49,7 +49,7 @@ npm run contracts:generate  # regenerate types from the snapshot
 npm run contracts:check     # fail if types are stale
 ```
 
-Then move `BFF_ELEARNING_IMAGE` defaults in every `docker-compose*.yml` to the image built from the same commit (`X.Y.Z`, `dev-<sha7>`, or `staging-<sha7>` for a staging package), which the tests enforce. The stacks also pin dev images of BFF User, Core API, E-learning API and the database: the dev Liquibase needs `-Dallow_template_admin=true`, the database enforces argon2id hashes in `init-test.sql`, the dev APIs need `JWT_ALLOW_WEAK_SECRET` for the shared test secret and `RATE_LIMIT_ENABLED=false` (plus a lifted `RATE_LIMIT_PER_SECOND` / `RATE_LIMIT_BURST` on E-learning API, whose per-IP token bucket otherwise answers 429 under load), BFF_Elearning needs `JWT_SECRET` at startup and BFF User `AUTH_RATE_LIMIT_ENABLED=false` for the ZAP scan. The published contract has no logout route. A logout endpoint is a proposed need in `BFF.md`. `contracts:*` run `npm exec` on `openapi-typescript`, so they need network access.
+The `docker-compose*.yml` files do not move: since MAIR-998 they run BFF_Elearning, BFF User, Core API, E-learning API and the database on the moving tag of the stage under test, `${UPSTREAM_TAG:-dev}`, which the tests enforce. In those images the dev Liquibase needs `-Dallow_template_admin=true`, the database enforces argon2id hashes in `init-test.sql`, the dev APIs need `JWT_ALLOW_WEAK_SECRET` for the shared test secret and `RATE_LIMIT_ENABLED=false` (plus a lifted `RATE_LIMIT_PER_SECOND` / `RATE_LIMIT_BURST` on E-learning API, whose per-IP token bucket otherwise answers 429 under load), BFF_Elearning needs `JWT_SECRET` at startup and BFF User `AUTH_RATE_LIMIT_ENABLED=false` for the ZAP scan. The published contract has no logout route. A logout endpoint is a proposed need in `BFF.md`. `contracts:*` run `npm exec` on `openapi-typescript`, so they need network access.
 
 ## Figma mockup
 
