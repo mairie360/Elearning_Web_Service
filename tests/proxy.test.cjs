@@ -7,12 +7,12 @@ const { proxyBffRequest, forwardToBff } = requireSrc('lib/bff-proxy.ts');
 const originalFetch = global.fetch;
 for (const [name, target, headers, expected] of [
   ['unknown route', '/not-published', {}, 404],
-  ['cross-site mutation', '/elearning/profile', { 'sec-fetch-site': 'cross-site' }, 403],
-  ['oversized declared body', '/elearning/profile', { 'content-length': String(2 * 1024 * 1024) }, 413],
+  ['cross-site mutation', '/elearning/courses/1/start', { 'sec-fetch-site': 'cross-site' }, 403],
+  ['oversized declared body', '/elearning/courses/1/start', { 'content-length': String(2 * 1024 * 1024) }, 413],
 ]) test(`relay rejects ${name} before any unbounded body allocation`, async () => {
   global.fetch = async () => assert.fail('a rejected request cannot reach the BFF');
   const request = new NextRequest('http://localhost' + target, {
-    method: 'PATCH', headers: { 'content-type': 'application/json', cookie: 'accessToken=test-session', ...headers }, body: '{}',
+    method: 'POST', headers: { 'content-type': 'application/json', cookie: 'accessToken=test-session', ...headers }, body: '{}',
   });
   request.arrayBuffer = async () => assert.fail('the relay must not prebuffer the complete request');
   const response = await forwardToBff(request, 'http://bff.example', target);

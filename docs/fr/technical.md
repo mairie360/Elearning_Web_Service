@@ -171,7 +171,6 @@ Ces chemins de données sont exposés à la même origine par le proxy; les page
 | GET | `/elearning/catalog` | — | 200, 400, 500 |
 | POST | `/elearning/courses/{courseId}/contents/{contentId}/complete` | application/json | 200, 400, 404, 422, 500, 501 (`completed: false`) |
 | GET | `/elearning/profile` | — | 200, 500 |
-| PATCH | `/elearning/profile` | application/json | 200, 400, 500 |
 | POST | `/elearning/courses/{courseId}/rating` | application/json | 200, 400, 404, 500, 501 (aujourd’hui : toujours 501, non proposé) |
 | POST | `/elearning/courses/{courseId}/start` | application/json | 200, 400, 404, 422, 500 |
 

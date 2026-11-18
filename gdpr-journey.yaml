@@ -16,43 +16,17 @@ env: [ADMIN_JWT]
 steps:
   - name: read the profile
     request: {method: GET, path: /elearning/profile, headers: &session {Cookie: "accessToken={{env.ADMIN_JWT}}", Origin: "http://elearning-front:5006"}}
-  - name: save the marker's phone in the profile
-    request:
-      method: PATCH
-      path: /elearning/profile
-      headers: *session
-      # Core API (MAIR-480) takes an E.164 number only: the marker's national number behind +33 (Core drops
-      # the trunk 0 and stores +336..., whose national digits the scan looks for).
-      json: {phone: "+33{{marker.phone}}"}
-  - name: change the e-mail to the marker's (deliberate error)
+  - name: edit the profile, which BFF_Elearning no longer serves (deliberate error)
     request:
       method: PATCH
       path: /elearning/profile
       headers: *session
       json: {email: "{{marker.email}}", phone: "+33{{marker.phone}}"}
-    # Core API requires the current password for an e-mail change, which this route does not take.
-    expect: [400]
-  - name: save a refused e-mail in the profile (deliberate error)
-    request:
-      method: PATCH
-      path: /elearning/profile
-      headers: *session
-      json: {email: "{{marker.last_name}}", phone: "{{marker.phone}}"}
-    expect: [400]
-  - name: save an address no upstream stores (deliberate error)
-    request:
-      method: PATCH
-      path: /elearning/profile
-      headers: *session
-      json: {address: "1 rue {{marker.last_name}}", city: "{{marker.first_name}}ville"}
-    expect: [501]
-  - name: save a phone of the wrong type (deliberate error)
-    request:
-      method: PATCH
-      path: /elearning/profile
-      headers: *session
-      json: {email: "{{marker.email}}", phone: ["{{marker.phone}}"]}
-    expect: [400]
+    # Profile edits go through Settings: the contract only declares GET, so the proxy answers 405
+    # without relaying the body.
+    expect: [405]
+  - name: search the catalog for the marker's phone (query string)
+    request: {method: GET, path: "/elearning/catalog?search={{marker.phone}}", headers: *session}
   - name: search the catalog for the marker (query string)
     request: {method: GET, path: "/elearning/catalog?search={{marker.last_name}}&page=1&pageSize=10", headers: *session}
   - name: search the catalog with a refused status (deliberate error, query string)
