@@ -9,10 +9,10 @@ import encoding from 'k6/encoding';
 //   * `reads`: the page (Next.js render behind the authentication middleware), /health, then the
 //     /elearning/catalog and /elearning/profile reads the page fetches, relayed by
 //     the same-origin proxy to BFF Elearning;
-//   * `writes` (MAIR-516): the profile update a learner saves from the page,
-//     PATCH /elearning/profile (-> BFF Elearning -> Core API), then the course seeded by
-//     init-test.sql: POST /elearning/courses/{id}/start and the completion of its first
-//     content, POST …/contents/{contentId}/complete (-> E-learning API, idempotent upsert).
+//   * `writes` (MAIR-516): the course seeded by init-test.sql, POST /elearning/courses/{id}/start
+//     and the completion of its first content, POST …/contents/{contentId}/complete
+//     (-> E-learning API, idempotent upsert). Profile edits are not served by BFF Elearning
+//     (a user edits their profile in Settings), so no profile write is measured here.
 //     Course administration and ratings are left out: the pinned BFF answers 501 (MAIR-513).
 // Authentication goes through the accessToken cookie, like in the browser: the proxy turns it
 // into Authorization: Bearer for the BFF.
@@ -33,7 +33,7 @@ const STAGES = [
 export const options = {
   scenarios: {
     reads: { executor: 'ramping-vus', startVUs: 0, stages: STAGES, exec: 'reads', gracefulRampDown: '5s' },
-    // Few VUs on purpose: every iteration updates the learner's profile in the Core API database.
+    // Few VUs on purpose: every iteration writes the learner's progress in the E-learning API database.
     writes: { executor: 'constant-vus', vus: 3, duration: '1m40s', exec: 'writes' },
   },
   thresholds: {
@@ -43,7 +43,6 @@ export const options = {
     // Same-origin proxy -> BFF /health, measured under the 20 readers: median ~170 ms, p95 ~260 ms on the 4 vCPU CI runner.
     'http_req_duration{endpoint:health}': ['p(95)<400'],
     'http_req_duration{endpoint:elearning}': ['p(95)<500'], // proxy + BFF aggregation + upstream
-    'http_req_duration{endpoint:profile-write}': ['p(95)<800'], // proxy -> BFF Elearning -> Core API update
     'http_req_duration{endpoint:course-start}': ['p(95)<800'], // proxy -> BFF Elearning -> E-learning API
     'http_req_duration{endpoint:content-complete}': ['p(95)<800'], // proxy -> BFF Elearning -> E-learning API upsert + reload
   },
@@ -121,28 +120,6 @@ function firstContent(response) {
 
 export function writes(data) {
   const headers = { Cookie: `accessToken=${data.token}`, Accept: 'application/json', 'Content-Type': 'application/json' };
-
-  group('profile write', () => {
-    // Alternate between two valid values so every iteration really changes the stored profile.
-    // Only the phone is persisted (E.164, Core API refuses national formats): the pinned BFF
-    // answers 501 for address and city, which no service stores yet (MAIR-513).
-    const phone = __ITER % 2 === 0 ? '+33601020304' : '+33601020305';
-    const updated = http.patch(`${BASE_URL}/elearning/profile`, JSON.stringify({ phone }), {
-      headers,
-      redirects: 0,
-      tags: { endpoint: 'profile-write' },
-    });
-    check(updated, {
-      'PATCH /elearning/profile 200': (r) => r.status === 200,
-      'PATCH /elearning/profile echoes the phone': (r) => {
-        try {
-          return r.json().user.phone === phone;
-        } catch {
-          return false;
-        }
-      },
-    });
-  });
 
   group('course start', () => {
     // init-test.sql enrols the user in one course: a catalogue without it fails the check.
