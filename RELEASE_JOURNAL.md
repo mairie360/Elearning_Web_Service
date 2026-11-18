@@ -1,16 +1,17 @@
 # Journal des releases — Elearning_Web_Service
 
-<!-- release-journal-state {"dev": "2f07ddee889c9316ae16970896b59a095c4938f2", "prod": "8a76bd65038140c8366a953a6ce35c3ed7841038", "prod_tag": "v0.5.0", "staging": "8a76bd65038140c8366a953a6ce35c3ed7841038", "updated": {"dev": "2026-11-17 15:33 UTC", "prod": "2026-11-13 01:41 UTC", "staging": "2026-11-12 20:50 UTC"}} -->
+<!-- release-journal-state {"dev": "2fd8f72f37fdbb4afe2980b6c09a491d74828f50", "prod": "8a76bd65038140c8366a953a6ce35c3ed7841038", "prod_tag": "v0.5.0", "staging": "8a76bd65038140c8366a953a6ce35c3ed7841038", "updated": {"dev": "2026-11-18 17:51 UTC", "prod": "2026-11-13 01:41 UTC", "staging": "2026-11-12 20:50 UTC"}} -->
 > Tenu à jour par la CI (`mairie360/CICD`, action `release/release-journal`) à chaque passage en dev, staging et prod. Ne pas modifier à la main : le fichier est réécrit au passage suivant.
 
 | Environnement | Version | Commit | Mis à jour |
 | --- | --- | --- | --- |
 | prod | v0.5.0 | `8a76bd6` | 2026-11-13 01:41 UTC |
 | staging | — | `8a76bd6` | 2026-11-12 20:50 UTC |
-| dev | — | `2f07dde` | 2026-11-17 15:33 UTC |
+| dev | — | `2fd8f72` | 2026-11-18 17:51 UTC |
 
 ## Ajouté sur main depuis la dernière release prod (v0.5.0)
 
+- fix: MAIR-684 [Audit 23/10] BFF_Elearning: profile e-mail change fails with 502 (B10) (#286) ([#286](https://github.com/mairie360/Elearning_Web_Service/pull/286))
 - ci: MAIR-1008 Nightly rehearsal of the promotion gates (#277) ([#277](https://github.com/mairie360/Elearning_Web_Service/pull/277))
 - feat: MAIR-998 Test stacks follow the moving upstream tag of the stage (#279) ([#279](https://github.com/mairie360/Elearning_Web_Service/pull/279))
 - chore(deps): update dependency mairie360/cicd to v5.11.0 (#281) ([#281](https://github.com/mairie360/Elearning_Web_Service/pull/281))
@@ -22,6 +23,7 @@
 
 ## Différence dev → staging (en dev, pas encore en staging)
 
+- fix: MAIR-684 [Audit 23/10] BFF_Elearning: profile e-mail change fails with 502 (B10) (#286) ([#286](https://github.com/mairie360/Elearning_Web_Service/pull/286))
 - ci: MAIR-1008 Nightly rehearsal of the promotion gates (#277) ([#277](https://github.com/mairie360/Elearning_Web_Service/pull/277))
 - feat: MAIR-998 Test stacks follow the moving upstream tag of the stage (#279) ([#279](https://github.com/mairie360/Elearning_Web_Service/pull/279))
 - chore(deps): update dependency mairie360/cicd to v5.11.0 (#281) ([#281](https://github.com/mairie360/Elearning_Web_Service/pull/281))
@@ -42,6 +44,7 @@ _Rien._
 <!-- release-journal-history:start -->
 | Date | Environnement | Version | Commit | Run |
 | --- | --- | --- | --- | --- |
+| 2026-11-18 17:51 UTC | dev | — | `2fd8f72` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/44361845132) |
 | 2026-11-17 15:33 UTC | dev | — | `2f07dde` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/44114724885) |
 | 2026-11-17 15:03 UTC | dev | — | `f16ac90` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/44108871076) |
 | 2026-11-17 14:46 UTC | dev | — | `ce761d0` | [run](https://github.com/mairie360/Elearning_Web_Service/actions/runs/44100923713) |
