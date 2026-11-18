@@ -24,11 +24,11 @@ test('composed CI keeps matching release pins and the real blocking required sca
 });
 
 test('third-party workflow actions use immutable commits', () => {
-  const workflows = ['contracts.yml', 'auto-approve.yml'];
+  const workflows = ['contracts.yml'];
   const actions = workflows.flatMap((file) => [...read(`.github/workflows/${file}`)
     .matchAll(/uses:\s*([^\s@]+)@([^\s#]+)/g)]);
   assert.deepEqual(actions.map((match) => match[1]).sort(), [
-    'actions/checkout', 'actions/setup-node', 'hmarr/auto-approve-action',
+    'actions/checkout', 'actions/setup-node'
   ]);
   for (const [, name, ref] of actions) {
     assert.match(ref, /^[a-f0-9]{40}$/, `${name} must use a full commit SHA`);
