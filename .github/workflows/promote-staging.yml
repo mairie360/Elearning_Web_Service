@@ -24,11 +24,11 @@ jobs:
       contents: read
       packages: write
       actions: read
-    uses: mairie360/CICD/.github/workflows/promote-staging.yml@2bc50a896bf50cfbcf005d8e7e66b65d71042308 # v5.12.0
+    uses: mairie360/CICD/.github/workflows/promote-staging.yml@84d86db9bdd5b3c9cfc1976106a9dbd623190e16 # v5.13.0
     with:
       stack: fronts
       package_name: elearning-front
-      cicd_version: "2bc50a896bf50cfbcf005d8e7e66b65d71042308" # v5.12.0
+      cicd_version: "84d86db9bdd5b3c9cfc1976106a9dbd623190e16" # v5.13.0
       sha: ${{ inputs.sha }}
     secrets:
       N8N_WEBHOOK_SECRET: ${{ secrets.N8N_WEBHOOK_SECRET }}
