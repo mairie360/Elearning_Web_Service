@@ -68,4 +68,12 @@ describe('CoursePlayer', () => {
     const region = await screen.findByRole('region', { name: 'Notifications' });
     expect(within(region).getByText('Téléchargement impossible')).toBeVisible();
   });
+
+  it('accepts the confirmed completion of the service even without required contents', async () => {
+    const done = { id: 'c', title: 'RGPD', description: '', details: { title: 'RGPD', description: '', completed: true, progress: 100,
+      chapters: [{ id: 'a', title: 'Seul chapitre', duration: '', completed: true, contents: [] }] } };
+    render(<ToastProvider regionLabel="Notifications"><CoursePlayer course={done} onExit={vi.fn()} onContentComplete={vi.fn()} /></ToastProvider>);
+    await userEvent.click(screen.getByRole('button', { name: 'Terminer' }));
+    expect(screen.getByRole('heading', { name: 'Formation terminée' })).toBeVisible();
+  });
 });

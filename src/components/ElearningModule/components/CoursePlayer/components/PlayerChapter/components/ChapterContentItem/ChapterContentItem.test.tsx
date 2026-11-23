@@ -31,4 +31,10 @@ describe('ChapterContentItem', () => {
     expect(onComplete).toHaveBeenCalled();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
+
+  it('keeps a link resource a link when the service downloads supports', () => {
+    render(<ul><ChapterContentItem busy={false} canComplete onDownload={vi.fn()} content={{ id: 'l', title: 'Guide', type: 'link', href: 'https://www.cnil.fr/guide' }} /></ul>);
+    expect(screen.getByRole('link', { name: /Ouvrir \(www.cnil.fr\)/ })).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(screen.queryByRole('button', { name: 'Télécharger le support' })).not.toBeInTheDocument();
+  });
 });

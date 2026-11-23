@@ -11,6 +11,8 @@ export interface SafeLink {
 export const safeContentLink = (href?: string): SafeLink | undefined => {
   const value = href?.trim();
   if (!value) return undefined;
+  // Browsers drop tabs and line breaks from URLs: « /\n/evil.test » would leave the site.
+  if (/[\u0000-\u001f\u007f]/.test(value)) return undefined;
   if (value.startsWith('/') && !value.startsWith('//') && !value.includes('\\')) return { href: value };
   try {
     const url = new URL(value);

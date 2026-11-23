@@ -156,6 +156,8 @@ test('MAIR-703 only https addresses and paths of this site become links', () => 
   const { safeContentLink } = require('../src/components/ElearningModule/components/ElearningCatalog/safe-link.ts');
   assert.deepEqual(safeContentLink('https://www.cnil.fr/guide'), { href: 'https://www.cnil.fr/guide', host: 'www.cnil.fr' });
   assert.deepEqual(safeContentLink(' /documents/support.pdf '), { href: '/documents/support.pdf' });
+  // Browsers drop tabs and line breaks from URLs: these would leave the site while looking local.
+  for (const hidden of ['/\n/evil.test/x', '/\t/evil.test/x', '/\r/evil.test/x']) assert.equal(safeContentLink(hidden), undefined, JSON.stringify(hidden));
   for (const unsafe of ['javascript:alert(1)', 'data:text/html,x', 'http://example.test/', '//evil.test/x', '/\\evil.test', 'ftp://x.test/f', '', undefined]) {
     assert.equal(safeContentLink(unsafe), undefined, String(unsafe));
   }
@@ -174,4 +176,10 @@ test('MAIR-1143 the top card resumes the most advanced course in progress, else 
   const priority = catalog.resumeSuggestion([courses[2], { ...mandatory, id: '4', title: 'Plus tard', description: '', deadline: '30 août 2026' }]);
   assert.deepEqual([priority.course.id, priority.kind, priority.chapterCount], ['3', 'priority', 0]);
   assert.equal(catalog.resumeSuggestion([{ id: '5', title: 'Facultative', description: '' }]), undefined);
+  // A chapter without a completion flag whose required contents are done counts as done, as on the course screen.
+  const inferred = catalog.resumeSuggestion([{ id: '6', title: 'Inférée', description: '', statusValue: 'in-progress', progress: 50, details: { title: 'Inférée', description: '', chapters: [
+    { id: 'a', title: 'A', duration: '', contents: [{ id: 'a1', title: 'A1', type: 'video', completed: true }] },
+    { id: 'b', title: 'B', duration: '', contents: [{ id: 'b1', title: 'B1', type: 'quiz' }] },
+  ] } }]);
+  assert.deepEqual([inferred.chapterIndex, inferred.chapterTitle, inferred.completedChapters], [2, 'B', 1]);
 });
