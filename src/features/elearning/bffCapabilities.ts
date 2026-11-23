@@ -1,8 +1,7 @@
-// Operations the pinned BFF_Elearning really serves. Since MAIR-401 the BFF reads the E-learning API instead of an
-// in-memory mock and answers 501 to what no upstream service persists yet, "instead of faking persistence":
-// course ratings, the administration of courses and marking a content as not completed. The shared catalogue
-// hides a control whose callback is absent, so the page only wires the callbacks of the capabilities below
-// (MAIR-513). Flip a flag once the published contract stops answering 501 for that operation.
+// Operations the pinned BFF_Elearning really serves. Since MAIR-401 the BFF reads the E-learning API, and since
+// BFF_Elearning#251 (E-learning V2) it stores ratings and administers courses too. Marking a content as not completed
+// still has no upstream operation: the BFF answers 501, so the page refuses it locally (MAIR-513). The shared catalogue
+// hides a control whose callback is absent, so the page only wires the callbacks of the capabilities below.
 export interface CatalogCapabilities {
   /** `POST /elearning/courses/{courseId}/rating` persists the learner's note. */
   courseRating: boolean;
@@ -12,22 +11,19 @@ export interface CatalogCapabilities {
   contentUncompletion: boolean;
 }
 
-/** What the BFF_Elearning version pinned in package.json serves: progress and course starts only. */
+/** What the BFF_Elearning version pinned in package.json serves: everything but un-completing a content. */
 export const pinnedBffCapabilities: CatalogCapabilities = {
-  courseRating: false,
-  courseManagement: false,
+  courseRating: true,
+  courseManagement: true,
   contentUncompletion: false,
 };
 
-/** Every operation of the contract, for the day the BFF serves them all (and for the tests of those flows). */
+/** Every operation of the contract (for the tests of the un-completion flow). */
 export const fullCatalogCapabilities: CatalogCapabilities = {
   courseRating: true,
   courseManagement: true,
   contentUncompletion: true,
 };
-
-export const COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE =
-  "La gestion des formations (création, modification, suppression) n’est pas encore disponible dans le service de formation.";
 
 export const CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE =
   "Le service de formation ne permet pas encore de décocher un contenu terminé. Votre progression reste inchangée.";

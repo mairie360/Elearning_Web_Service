@@ -1,5 +1,5 @@
 import { navigateToLogin } from "../../lib/auth-session";
-import { BffRequestError } from "../../lib/bff-client";
+import { BffRequestError, type BffErrorDetail } from "../../lib/bff-client";
 import { InvalidCatalogResponseError } from '../../lib/catalog-response';
 import {
   completeCourseContent,
@@ -26,6 +26,11 @@ export type CatalogView = {
   setMutationError: (message: string | null, title?: string) => void;
   setMutationSuccess?: (message: string | null, title?: string) => void;
 };
+
+/** MAIR-932: a save the BFF refused field by field (400); the form shows each message under its field. */
+export interface CourseSaveRefusal {
+  fieldErrors: BffErrorDetail[];
+}
 
 /** Cours tel que produit par le formulaire de lib-components (`statusValue` y est une chaîne libre). */
 export type CatalogCourseInput = Omit<ElearningCourse, "statusValue"> & { statusValue?: string };
@@ -163,7 +168,13 @@ export function createCatalogActions(
     }
   }
 
-  async function mutateThenReload(mutation: () => Promise<unknown>, failureTitle?: string) {
+  async function mutateThenReload(mutation: () => Promise<unknown>, failureTitle?: string): Promise<boolean> {
+    const result = await saveThenReload(mutation, failureTitle);
+    return result === true;
+  }
+
+  /** Like mutateThenReload, but a 400 naming fields goes back to the form (MAIR-932). */
+  async function saveThenReload(mutation: () => Promise<unknown>, failureTitle?: string): Promise<boolean | CourseSaveRefusal> {
     view.setMutationError(null);
     view.setMutationSuccess?.(null);
 
@@ -174,6 +185,10 @@ export function createCatalogActions(
       // been confirmed, so a retained form must not resend it on a refresh retry.
       return true;
     } catch (error) {
+      if (error instanceof BffRequestError && error.status === 400 && error.details.length) {
+        view.setMutationError("Certains champs sont refusés par le service de formation. Corrigez-les puis réessayez.", failureTitle);
+        return { fieldErrors: error.details };
+      }
       await handleFailure(error, view.setMutationError, failureTitle);
       return false;
     }
@@ -246,26 +261,29 @@ export function createCatalogActions(
           // A 2xx response alone does not acknowledge the learner's note. Keep
           // the previous confirmation and return false to the shared reader.
           if (!response.submitted) throw new RatingNotConfirmedError();
+          const myRating = response.myRating ?? rating;
           updateConfirmedCourse(courseId, (course) => ({
             ...course,
             rating: response.rating,
+            ratingCount: response.ratingCount,
             ratingDistribution: response.ratingDistribution,
             ...(course.details ? { details: {
               ...course.details,
               rating: response.rating,
+              ratingLabel: response.ratingLabel,
               ratingDistribution: response.ratingDistribution,
               completionRating: {
                 ...course.details.completionRating,
                 submitted: response.submitted,
-                initialValue: rating,
+                initialValue: myRating,
               },
             } } : {}),
           }));
-          view.setMutationSuccess?.(`Votre note : ${rating}/5.`, "Merci pour votre avis");
+          view.setMutationSuccess?.(`Votre note : ${myRating}/5.`, "Merci pour votre avis");
         }, "Note non envoyée"),
       ),
     createCourse: (course: CatalogCourseInput) =>
-      mutateThenReload(async () => {
+      saveThenReload(async () => {
         const response = await createCourse(toContractCourse(course));
         // Keep server-confirmed data, never the submitted draft or invented counters.
         updateConfirmedCatalogCourses((courses) =>
@@ -276,7 +294,7 @@ export function createCatalogActions(
         view.setMutationSuccess?.(`« ${response.course.title} » est disponible dans le catalogue.`, "Formation créée");
       }, "Formation non créée"),
     updateCourse: (course: CatalogCourseInput) =>
-      mutateThenReload(async () => {
+      saveThenReload(async () => {
         const courseId = course.id;
         const response = await updateCourse(toContractCourse(course));
         // PATCH addresses an existing resource. Unlike creation, its receipt

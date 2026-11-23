@@ -5,6 +5,10 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 
 import { ElearningCatalog, type ElearningCourse } from '@/components/ElearningModule/components/ElearningCatalog';
+import type { ElearningAdminStatsData } from '@/components/ElearningModule/components/ElearningCatalog/components/ElearningAdminStats';
+import { adminStatsResponse } from '@tests/support/elearning-fixtures';
+
+const adminStats = adminStatsResponse() as ElearningAdminStatsData;
 
 const courses: ElearningCourse[] = [
   {
@@ -109,6 +113,7 @@ describe('Elearning components', () => {
       <ElearningCatalog
         courses={courses}
         currentUserRole="administrator"
+        adminStats={adminStats}
         onCreateCourse={handleCreateCourse}
         onUpdateCourse={handleUpdateCourse}
         onDeleteCourse={handleDeleteCourse}
@@ -116,7 +121,6 @@ describe('Elearning components', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Indicateurs du centre de formation' })).toBeInTheDocument();
-    expect(screen.getByText('Apprenants inscrits')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Nouvelle formation' }));
     let dialog = screen.getByRole('dialog', { name: 'Nouvelle formation' });
@@ -160,8 +164,9 @@ describe('Elearning components', () => {
     fireEvent.change(within(dialog).getByLabelText('Titre', { selector: 'input[id^="content-title-"]' }), {
       target: { value: 'Vidéo : déclencher l’alarme' },
     });
+    // MAIR-817: there is no upload, a new resource is a link (absolute https://, MAIR-703).
     fireEvent.change(within(dialog).getByLabelText('Lien ou fichier'), {
-      target: { value: 'alarme-incendie.mp4' },
+      target: { value: 'https://videos.example.fr/alarme-incendie' },
     });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Créer' }));
 
@@ -195,6 +200,7 @@ describe('Elearning components', () => {
       <ElearningCatalog
         courses={[...courses, createdCourse]}
         currentUserRole="administrator"
+        adminStats={adminStats}
         onCreateCourse={handleCreateCourse}
         onUpdateCourse={handleUpdateCourse}
         onDeleteCourse={handleDeleteCourse}
@@ -230,6 +236,7 @@ describe('Elearning components', () => {
       <ElearningCatalog
         courses={[...courses, updatedCourse]}
         currentUserRole="administrator"
+        adminStats={adminStats}
         onCreateCourse={handleCreateCourse}
         onUpdateCourse={handleUpdateCourse}
         onDeleteCourse={handleDeleteCourse}
@@ -251,6 +258,7 @@ describe('Elearning components', () => {
       <ElearningCatalog
         courses={courses}
         currentUserRole="administrator"
+        adminStats={adminStats}
         onCreateCourse={handleCreateCourse}
         onUpdateCourse={handleUpdateCourse}
         onDeleteCourse={handleDeleteCourse}

@@ -1,7 +1,7 @@
 import { CirclePlay } from 'lucide-react';
 import { Button, Card, Icon, Overline, ProgressMeter, Text } from '@mairie360/lib-components/primitives';
 
-import type { ResumeSuggestion } from '../../catalog-model';
+import { frenchDate, type ResumeSuggestion } from '../../catalog-model';
 import type { ElearningCourse } from '../../catalog-types';
 
 export interface ResumeCardProps {
@@ -19,7 +19,7 @@ export interface ResumeCardProps {
  * « À commencer en priorité » (the next mandatory course not started, nearest deadline first).
  */
 export const ResumeCard = ({ suggestion, busy, onResume, onShowDetails }: ResumeCardProps) => {
-  const { course, kind, chapterIndex, chapterCount, chapterTitle, completedChapters, progress } = suggestion;
+  const { course, kind, chapterIndex, chapterCount, chapterTitle, completedChapters, progress, lastActivity } = suggestion;
   const resume = kind === 'resume';
   return (
     <Card aria-labelledby="elearning-resume-title" className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -30,7 +30,7 @@ export const ResumeCard = ({ suggestion, busy, onResume, onShowDetails }: Resume
         <Overline className="text-[var(--mairie-accent)]">{resume ? 'Reprendre où vous en étiez' : 'À commencer en priorité'}</Overline>
         <h2 id="elearning-resume-title" className="text-lg font-semibold leading-7">{course.title}</h2>
         <Text size="s" tone="muted">
-          {[course.category, course.deadline ? `Avant le ${course.deadline}` : 'Sans échéance'].filter(Boolean).join(' · ')}
+          {[course.category, course.deadline ? `Avant le ${frenchDate(course.deadline)}` : 'Sans échéance', lastActivity ? `Dernière activité ${lastActivity}` : undefined].filter(Boolean).join(' · ')}
         </Text>
         {chapterTitle ? <Text size="s">Chapitre {chapterIndex} sur {chapterCount} · <strong>{chapterTitle}</strong></Text> : null}
         {resume ? (

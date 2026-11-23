@@ -1,7 +1,8 @@
 import React from 'react';
 import { Alert, CancelButton, ConfirmModal, Modal, SaveButton } from '@mairie360/lib-components/primitives';
 
-import type { ElearningFilterOption } from '../../catalog-types';
+import type { ElearningCourseSaveResult, ElearningFilterOption } from '../../catalog-types';
+import { isSaveRefusal } from '../../catalog-types';
 import { CourseGeneralSection } from './components/CourseGeneralSection';
 import { CoursePresentationSection } from './components/CoursePresentationSection';
 import { CourseProgramSection } from './components/CourseProgramSection';
@@ -15,6 +16,7 @@ import {
   patchContent,
   removeChapter,
   removeContent,
+  serverFormErrors,
   validateCourseForm,
   type CourseFormErrors,
   type ElearningCourseChapterFormValues,
@@ -40,7 +42,8 @@ export interface ElearningCourseFormModalProps {
   /** Called once a chapter was removed after its confirmation (MAIR-932 C5: info toast). */
   onChapterRemoved?: () => void;
   onCancel: () => void;
-  onSubmit: (values: ElearningCourseFormValues) => void | boolean | Promise<void | boolean>;
+  /** `false` keeps the draft; a refusal naming fields (400 of the BFF) shows each message under its field. */
+  onSubmit: (values: ElearningCourseFormValues) => ElearningCourseSaveResult;
 }
 
 /** Course author form on the lib Modal (MAIR-608): general information, presentation, then the programme. */
@@ -97,19 +100,28 @@ export const ElearningCourseFormModal = ({
     submittingRef.current = true;
     setIsSubmitting(true);
     setSubmissionError(null);
+    const sent = normalizeCourseFormValues(values);
     const refused = () => setSubmissionError('L’enregistrement n’a pas été confirmé. Vos saisies sont conservées ; vous pouvez réessayer.');
     const settled = () => {
       submittingRef.current = false;
       setIsSubmitting(false);
     };
+    const outcome = (confirmed: unknown) => {
+      if (isSaveRefusal(confirmed)) {
+        // MAIR-932: the BFF named the fields it refused; each message goes under its input.
+        const { errors: placed, unplaced } = serverFormErrors(confirmed.fieldErrors, sent);
+        setErrors(placed);
+        setSubmissionError(['Le service de formation a refusé certains champs. Corrigez-les puis réessayez.', ...unplaced].join(' '));
+        const id = firstErrorFieldId(placed);
+        if (id && typeof document !== 'undefined') document.getElementById(id)?.focus();
+      } else if (confirmed === false) refused();
+    };
     try {
-      const result = onSubmit(normalizeCourseFormValues(values));
-      if (result && typeof result === 'object' && typeof result.then === 'function') {
-        void result.then((confirmed) => {
-          if (confirmed === false) refused();
-        }).catch(refused).finally(settled);
+      const result = onSubmit(sent);
+      if (result && typeof result === 'object' && 'then' in result && typeof result.then === 'function') {
+        void result.then(outcome).catch(refused).finally(settled);
       } else {
-        if (result === false) refused();
+        outcome(result);
         settled();
       }
     } catch {
@@ -159,6 +171,7 @@ export const ElearningCourseFormModal = ({
           <CourseProgramSection
             chapters={values.chapters}
             linkErrors={errors.links}
+            fieldErrors={errors.fields ?? {}}
             onAddChapter={() => updateChapters((chapters) => [...chapters, createEmptyCourseChapter()])}
             onChapterChange={(chapterId, patch) => updateChapters((chapters) => patchChapter(chapters, chapterId, patch))}
             onChapterRemove={(chapter, index) => setChapterToRemove({ chapter, index })}

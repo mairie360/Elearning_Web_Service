@@ -1,7 +1,13 @@
-import { BookOpen, CircleCheckBig, Clock3, TriangleAlert } from 'lucide-react';
+import React from 'react';
+import { CircleCheckBig, Clock3, Hourglass, TriangleAlert } from 'lucide-react';
 import { MetricCard, Overline } from '@mairie360/lib-components/primitives';
 
-import type { LearnerMetrics as Metrics } from '../../catalog-model';
+import { TrainingTimeDrawer } from './components/TrainingTimeDrawer';
+import { formatDurationSeconds, type LearnerMetrics as Metrics } from '../../catalog-model';
+import type { ElearningLearnerActionResult } from '../../course-types';
+import type { ElearningTrainingTime } from './training-time-model';
+
+export * from './training-time-model';
 
 /** A filter a metric applies when clicked (MAIR-1144); clicking the active metric removes it. */
 export interface MetricFilter {
@@ -14,12 +20,27 @@ export interface LearnerMetricsProps {
   /** Filters currently applied: the metric they match is shown active. */
   active: MetricFilter;
   onSelect: (filter: MetricFilter) => void;
+  /** `GET /elearning/training-time` of the current year; absent while loading or unavailable. */
+  trainingTime?: ElearningTrainingTime;
+  trainingTimeState?: 'default' | 'loading' | 'unavailable';
+  onTrainingTimeRetry?: () => void;
+  onDownloadCertificates?: () => ElearningLearnerActionResult;
 }
 
 const NONE: MetricFilter = { status: 'all', requirement: 'all' };
 
-/** MAIR-882 / MAIR-1144: « Mon suivi », the agent's own indicators; each MetricCard filters the list in place (MAIR-1140). */
-export const LearnerMetrics = ({ metrics, active, onSelect }: LearnerMetricsProps) => {
+/** « 4 h 30 », else a dash while the training time is not known. */
+const timeValue = (trainingTime: ElearningTrainingTime | undefined, state: string) =>
+  trainingTime ? formatDurationSeconds(trainingTime.timeSpentSeconds) : state === 'loading' ? '…' : '—';
+
+/**
+ * MAIR-882 / MAIR-1144: « Mon suivi », the agent's own indicators. The first three filter the list in place
+ * (MAIR-1140); the training time opens « Mon temps de formation » in a Drawer.
+ */
+export const LearnerMetrics = ({
+  metrics, active, onSelect, trainingTime, trainingTimeState = 'loading', onTrainingTimeRetry, onDownloadCertificates,
+}: LearnerMetricsProps) => {
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const cards = [
     { label: 'Formations en cours', value: metrics.inProgress, icon: Clock3, filter: { status: 'in-progress', requirement: 'all' } },
     {
@@ -27,15 +48,15 @@ export const LearnerMetrics = ({ metrics, active, onSelect }: LearnerMetricsProp
       trendLabel: metrics.nextDeadline ? `Prochaine échéance : ${metrics.nextDeadline}` : undefined,
       filter: { status: 'to-finish', requirement: 'mandatory' },
     },
-    { label: 'Formations terminées', value: metrics.completed, icon: CircleCheckBig, filter: { status: 'completed', requirement: 'all' } },
-    { label: 'Formations disponibles', value: metrics.available, icon: BookOpen, filter: NONE },
+    { label: `Terminées en ${metrics.year}`, value: metrics.completedInYear, icon: CircleCheckBig, filter: { status: 'completed', requirement: 'all' } },
   ];
+  const goal = trainingTime ? `objectif annuel : ${formatDurationSeconds(trainingTime.goalMinutes * 60)}` : trainingTimeState === 'unavailable' ? 'temporairement indisponible' : undefined;
   return (
     <section aria-labelledby="elearning-learner-metrics" className="flex flex-col gap-3">
       <Overline as="h2" id="elearning-learner-metrics">Mon suivi</Overline>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map(card => {
-          const pressed = card.filter !== NONE && card.filter.status === active.status && card.filter.requirement === active.requirement;
+          const pressed = card.filter.status === active.status && card.filter.requirement === active.requirement;
           return (
             <MetricCard
               key={card.label}
@@ -51,7 +72,27 @@ export const LearnerMetrics = ({ metrics, active, onSelect }: LearnerMetricsProp
             />
           );
         })}
+        <MetricCard
+          label={`Temps de formation en ${metrics.year}`}
+          value={timeValue(trainingTime, trainingTimeState)}
+          icon={Hourglass}
+          size="m"
+          trend="none"
+          trendLabel={goal}
+          onClick={() => setDrawerOpen(true)}
+          aria-haspopup="dialog"
+          className="h-full"
+        />
       </div>
+      <TrainingTimeDrawer
+        open={drawerOpen}
+        year={metrics.year}
+        trainingTime={trainingTime}
+        state={trainingTimeState}
+        onClose={() => setDrawerOpen(false)}
+        onRetry={onTrainingTimeRetry}
+        onDownloadCertificates={onDownloadCertificates}
+      />
     </section>
   );
 };

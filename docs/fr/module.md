@@ -5,17 +5,20 @@
 Le module suit la maquette V2 et n'utilise que des composants de `@mairie360/lib-components` 2.3 (mode clair uniquement).
 
 - **Page** : en-tête « E-learning » (sous-titre agent « Développez vos compétences à votre rythme. », administrateur « Pilotez les formations proposées aux agents de la commune. » avec « Nouvelle formation »), sans pied de page.
-- **Reprendre** : en tête de page agent, la formation en cours la plus avancée (« Reprendre où vous en étiez »), sinon la prochaine formation obligatoire non commencée (« À commencer en priorité »).
-- **Mon suivi** : formations en cours, obligatoires à terminer (prochaine échéance), terminées, disponibles. Chaque indicateur filtre la liste sur place ; un second clic retire le filtre. L'administrateur voit à la place « Indicateurs du centre de formation » avec « Actualiser ».
-- **Recherche et filtres** : recherche, Catégorie, Statut (« À terminer » regroupe non commencées et en cours), Caractère (obligatoires / facultatives), compteur de résultats ; les filtres sont gardés dans l'URL.
+- **Reprendre** : en tête de page agent, la formation en cours touchée en dernier (« Reprendre où vous en étiez », avec « Dernière activité hier »), sinon la prochaine formation obligatoire non commencée, échéance la plus proche d'abord (« À commencer en priorité »).
+- **Mon suivi** : formations en cours, obligatoires à terminer (prochaine échéance), « Terminées en <année> » (dates de fin de l'année) et « Temps de formation en <année> » avec l'objectif annuel. Les trois premiers filtrent la liste sur place (un second clic retire le filtre) ; le temps de formation ouvre le panneau « Mon temps de formation » (temps par formation, statut, total) avec « Télécharger mes attestations » (un PDF pour l'année ; « Aucune attestation pour cette année » si aucune formation n'est terminée).
+- **Administrateurs** : « Indicateurs du centre de formation » avec « Actualiser » à la place (MAIR-1150) : « Formations internes » et « Formations de l’outil » posent le filtre « Origine » sur place, « Taux de participation » ouvre « Participation par service », « Complétion moyenne » ouvre « Complétion par formation », « Obligatoires en retard » ouvre « Agents en retard » avec « Relancer les n agents » (une relance par formation concernée, message avec le nombre envoyé). Si les indicateurs ne peuvent être lus, le panneau affiche « Indicateurs temporairement indisponibles. » et le catalogue reste utilisable.
+- **Recherche et filtres** : recherche, Catégorie, Statut (« À terminer » regroupe non commencées et en cours), Caractère (obligatoires / facultatives), Origine (administrateurs : interne / Mairie360), compteur de résultats ; les filtres sont gardés dans l'URL.
 - **Tuiles** : mêmes informations pour toutes les formations ; toute la tuile ouvre la fiche.
-- **Fiche** : informations de la formation et « Votre avancement » ; « Commencer », « Continuer » ou « Revoir » ouvrent l'écran de suivi.
+- **Fiche** : catégorie, niveau, caractère obligatoire, origine, formateur, durée, note moyenne avec son libellé (« 4,5 (12 avis) »), échéance (« 30 juin 2026 »), « Relancé le … » quand un administrateur a relancé l'agent sur une formation non terminée, et « Votre avancement » ; « Commencer », « Continuer » ou « Revoir » ouvrent l'écran de suivi.
 - **Écran de suivi** (`?play=<id>`) : écran plein sans la barre de navigation, sommaire, chapitre, « Marquer comme terminé » (chaque contenu restant du chapitre est validé l'un après l'autre), « Précédent » / « Suivant » / « Terminer ». Le retour arrière du navigateur ou « Quitter la formation » ramène au catalogue.
-- **Fin de formation** : notation par étoiles (quand le service la propose), avis écrits, retour au catalogue.
+- **Contenus** : chaque contenu affiche son type, sa durée et s'il est facultatif ; un lien ouvre son adresse `https://`, un fichier stocké (vidéo, PDF, document, audio) s'ouvre par une URL signée fournie par le service à chaque ouverture (nouvel onglet) ; un quiz ou « Autre » n'a pas de fichier.
+- **Fin de formation** : « Télécharger l’attestation » (PDF), notation par étoiles (« Merci pour votre avis · Votre note : n/5 », le choix est conservé si le service refuse), avis écrits, retour au catalogue.
+- **Formulaire de formation** (administrateurs) : création, modification et suppression via le service. Une nouvelle ressource est un lien, un quiz ou « Autre » (pas d'envoi de fichier) ; un lien exige une adresse `https://` absolue. Un champ refusé par le service est signalé sous ce champ. Une formation créée par la commune est interne.
 - **Retours** : chaque action affiche un message temporaire (succès, échec, information) ; les erreurs de lecture restent affichées au-dessus du catalogue avec « Réessayer ».
-- **Liens** : seuls les liens `https://` (domaine affiché, nouvel onglet) et les chemins du site sont proposés ; le formulaire refuse les autres.
+- **Liens** : seuls les liens `https://` (domaine affiché, nouvel onglet) et les chemins du site sont proposés ; le formulaire n'accepte que des adresses `https://` absolues.
 
-Limites : le service de formation publié n'expose ni temps passé, ni attestation, ni date de dernière activité, ni origine des formations ; les éléments de maquette qui en dépendent ne sont pas affichés.
+Limites : les avis écrits et le décochage d'un contenu terminé ne sont pas servis par le service de formation.
 
 ## Identité des reçus apprenant (MAIR-350)
 
@@ -111,7 +114,8 @@ Domaine fonctionnel: Formation en ligne.
 - Catalogue, filtres et détails de formation.
 - Démarrage, reprise et progression de contenu, persistées par chapitre par le service E-learning. Le catalogue liste les formations auxquelles l’agent est inscrit.
 - Accès au compte via Settings.
-- Pas encore disponibles, donc non proposés (MAIR-513) : la notation des formations, la gestion des formations par les administrateurs (un administrateur voit une note en français à la place des boutons Créer / Modifier / Supprimer) et le décochage d’un contenu terminé, refusé localement. Le BFF répond 501 à ces opérations tant que le service E-learning ne les persiste pas ; un 501 qui arriverait malgré tout est affiché en français.
+- Notation, attestations, temps de formation et fichiers stockés (agents) ; indicateurs, relances et gestion des formations (administrateurs).
+- Pas encore disponible (MAIR-513) : le décochage d’un contenu terminé, refusé localement (le BFF répond 501 ; un 501 qui arriverait malgré tout est affiché en français).
 
 ## Parcours type
 
@@ -127,7 +131,7 @@ Ce dépôt contient l’interface navigateur et ses adaptateurs Next.js. Le BFF 
 
 ## Données et état actuel
 
-Depuis MAIR-401, le BFF lit le service E-learning : le catalogue correspond aux inscriptions de l’agent, les démarrages et la progression sont persistés par chapitre. La notation, l’administration des formations et le décochage d’un contenu ne sont persistés par aucun service et répondent 501 ; la page ne les propose pas (`pinnedBffCapabilities`, MAIR-513). L’identité vient du jeton de session.
+Depuis MAIR-401, le BFF lit le service E-learning : le catalogue correspond aux inscriptions de l’agent, les démarrages et la progression sont persistés par chapitre. La notation, l’administration des formations, les relances, les indicateurs, le temps de formation et les attestations sont servis par le service E-learning via le BFF (E-learning V2) ; le décochage d’un contenu répond encore 501 et est refusé localement (`pinnedBffCapabilities`, MAIR-513). L’identité vient du jeton de session.
 
 ## Périmètre et limites
 

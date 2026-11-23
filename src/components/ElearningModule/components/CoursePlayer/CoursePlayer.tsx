@@ -31,6 +31,8 @@ export interface CoursePlayerProps {
   onContentDownload?: (course: ElearningCourse, content: ElearningCourseContentItem) => ElearningLearnerActionResult;
   canCompleteContent?: (course: ElearningCourse, content: ElearningCourseContentItem) => boolean;
   onRatingSubmit?: (course: ElearningCourse, rating: number) => ElearningLearnerActionResult;
+  /** « Télécharger l’attestation » of the end screen (MAIR-1149). */
+  onCertificateDownload?: (course: ElearningCourse) => ElearningLearnerActionResult;
   review?: React.ReactNode;
 }
 
@@ -41,7 +43,7 @@ const confirmedResult = async (result: ElearningLearnerActionResult) => (await r
  * formation » and the progress, « Sommaire », the current chapter, and the chapter actions in the footer. Progress only
  * moves on the service's confirmation (the course props); a refused action changes nothing.
  */
-export const CoursePlayer = ({ course, onExit, onContentComplete, onContentDownload, canCompleteContent, onRatingSubmit, review }: CoursePlayerProps) => {
+export const CoursePlayer = ({ course, onExit, onContentComplete, onContentDownload, canCompleteContent, onRatingSubmit, onCertificateDownload, review }: CoursePlayerProps) => {
   const toast = useToast();
   const chapters: ElearningCourseChapter[] = React.useMemo(() => normalizeChaptersForProgress(course.details?.chapters ?? []), [course.details?.chapters]);
   const [currentId, setCurrentId] = React.useState(() => getInitialChapter(chapters)?.id);
@@ -117,12 +119,12 @@ export const CoursePlayer = ({ course, onExit, onContentComplete, onContentDownl
       try {
         const ok = await confirmedResult(onContentDownload(course, content));
         if (!mounted.current) return ok;
-        if (ok) toast.success('Le support est enregistré sur votre appareil.', { title: 'Support téléchargé' });
-        else toast.error('Le téléchargement n’a pas été confirmé.', { title: 'Téléchargement impossible' });
+        if (ok) toast.success('Le support s’ouvre dans un nouvel onglet.', { title: 'Support ouvert' });
+        else toast.error('L’ouverture du support n’a pas été confirmée.', { title: 'Ouverture impossible' });
         return ok;
       } catch (reason) {
         if (!mounted.current) return false;
-        toast.error(reason instanceof Error ? reason.message : 'Le téléchargement a échoué.', { title: 'Téléchargement impossible' });
+        toast.error(reason instanceof Error ? reason.message : 'L’ouverture du support a échoué.', { title: 'Ouverture impossible' });
         return false;
       } finally { setDownloadingId(undefined); }
     });
@@ -151,6 +153,7 @@ export const CoursePlayer = ({ course, onExit, onContentComplete, onContentDownl
             rating={course.details?.completionRating}
             onRatingSubmit={onRatingSubmit ? rating => onRatingSubmit(course, rating) : undefined}
             review={review}
+            onDownloadCertificate={onCertificateDownload ? () => onCertificateDownload(course) : undefined}
             onBackToCatalog={onExit}
           />
         ) : <Text className="p-6">Aucun chapitre disponible pour cette formation.</Text>}

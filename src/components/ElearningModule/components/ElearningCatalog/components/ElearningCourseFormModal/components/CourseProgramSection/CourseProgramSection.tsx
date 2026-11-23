@@ -9,6 +9,8 @@ export interface CourseProgramSectionProps {
   chapters: ElearningCourseChapterFormValues[];
   /** Unsafe link addresses, by content id (MAIR-703). */
   linkErrors: Record<string, string>;
+  /** Other refused fields, by input id (MAIR-932). */
+  fieldErrors?: Record<string, string>;
   onAddChapter: () => void;
   onChapterChange: (chapterId: string, patch: Partial<ElearningCourseChapterFormValues>) => void;
   /** Asks for a confirmation before removing (MAIR-932 C5). */
@@ -20,7 +22,7 @@ export interface CourseProgramSectionProps {
 
 /** MAIR-932: « Contenu pédagogique » on the lib FormSection: the chapters, at least one is kept. */
 export const CourseProgramSection = ({
-  chapters, linkErrors, onAddChapter, onChapterChange, onChapterRemove, onAddContent, onContentChange, onContentRemove,
+  chapters, linkErrors, fieldErrors = {}, onAddChapter, onChapterChange, onChapterRemove, onAddContent, onContentChange, onContentRemove,
 }: CourseProgramSectionProps) => (
   <FormSection title="Contenu pédagogique" description="Ajoutez les chapitres et leurs ressources pédagogiques.">
     <div className="flex flex-col gap-4">
@@ -31,6 +33,7 @@ export const CourseProgramSection = ({
           chapterIndex={chapterIndex}
           removable={chapters.length > 1}
           linkErrors={linkErrors}
+          fieldErrors={fieldErrors}
           onChange={(patch) => onChapterChange(chapter.id, patch)}
           onRemove={() => onChapterRemove(chapter, chapterIndex)}
           onAddContent={() => onAddContent(chapter)}

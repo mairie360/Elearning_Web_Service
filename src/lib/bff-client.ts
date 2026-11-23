@@ -7,8 +7,26 @@ type BffErrorBody = {
   message?: unknown;
   error?: {
     message?: unknown;
+    details?: unknown;
   };
 };
+
+/** One field the BFF refused (`{ path: 'body.title', message }` of the shared error envelope). */
+export interface BffErrorDetail {
+  path?: string;
+  message: string;
+}
+
+function errorDetails(body: BffErrorBody | null): BffErrorDetail[] {
+  const details = body?.error?.details;
+  if (!Array.isArray(details)) return [];
+  return details.flatMap((detail): BffErrorDetail[] => {
+    if (!detail || typeof detail !== 'object') return [];
+    const { path, message } = detail as { path?: unknown; message?: unknown };
+    if (typeof message !== 'string') return [];
+    return [{ ...(typeof path === 'string' ? { path } : {}), message }];
+  });
+}
 
 /** A 501 means "no upstream service persists this yet": the BFF's English message is not meant for the agent. */
 export const NOT_IMPLEMENTED_MESSAGE =
@@ -28,6 +46,8 @@ export class BffRequestError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    /** Fields the BFF refused (400), from the `details` of its error envelope. */
+    public readonly details: BffErrorDetail[] = [],
   ) {
     super(message);
     this.name = "BffRequestError";
@@ -48,7 +68,22 @@ function createRequestHeaders(init: RequestInit) {
   return headers;
 }
 
-export async function requestBff<T>(path: string, init: RequestInit = {}) {
+/** A binary answer (the PDF attestations): its content and the `Content-Disposition` header. */
+export interface BffFile {
+  blob: Blob;
+  contentDisposition: string | null;
+}
+
+export async function requestBff<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return (await sendBff(path, init, 'json')) as T;
+}
+
+/** Same request rules as requestBff, for an operation that answers a file. */
+export async function requestBffFile(path: string, init: RequestInit = {}): Promise<BffFile> {
+  return (await sendBff(path, init, 'file')) as BffFile;
+}
+
+async function sendBff(path: string, init: RequestInit, kind: 'json' | 'file'): Promise<unknown> {
   init.signal?.throwIfAborted();
   const response = await sessionFetch(path, {
     ...init,
@@ -75,26 +110,44 @@ export async function requestBff<T>(path: string, init: RequestInit = {}) {
     init.signal?.throwIfAborted();
 
     if (response.status === 401) navigateToLogin();
-    throw new BffRequestError(response.status, errorMessage(body, response.status));
+    throw new BffRequestError(response.status, errorMessage(body, response.status), errorDetails(body));
   }
 
-  if (response.status === 204) return undefined as T;
+  if (kind === 'file') {
+    const blob = await response.blob();
+    init.signal?.throwIfAborted();
+    return { blob, contentDisposition: response.headers.get('Content-Disposition') };
+  }
 
-  const body = (await response.json()) as T;
+  if (response.status === 204) return undefined;
+
+  const body = await response.json();
   init.signal?.throwIfAborted();
   return body;
 }
 
 // The generated operations of the published BFF E-learning contract own every path: axios only carries the
 // request through requestBff, which keeps the same-origin cookie, redirect handling, 401 and error class.
-export function createElearningClient(request: typeof requestBff = requestBff) {
+export function createElearningClient(request: typeof requestBff = requestBff, requestFile: typeof requestBffFile = requestBffFile) {
   const contractAdapter: AxiosAdapter = async (config) => {
-    const data = await request<unknown>(axios.getUri(config), {
+    const init = {
       method: (config.method ?? 'get').toUpperCase(),
       headers: config.headers.toJSON() as Record<string, string>,
       body: typeof config.data === 'string' ? config.data : undefined,
       signal: (config.signal as AbortSignal | undefined) ?? undefined,
-    });
+    };
+    // The PDF operations of the contract ask for a blob: the file and its name header go back to the caller.
+    if (config.responseType === 'blob') {
+      const file = await requestFile(axios.getUri(config), { ...init, headers: { ...init.headers, Accept: 'application/pdf' } });
+      return {
+        data: file.blob,
+        status: 200,
+        statusText: 'OK',
+        headers: file.contentDisposition ? { 'content-disposition': file.contentDisposition } : {},
+        config,
+      };
+    }
+    const data = await request<unknown>(axios.getUri(config), init);
     return {
       data,
       status: data === undefined ? 204 : 200,

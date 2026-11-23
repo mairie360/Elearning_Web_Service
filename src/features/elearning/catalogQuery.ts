@@ -1,5 +1,5 @@
 import { urlText } from '../../lib/page-url-state';
-export const catalogUrlSchema = { q: urlText(200), category: { ...urlText(80), defaultValue: 'all' }, status: { ...urlText(80), defaultValue: 'all' }, requirement: { ...urlText(20), defaultValue: 'all' }, play: urlText(80) };
+export const catalogUrlSchema = { q: urlText(200), category: { ...urlText(80), defaultValue: 'all' }, status: { ...urlText(80), defaultValue: 'all' }, requirement: { ...urlText(20), defaultValue: 'all' }, source: { ...urlText(20), defaultValue: 'all' }, play: urlText(80) };
 /** Only bounded screen state enters client props; unrelated query parameters stay private. */
 export function catalogSearch(parameters: Record<string, string | string[] | undefined>) {
   const params = new URLSearchParams();

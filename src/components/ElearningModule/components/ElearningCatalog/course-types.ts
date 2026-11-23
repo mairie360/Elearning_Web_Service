@@ -6,6 +6,7 @@ export interface ElearningCourseCompletionRating {
   title?: string;
   initialValue?: number;
   submitted?: boolean;
+  max?: number;
   disabled?: boolean;
   onSubmit?: (rating: number) => ElearningLearnerActionResult;
 }
@@ -18,6 +19,7 @@ export interface ElearningCourseContentItem {
   type: ElearningCourseContentType;
   description?: string;
   duration?: string;
+  durationSeconds?: number;
   fileName?: string;
   href?: string;
   completed?: boolean;

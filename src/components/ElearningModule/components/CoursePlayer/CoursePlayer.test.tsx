@@ -61,12 +61,22 @@ describe('CoursePlayer', () => {
     expect(onExit).toHaveBeenCalled();
   });
 
-  it('reports a download through a toast', async () => {
+  it('downloads the attestation from the end screen (MAIR-1149)', async () => {
+    const onCertificateDownload = vi.fn(async () => true);
+    const done = { id: 'c', title: 'RGPD', description: '', details: { title: 'RGPD', description: '', completed: true, progress: 100,
+      chapters: [{ id: 'a', title: 'Seul chapitre', duration: '', completed: true, contents: [] }] } };
+    render(<ToastProvider regionLabel="Notifications"><CoursePlayer course={done} onExit={vi.fn()} onCertificateDownload={onCertificateDownload} /></ToastProvider>);
+    await userEvent.click(screen.getByRole('button', { name: 'Terminer' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Télécharger l’attestation' }));
+    expect(onCertificateDownload).toHaveBeenCalledWith(expect.objectContaining({ id: 'c' }));
+  });
+
+  it('reports a refused opening of a stored file through a toast (MAIR-817)', async () => {
     const onContentDownload = vi.fn().mockRejectedValue(new Error('Support indisponible'));
     renderPlayer({ onContentDownload });
-    await userEvent.click(screen.getAllByRole('button', { name: 'Télécharger le support' })[0]);
+    await userEvent.click(screen.getAllByRole('button', { name: /^Ouvrir le support/ })[0]);
     const region = await screen.findByRole('region', { name: 'Notifications' });
-    expect(within(region).getByText('Téléchargement impossible')).toBeVisible();
+    expect(within(region).getByText('Ouverture impossible')).toBeVisible();
   });
 
   it('accepts the confirmed completion of the service even without required contents', async () => {
@@ -88,10 +98,10 @@ describe('CoursePlayer', () => {
     let reject: (reason: Error) => void = () => {};
     const onContentDownload = vi.fn(() => new Promise<boolean>((_, fail) => { reject = fail; }));
     const view = renderPlayer({ onContentDownload });
-    await userEvent.click(screen.getAllByRole('button', { name: 'Télécharger le support' })[0]);
+    await userEvent.click(screen.getAllByRole('button', { name: /^Ouvrir le support/ })[0]);
     view.rerender(<ToastProvider regionLabel="Notifications">{null}</ToastProvider>);
-    reject(new Error('Le téléchargement a été annulé.'));
+    reject(new Error('L’ouverture du support a été annulée.'));
     await new Promise(resolve => setTimeout(resolve, 20));
-    expect(screen.queryByText('Téléchargement impossible')).toBeNull();
+    expect(screen.queryByText('Ouverture impossible')).toBeNull();
   });
 });

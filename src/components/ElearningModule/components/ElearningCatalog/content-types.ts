@@ -23,3 +23,7 @@ export const contentTypeIcons: Record<ElearningCourseContentType, LucideIcon> = 
 };
 
 export const contentCountLabel = (count: number) => `${count} contenu${count > 1 ? 's' : ''}`;
+
+/** MAIR-817: the types the E-learning API stores as a file (opened through a signed URL); a link, a quiz or `other` has none. */
+export const STORED_FILE_TYPES: ReadonlySet<ElearningCourseContentType> = new Set(['video', 'pdf', 'document', 'audio']);
+export const isStoredFileContent = (content: { type: ElearningCourseContentType }) => STORED_FILE_TYPES.has(content.type);

@@ -3,8 +3,9 @@
 ## V2: component tree and course screen (MAIR-827)
 
 - `ElearningModule` picks the shell: `AccessibleShell` for the catalogue, `CoursePlayer` (lib 2.3 `AppShell layout="focus"`) when the URL carries `?play=<id>` (`catalogQuery.ts`). `ToastProvider` (top right) wraps both; `CatalogToasts` turns the outcomes of `catalogActions.ts` into titled toasts.
-- `ElearningCatalog`: `CatalogHeader` (PageHeader), `ResumeCard`, `LearnerMetrics` (clickable MetricCards) or `ElearningAdminStats` (Panel + RefreshButton), `CatalogFilters` (TextField + menu FilterSelect, `requirement` filter in the URL), `ManagedCourseCard` → `ElearningCourseCard`, `SelectedCourseDetails` (sheet, Modal l), `ElearningCourseFormModal` (FormSection, `validateCourseForm`, ConfirmModal before removing a chapter).
-- `CoursePlayer`: `PlayerSummary`, `PlayerChapter` → `ChapterContentItem` (links through `safeContentLink`), `CourseEndScreen` → `CourseRatingCard` (Rating).
+- `ElearningCatalog`: `CatalogHeader` (PageHeader), `ResumeCard`, `LearnerMetrics` (clickable MetricCards, `TrainingTimeDrawer`: Drawer + DataTable + DownloadButton) or `ElearningAdminStats` (Panel + RefreshButton, `ParticipationDrawer`, `CompletionDrawer`, `LateAgentsDrawer`), `CatalogFilters` (TextField + menu FilterSelect, `requirement` and administrator `source` filters in the URL), `ManagedCourseCard` → `ElearningCourseCard`, `SelectedCourseDetails` (sheet, Modal l), `ElearningCourseFormModal` (FormSection, `validateCourseForm`, ConfirmModal before removing a chapter).
+- `CoursePlayer`: `PlayerSummary`, `PlayerChapter` → `ChapterContentItem` (links through `safeContentLink`, stored files opened through their signed URL), `CourseEndScreen` (« Télécharger l’attestation ») → `CourseRatingCard` (Rating).
+- E-learning V2 data (BFF_Elearning#251): `src/features/elearning/insightActions.ts` (DOM-free) reads the training time (`GET /elearning/training-time?year=`, agents) or the indicators (`GET /elearning/admin/stats`, administrators) once the catalogue says who the caller is, downloads the attestations (`GET /elearning/certificates?year=`, `GET /elearning/courses/{courseId}/certificate`: PDF, file name from `Content-Disposition`, saved by `save-file.ts`) and sends the reminders (`POST /elearning/admin/courses/{courseId}/reminders`, one per course concerned). `elearningLearnerPort` (`learnerFeatures.ts`) opens a stored file through `GET …/contents/{contentId}/file` (only an `https:` signed URL, new tab). The generated client asks the PDF operations for a blob: the axios adapter of `bff-client.ts` sends them through `requestBffFile`. A 400 of the BFF keeps its `details` (`BffRequestError.details`); `serverFormErrors` (`course-form-values.ts`) places them under the form fields.
 - DOM-free rules: `catalog-model.ts` (filters, indicators, `resumeSuggestion`, deadlines), `course-progress.ts`, `course-rating.ts`, `safe-link.ts`, `course-form-values.ts`.
 - `subscribePageReturn` and `parseFrontUrl` come from `@mairie360/lib-components/shared` (the client bundle provenance check refuses an identical local copy).
 
@@ -102,7 +103,7 @@ The generic proxy reads the versioned OpenAPI contract to allow paths and method
 
 The following sources and limitations describe the associated BFF, which determines persistence for the displayed data.
 
-Since MAIR-401 the BFF reads the E-learning API: the catalogue is the learner's enrolments, course starts and progress are persisted per chapter. Course rating, course administration and `completed: false` answer 501 (nothing upstream persists them). `src/features/elearning/bffCapabilities.ts` (MAIR-513) lists what the pinned BFF serves: `ElearningModule` only wires the rating and admin callbacks of the shared catalogue when the capability is on (the component hides a control without a callback), refuses an uncompletion locally and shows administrators a notice. `requestBff` translates any 501 into `NOT_IMPLEMENTED_MESSAGE`.
+Since MAIR-401 the BFF reads the E-learning API: the catalogue is the learner's enrolments, course starts and progress are persisted per chapter. Since BFF_Elearning#251 (E-learning V2) ratings, course administration, reminders, indicators, training time, attestations and stored files are served too; only `completed: false` still answers 501. `src/features/elearning/bffCapabilities.ts` (MAIR-513) lists what the pinned BFF serves (`pinnedBffCapabilities`: rating and administration on, un-completion off): `ElearningModule` wires the rating and admin callbacks and refuses an uncompletion locally. `requestBff` translates any 501 into `NOT_IMPLEMENTED_MESSAGE`.
 
 Restarting resets in-memory data; multiple instances do not share that state. Contract validation or an HTTP success does not prove durable storage in Elearning API.
 
@@ -169,14 +170,20 @@ These data paths are exposed at the same origin through the proxy; Next.js pages
 | --- | --- | --- | --- |
 | GET | `/health` | — | 200 |
 | GET | `/check_apis` | — | 200, 502 |
-| POST | `/elearning/admin/courses` | application/json | 201, 400, 401, 403, 409, 501 (today: always 501, not offered) |
-| PATCH | `/elearning/admin/courses/{courseId}` | application/json | 200, 400, 401, 403, 404, 501 |
-| DELETE | `/elearning/admin/courses/{courseId}` | — | 200, 401, 403, 404, 501 |
-| GET | `/elearning/catalog` | — | 200, 400, 500 |
-| POST | `/elearning/courses/{courseId}/contents/{contentId}/complete` | application/json | 200, 400, 404, 422, 500, 501 (`completed: false`) |
-| GET | `/elearning/profile` | — | 200, 500 |
-| POST | `/elearning/courses/{courseId}/rating` | application/json | 200, 400, 404, 500, 501 (today: always 501, not offered) |
-| POST | `/elearning/courses/{courseId}/start` | application/json | 200, 400, 404, 422, 500 |
+| POST | `/elearning/admin/courses` | application/json | 201, 400 (refused fields, shown under the form fields), 401, 403, 429, 500, 502, 503 |
+| PATCH | `/elearning/admin/courses/{courseId}` | application/json | 200, 400, 401, 403, 404, 429, 500, 502, 503 |
+| DELETE | `/elearning/admin/courses/{courseId}` | — | 200, 400, 401, 403, 404, 429, 500, 502, 503 |
+| POST | `/elearning/admin/courses/{courseId}/reminders` | application/json | 200, 400, 401, 403, 404, 409 (not mandatory), 429, 500, 502, 503 |
+| GET | `/elearning/admin/stats` | — | 200, 401, 403, 429, 500, 502, 503 |
+| GET | `/elearning/catalog` | — | 200, 400, 401, 429, 500, 502, 503 |
+| GET | `/elearning/certificates?year=` | — | 200 `application/pdf`, 400, 401, 404 (nothing completed), 429, 500, 502, 503 |
+| GET | `/elearning/courses/{courseId}/certificate` | — | 200 `application/pdf`, 400, 401, 404, 409 (not completed), 429, 500, 502, 503 |
+| GET | `/elearning/courses/{courseId}/chapters/{chapterId}/contents/{contentId}/file` | — | 200 `{ url }`, 400, 401, 404, 429, 500, 502, 503 |
+| POST | `/elearning/courses/{courseId}/contents/{contentId}/complete` | application/json | 200, 400, 401, 404, 429, 500, 501 (`completed: false`, refused locally), 502, 503 |
+| GET | `/elearning/profile` | — | 200, 401, 429, 500, 502, 503 |
+| POST | `/elearning/courses/{courseId}/rating` | application/json | 200, 400, 401, 404, 409 (not completed), 429, 500, 502, 503 |
+| POST | `/elearning/courses/{courseId}/start` | application/json | 200, 400, 401, 404, 429, 500, 502, 503 |
+| GET | `/elearning/training-time?year=` | — | 200, 400, 401, 429, 500, 502, 503 |
 
 ### Pages
 

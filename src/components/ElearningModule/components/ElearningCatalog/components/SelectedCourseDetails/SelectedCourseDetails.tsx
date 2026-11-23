@@ -1,10 +1,10 @@
-import { Alert, Body, Button, DescriptionList, Modal, Rating, StatusPill, Tag } from '@mairie360/lib-components/primitives';
+import { Alert, Body, Button, DescriptionList, Modal, Rating, StatusPill, Tag, Text } from '@mairie360/lib-components/primitives';
 
 import { CourseChapterOutline } from './components/CourseChapterOutline';
 import { CourseProgressCard } from './components/CourseProgressCard';
 import { getElearningRatingAverage } from '../../course-rating';
 import { getInitialChapter, normalizeChaptersForProgress } from '../../course-progress';
-import { getCourseProgress, getRequirement, inferStatusValue } from '../../catalog-model';
+import { frenchDate, getCourseProgress, getRequirement, inferStatusValue } from '../../catalog-model';
 import type { ElearningCourse } from '../../catalog-types';
 import type { ElearningCourseDetails } from '../../course-types';
 
@@ -35,7 +35,10 @@ export const SelectedCourseDetails = ({ course, details, starting, startError, o
   const chapters = normalizeChaptersForProgress(details.chapters);
   const statusValue = inferStatusValue(course);
   const mandatory = getRequirement(course) === 'mandatory';
-  const average = getElearningRatingAverage(details.ratingDistribution ?? course.ratingDistribution) ?? Number(details.rating ?? course.rating);
+  const average = Number(details.rating ?? course.rating) || getElearningRatingAverage(details.ratingDistribution ?? course.ratingDistribution) || 0;
+  // « 4,5 (12 avis) » as the BFF words it, else the number of ratings it counts.
+  const ratingText = details.ratingLabel ?? (course.ratingCount ? `${course.ratingCount} avis` : undefined);
+  const reminded = statusValue !== 'completed' ? frenchDate(course.lastReminderAt) : undefined;
   const next = statusValue === 'completed' ? undefined : getInitialChapter(chapters);
   const action = primaryAction(statusValue);
   const run = statusValue === 'not-started' ? onStart : onPlay ?? onStart;
@@ -62,7 +65,11 @@ export const SelectedCourseDetails = ({ course, details, starting, startError, o
           <StatusPill size="s" label={mandatory ? 'Obligatoire' : 'Facultative'} tone={mandatory ? 'danger' : 'neutral'} />
           {course.levelBadge ? <Tag size="s" label={course.levelBadge.label} /> : null}
           {course.category ? <Tag size="s" label={course.category} /> : null}
+          {course.source === 'platform' ? <Tag size="s" label="Fournie par Mairie360" /> : null}
         </div>
+        {reminded ? (
+          <Alert tone="info" title={`Relancé le ${reminded}`} description="Votre administrateur vous rappelle de terminer cette formation obligatoire." />
+        ) : null}
         {startError ? <Alert tone="danger" role="alert" title="Impossible de commencer" description={startError} /> : null}
         <Body>{details.description || course.description}</Body>
         <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,320px)]">
@@ -74,9 +81,15 @@ export const SelectedCourseDetails = ({ course, details, starting, startError, o
                 { id: 'duration', label: 'Durée', value: details.duration ?? course.duration ?? 'Non renseignée' },
                 {
                   id: 'rating', label: 'Note moyenne',
-                  value: Number.isFinite(average) && average > 0 ? <Rating label="Note moyenne" value={average} readOnly size="s" /> : 'Pas encore de note',
+                  value: Number.isFinite(average) && average > 0 ? (
+                    <span className="inline-flex flex-wrap items-center gap-2">
+                      <Rating label="Note moyenne" value={average} readOnly size="s" />
+                      {ratingText ? <Text as="span" size="s" tone="muted">{ratingText}</Text> : null}
+                    </span>
+                  ) : 'Pas encore de note',
                 },
-                { id: 'deadline', label: 'Échéance', value: course.deadline ?? 'Sans échéance' },
+                { id: 'deadline', label: 'Échéance', value: frenchDate(course.deadline) ?? 'Sans échéance' },
+                ...(statusValue === 'completed' && course.completedAt ? [{ id: 'completed', label: 'Terminée le', value: frenchDate(course.completedAt) }] : []),
               ]}
             />
             <CourseChapterOutline chapters={chapters} nextId={next?.id} />

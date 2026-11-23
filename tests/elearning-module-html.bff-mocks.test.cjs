@@ -12,11 +12,11 @@ const { installReactRuntime, mount } = require('./support/server-view.cjs');
 installReactRuntime();
 const React = require('react');
 const f = require('./support/elearning-fixtures.ts');
-const { errorReply, useMockedFront } = require('./support/mocked-front.ts');
+const { errorReply, SIDE_READS, useMockedFront } = require('./support/mocked-front.ts');
 const { ElearningModule } = require('../src/components/ElearningModule/index.ts');
 // Client-only fallback/interactions; the async page's SSR contract is tested separately.
 const Home = ElearningModule;
-const { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE, fullCatalogCapabilities, pinnedBffCapabilities } = require('../src/features/elearning/bffCapabilities.ts');
+const { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, fullCatalogCapabilities, pinnedBffCapabilities } = require('../src/features/elearning/bffCapabilities.ts');
 const { NOT_IMPLEMENTED_MESSAGE } = require('../src/lib/bff-client.ts');
 // The module once BFF_Elearning serves every contract operation (MAIR-513): the flows below that rate courses or
 // administer them render it, the page itself (Home) only wires what the pinned BFF serves.
@@ -31,7 +31,9 @@ afterEach(() => {
   view = undefined;
 });
 
-const operations = () => bffElearning.requests.map((request) => `${request.method} ${request.template}`);
+// The training time and the administrator indicators are read beside the catalogue: the call lists below leave them out.
+const requests = () => bffElearning.requests.filter((request) => !SIDE_READS.has(`${request.method} ${request.template}`));
+const operations = () => requests().map((request) => `${request.method} ${request.template}`);
 
 function assertLiveMessage(html, role, message, label) {
   const dom = new JSDOM(html);
@@ -77,7 +79,7 @@ for (const returnedId of ['unrelated', ' ']) {
       await view.fire(props => props.id === id, 'onChange', { target: { value } });
     }
     bffElearning.on('patch', '/elearning/admin/courses/{courseId}', {
-      body: { course: f.course(returnedId, { title: 'Foreign course replacement' }) },
+      body: { id: '1', course: f.course(returnedId, { title: 'Foreign course replacement' }) },
     });
     const dialogDom = new JSDOM(view.html);
     try { assert.ok(dialogDom.window.document.querySelector('[role="dialog"] form'), 'The dialog contains a native submit form.'); }
@@ -145,7 +147,7 @@ for (const mode of ['create', 'update']) {
     const callback = mode === 'create' ? 'onCreateCourse' : 'onUpdateCourse';
     const canonical = f.course('4', { title: 'Titre canonique du serveur' });
     const draft = { ...canonical, title: 'Titre du brouillon' };
-    bffElearning.on(method, path, { status: mode === 'create' ? 201 : 200, body: { course: canonical } });
+    bffElearning.on(method, path, { status: mode === 'create' ? 201 : 200, body: { id: '1', course: canonical } });
     bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Catalogue après confirmation refusé'));
     assert.equal(await view.act(() => view.props('ElearningCatalog')[callback](draft)), true);
     const [toast] = toasts(view.html);
@@ -180,7 +182,7 @@ test('a confirmed deletion has truthful status and a subsequent refused write cl
 test('GET-only recovery retains the undismissed canonical success without repeating an admin write', async () => {
   await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })), FullModule);
   const canonical = f.course('4', { title: 'Titre confirmé conservé' });
-  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { course: canonical } });
+  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { id: '1', course: canonical } });
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Lecture de récupération refusée'));
   assert.equal(await view.act(() => view.props('ElearningCatalog').onUpdateCourse(canonical)), true);
   assert.match(toasts(view.html)[0], /Formation modifiée.*Titre confirmé conservé/);
@@ -205,7 +207,7 @@ test('a pending write and a contract-shaped unconfirmed deletion never announce 
   bffElearning.on('patch', '/elearning/admin/courses/{courseId}', errorReply(503, 'UNAVAILABLE', 'Modification refusée'));
   let pending;
   await view.act(() => { pending = view.props('ElearningCatalog').onUpdateCourse(f.course()); });
-  await view.waitFor(() => bffElearning.requests.length === 2);
+  await view.waitFor(() => requests().length === 2);
   assert.ok(toasts(view.html).every(toast => !/Formation (créée|modifiée|supprimée)/.test(toast)));
   release();
   assert.equal(await pending, false);
@@ -244,7 +246,9 @@ test('the first pass renders the loading state, the next one the catalogue of GE
   const html = await view.waitFor((current) => !current.includes('Chargement des formations'));
 
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
-  assert.deepEqual(runtime.frontCalls.map((call) => `${call.method} ${call.pathname} ${call.status}`), ['GET /elearning/catalog 200']);
+  assert.deepEqual(runtime.frontCalls.filter((call) => call.pathname !== '/elearning/training-time').map((call) => `${call.method} ${call.pathname} ${call.status}`), ['GET /elearning/catalog 200']);
+  await view.waitFor(() => view.props('LearnerMetrics').trainingTimeState === 'default');
+  assert.equal(bffElearning.calls('/elearning/training-time', 'GET')[0].url.searchParams.get('year'), String(new Date().getFullYear()));
   assert.equal(hasAlert(html), false);
   assert.match(view.text(), /RGPD et collectivités/);
   assert.match(view.text(), /Mon suivi/);
@@ -341,7 +345,7 @@ for (const mode of ['create', 'update']) {
     assert.match(view.text(), /Enregistrement refusé/);
     assert.deepEqual(operations(), ['GET /elearning/catalog', `${method.toUpperCase()} ${path}`]);
 
-    bffElearning.on(method, path, ({ body }) => ({ status: mode === 'create' ? 201 : 200, body: { course: body } }));
+    bffElearning.on(method, path, ({ body }) => ({ status: mode === 'create' ? 201 : 200, body: { id: '1', course: body } }));
     const confirmed = await view.act(() => view.props('ElearningCatalog')[callback](f.course()));
     assert.equal(confirmed, true);
     assert.deepEqual(operations(), ['GET /elearning/catalog', `${method.toUpperCase()} ${path}`, `${method.toUpperCase()} ${path}`, 'GET /elearning/catalog']);
@@ -420,7 +424,7 @@ test('the agent indicators are computed from the catalogue and filter the list i
     f.course('2', { title: 'Parcours obligatoire', titleBadge: { label: 'Obligatoire', variant: 'mandatory' }, deadline: '30 nov. 2026' }),
     f.course('3', { title: 'Parcours terminé', statusValue: 'completed' }),
   ]));
-  assert.deepEqual(view.props('LearnerMetrics').metrics, { inProgress: 1, mandatoryToFinish: 1, nextDeadline: '30 nov. 2026', completed: 1, available: 3 });
+  assert.deepEqual(view.props('LearnerMetrics').metrics, { inProgress: 1, mandatoryToFinish: 1, nextDeadline: '30 nov. 2026', completed: 1, completedInYear: 0, year: new Date().getFullYear(), available: 3 });
   await view.click(props => typeof props['aria-label'] === 'string' && props['aria-label'].startsWith('Obligatoires à terminer'));
   assert.equal(view.props('CatalogFilters').status, 'to-finish');
   assert.equal(view.props('CatalogFilters').requirement, 'mandatory');
@@ -501,7 +505,9 @@ test('the real chapter controls retain the selected reader and server progressio
   assert.match(view.html, /Chapitre 42/);
   // The summary has two chapters: the one not pressed is « Chapitre 42 ».
   await view.click((props, _text, tag) => tag === 'button' && props['aria-pressed'] === false);
-  assert.match(view.html, /href="\/documents\/support\.pdf"/);
+  // MAIR-817: a stored PDF opens through the BFF (signed URL), never through the address it carries.
+  assert.doesNotMatch(view.html, /href="\/documents\/support\.pdf"/);
+  assert.match(view.html, /aria-label="Ouvrir le support Support officiel dans un nouvel onglet"/);
   assert.match(view.text(), /Support officiel/);
   assert.equal(barProgress(), 12);
 
@@ -521,8 +527,8 @@ test('the real chapter controls retain the selected reader and server progressio
   assert.equal(view.props('PlayerChapter').chapter.id, '42');
   assert.deepEqual(view.props('CoursePlayer').course.details.chapters, response.chapters);
   assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/contents/{contentId}/complete', 'GET /elearning/catalog']);
-  assert.deepEqual(bffElearning.requests[1].pathParams, { courseId: course.id, contentId: '421' });
-  assert.deepEqual(bffElearning.requests[1].body, { chapterId: '42', completed: true });
+  assert.deepEqual(requests()[1].pathParams, { courseId: course.id, contentId: '421' });
+  assert.deepEqual(requests()[1].body, { chapterId: '42', completed: true });
   // The refused refresh is reported in the catalogue, where « Réessayer » reads it again.
   // The screen stays locked until the refused read settles: « Quitter la formation » is only enabled then.
   await view.waitFor(() => view.hostElements((props, text, tag) => tag === 'button' && text === 'Quitter la formation' && !props.disabled).length === 1);
@@ -552,7 +558,7 @@ for (const previouslySubmitted of [false, true]) {
     }
     await view.fire(props => props['aria-label'] === '3 étoiles sur 5', 'onChange', { target: { checked: true } });
     bffElearning.on('post', '/elearning/courses/{courseId}/rating', {
-      body: { rating: 1, ratingCount: 99, ratingDistribution: { 1: 99 }, submitted: false },
+      body: { rating: 1, ratingCount: 99, ratingLabel: '1 (99 avis)', myRating: 1, ratingDistribution: { 1: 99 }, submitted: false },
     });
     await view.click('Envoyer la note');
     await view.waitFor(html => html.includes('Votre choix est conservé'));
@@ -597,7 +603,7 @@ test('« Commencer » starts the course, opens its screen and keeps the filters 
   await view.waitFor(() => view.find('CoursePlayer').length === 1 && operations().length === 3);
 
   assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/start', 'GET /elearning/catalog']);
-  assert.deepEqual(bffElearning.requests[1].pathParams, { courseId: '4' });
+  assert.deepEqual(requests()[1].pathParams, { courseId: '4' });
   assert.equal(view.props('CoursePlayer').course.statusValue, 'in-progress');
   assert.equal(view.find('AccessibleShell').length, 0);
   assert.match(toasts(view.html)[0], /Formation commencée/);
@@ -668,7 +674,7 @@ async function confirmedCourseWithFailedRead() {
   const initial = f.catalogResponse([f.course()], f.currentUser({ isAdmin: true }));
   await renderLoadedCatalog(initial, FullModule);
   const confirmed = f.course('4', { title: 'Formation confirmée' });
-  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { course: confirmed } });
+  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { id: '1', course: confirmed } });
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Lecture refusée'));
   assert.equal(await view.act(() => view.props('ElearningCatalog').onUpdateCourse(confirmed)), true);
   assert.match(view.text(), /Formation confirmée/);
@@ -738,7 +744,7 @@ test('composed status reset retains filters and independent write refusal throug
   assert.match(view.text(), /Parcours juridique/);
   assert.doesNotMatch(view.text(), /Parcours accueil/);
   const confirmed = { ...course, title: 'Parcours confirmé' };
-  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { course: confirmed } });
+  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { id: '1', course: confirmed } });
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Lecture composée refusée'));
   assert.equal(await view.act(() => view.props('ElearningCatalog').onUpdateCourse(confirmed)), true);
   bffElearning.on('delete', '/elearning/admin/courses/{courseId}', errorReply(403, 'FORBIDDEN', 'Suppression composée refusée'));
@@ -863,32 +869,51 @@ test('the shared shell directs profile access to configured Settings', async () 
   }
 });
 
-// MAIR-513: the pinned BFF_Elearning answers 501 to course ratings, course administration and `completed: false`.
-// The page only wires what the BFF serves; the shared catalogue hides a control whose callback is absent.
-test('the page wires neither rating nor administration callbacks and tells administrators why', async () => {
-  assert.deepEqual(pinnedBffCapabilities, { courseRating: false, courseManagement: false, contentUncompletion: false });
+// MAIR-513 then E-learning V2: the pinned BFF_Elearning stores ratings and administers courses; only `completed: false`
+// still answers 501. The page wires every served callback; no « indisponible » notice is left.
+test('the page wires the rating and administration callbacks the pinned BFF serves', async () => {
+  assert.deepEqual(pinnedBffCapabilities, { courseRating: true, courseManagement: true, contentUncompletion: false });
   const course = f.course();
   await renderLoadedCatalog(f.catalogResponse([course], f.currentUser({ isAdmin: true })));
   const props = view.props('ElearningCatalog');
   assert.equal(props.currentUserRole, 'administrator');
-  for (const name of ['onCreateCourse', 'onUpdateCourse', 'onDeleteCourse']) assert.equal(props[name], undefined, name);
-  assert.equal(typeof props.onCourseAction, 'function');
-  assert.equal(typeof props.onPlayCourse, 'function');
-  assert.doesNotMatch(view.html, new RegExp(`aria-label="(Modifier|Supprimer) ${course.title}"`));
-  // react-dom/server keeps the typographic apostrophe as is.
-  assert.match(view.html, /data-elearning-capability-notice="true"[^>]*role="note"/);
-  assert.match(view.text(), new RegExp(COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE.replace(/[()]/g, '\\$&')));
+  for (const name of ['onCreateCourse', 'onUpdateCourse', 'onDeleteCourse']) assert.equal(typeof props[name], 'function', name);
+  assert.match(view.html, new RegExp(`aria-label="Modifier ${course.title}"`));
+  assert.doesNotMatch(view.html, /data-elearning-capability-notice/);
+  assert.doesNotMatch(view.text(), /pas encore disponible/);
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
 });
 
-test('a learner sees no capability notice and no rating control on a completed course', async () => {
+test('a learner rates a completed course on the end screen through the real route', async () => {
   const course = f.course();
   course.progress = 100; course.details.progress = 100; course.details.completed = true;
   course.details.completionRating = { submitted: false };
   await renderPlayer(course);
   assert.doesNotMatch(view.html, /data-elearning-capability-notice/);
-  assert.equal(view.props('CoursePlayer').onRatingSubmit, undefined);
-  assert.doesNotMatch(view.text(), /Envoyer la note|Notez cette formation/);
+  assert.equal(typeof view.props('CoursePlayer').onRatingSubmit, 'function');
+  await view.click('Terminer');
+  assert.match(view.text(), /Notez cette formation/);
+  bffElearning.on('post', '/elearning/courses/{courseId}/rating', { body: { ...f.ratingResponse(4.5), myRating: 5 } });
+  bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse([course]) });
+  assert.equal(await view.act(() => view.props('CourseRatingCard').onSubmit(5)), true);
+  await view.waitFor(html => html.includes('Votre note : 5/5'));
+  assert.ok(toasts(view.html).some(toast => /Merci pour votre avis.*Votre note : 5\/5/.test(toast)));
+  assert.deepEqual(requests().find(request => request.method === 'POST').body, { rating: 5 });
+});
+
+test('a refused rating keeps the choice of the agent on the end screen', async () => {
+  const course = f.course();
+  course.progress = 100; course.details.progress = 100; course.details.completed = true;
+  course.details.completionRating = { submitted: false };
+  await renderPlayer(course);
+  await view.click('Terminer');
+  bffElearning.on('post', '/elearning/courses/{courseId}/rating', errorReply(409, 'CONFLICT', 'Course not completed'));
+  await view.fire(props => props['aria-label'] === '4 étoiles sur 5', 'onChange', { target: { checked: true, value: '4' } });
+  await view.click('Envoyer la note');
+  await view.waitFor(html => html.includes('La note n’a pas été enregistrée'));
+  assert.match(view.html, /aria-label="4 étoiles sur 5"[^>]*checked=""|checked=""[^>]*aria-label="4 étoiles sur 5"/);
+  assert.doesNotMatch(view.text(), /Votre note : 4\/5/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/rating']);
 });
 
 test('un-ticking a completed content is refused locally in French, ticking it still reaches the BFF', async () => {
@@ -903,7 +928,7 @@ test('un-ticking a completed content is refused locally in French, ticking it st
 
   bffElearning.on('post', '/elearning/courses/{courseId}/contents/{contentId}/complete', { body: receipt });
   assert.equal(await view.act(() => view.props('CoursePlayer').onContentComplete(view.props('CoursePlayer').course, { ...receipt, content: { ...receipt.content, completed: true } })), true);
-  const [, write] = bffElearning.requests;
+  const [, write] = requests();
   assert.deepEqual(write.body, { chapterId: receipt.chapter.id, completed: true });
   assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/contents/{contentId}/complete', 'GET /elearning/catalog']);
 });
@@ -923,13 +948,6 @@ test('an empty enrolment catalogue renders the BFF empty label without inventing
   assert.doesNotMatch(view.html, /<article/);
   assert.deepEqual(view.props('ElearningCatalog').courses, []);
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
-});
-
-test('with every capability the module wires the rating and administration callbacks (future BFF)', async () => {
-  await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ isAdmin: true })), FullModule);
-  const props = view.props('ElearningCatalog');
-  for (const name of ['onCreateCourse', 'onUpdateCourse', 'onDeleteCourse']) assert.equal(typeof props[name], 'function', name);
-  assert.doesNotMatch(view.html, /data-elearning-capability-notice/);
 });
 
 test('the module guards duplicate logout clicks, displays refusal and permits an explicit retry', async t => {
@@ -953,61 +971,265 @@ test('the module guards duplicate logout clicks, displays refusal and permits an
   assert.equal(new URL(front.window().location.assigned[0]).origin,'https://login.mairie.test');
 });
 
-test('the module wires course completion policy and downloads the authorized blob through a temporary link', async () => {
+test('the module wires course completion policy and opens a stored file through its signed URL (MAIR-817)', async () => {
   const course=f.course();const content=course.details.chapters[0].contents[0];
-  const file={blob:new Blob(['authorized document']),fileName:'authorized-support.pdf'};
-  const downloadCalls=[];
   const learnerPort={
-    downloadResource:async(courseId,contentId,signal)=>{downloadCalls.push({courseId,contentId,signal});return file;},
+    downloadResource:async(target,signal)=>{calls.push({target,signal});return {url:'https://storage.example/signed?sig=1'};},
     canCompleteResource:(courseId,contentId)=>courseId===course.id&&contentId===content.id,
   };
+  const calls=[];
   const Module=()=>React.createElement(ElearningModule,{learnerPort});
   await renderPlayer(course,f.catalogResponse([course]),Module);
   const player=view.props('CoursePlayer');
   assert.equal(player.canCompleteContent(course,content),true);
   assert.equal(player.canCompleteContent(course,{id:'other'}),false);
-  const previousDocument=global.document,create=URL.createObjectURL,revoke=URL.revokeObjectURL;
-  const events=[];let downloaded;let createdBlob;
-  const link={href:'',download:'',click(){downloaded={href:this.href,name:this.download};events.push('click');},remove(){events.push('remove');}};
+  const previousDocument=global.document;
+  const events=[];let opened;
+  const link={href:'',target:'',rel:'',click(){opened={href:this.href,target:this.target,rel:this.rel};events.push('click');},remove(){events.push('remove');}};
   global.document={createElement:tag=>{assert.equal(tag,'a');return link;},body:{append:node=>{assert.equal(node,link);events.push('append');}}};
-  URL.createObjectURL=blob=>{createdBlob=blob;return 'blob:authorized-fixture';};
-  URL.revokeObjectURL=url=>events.push('revoke:'+url);
-  front.window().setTimeout=callback=>{callback();return 1;};
   try{
     assert.equal(await player.onContentDownload(course,content),true);
-    assert.equal(createdBlob,file.blob);assert.deepEqual(downloaded,{href:'blob:authorized-fixture',name:'authorized-support.pdf'});
-    assert.deepEqual(events,['append','click','remove','revoke:blob:authorized-fixture']);
-    assert.equal(downloadCalls.length,1);assert.equal(downloadCalls[0].courseId,course.id);assert.equal(downloadCalls[0].contentId,content.id);assert.equal(downloadCalls[0].signal.aborted,false);
+    assert.deepEqual(opened,{href:'https://storage.example/signed?sig=1',target:'_blank',rel:'noopener noreferrer'});
+    assert.deepEqual(events,['append','click','remove']);
+    assert.deepEqual(calls[0].target,{courseId:course.id,chapterId:course.details.chapters[0].id,contentId:content.id});
+    assert.equal(calls[0].signal.aborted,false);
+    await assert.rejects(player.onContentDownload(course,{id:'unknown'}),/aucun chapitre/);
     assert.deepEqual(operations(),['GET /elearning/catalog']);
-  }finally{URL.createObjectURL=create;URL.revokeObjectURL=revoke;previousDocument===undefined?delete global.document:global.document=previousDocument;}
+  }finally{previousDocument===undefined?delete global.document:global.document=previousDocument;}
 });
 
-test('a superseded module download is cancelled and cannot create a stale download link',async()=>{
+test('by default a stored file is opened through GET …/contents/{contentId}/file', async () => {
+  const course = f.course();
+  await renderPlayer(course);
+  bffElearning.on('get', '/elearning/courses/{courseId}/chapters/{chapterId}/contents/{contentId}/file', { body: { url: 'https://storage.example/a.mp4?sig=2' } });
+  const previousDocument = global.document; let opened;
+  global.document = { createElement: () => ({ click() { opened = this.href; }, remove() {} }), body: { append() {} } };
+  try {
+    const player = view.props('CoursePlayer');
+    assert.equal(await player.onContentDownload(player.course, course.details.chapters[0].contents[0]), true);
+    assert.equal(opened, 'https://storage.example/a.mp4?sig=2');
+  } finally { previousDocument === undefined ? delete global.document : global.document = previousDocument; }
+  assert.deepEqual(requests()[1].pathParams, { courseId: '4', chapterId: '41', contentId: '411' });
+});
+
+test('a superseded opening is cancelled and cannot open a stale address',async()=>{
   const course=f.course();const content=course.details.chapters[0].contents[0];
-  const requests=[];
-  const learnerPort={downloadResource:(courseId,contentId,signal)=>new Promise(resolve=>requests.push({courseId,contentId,signal,resolve}))};
+  const pending=[];
+  const learnerPort={downloadResource:(target,signal)=>new Promise(resolve=>pending.push({target,signal,resolve}))};
   await renderPlayer(course,f.catalogResponse([course]),()=>React.createElement(ElearningModule,{learnerPort}));
   const callback=view.props('CoursePlayer').onContentDownload;
-  const first=callback(course,content);const firstRejected=assert.rejects(first,/annulé/);
-  const second=callback(course,content);const secondRejected=assert.rejects(second,/annulé/);
-  assert.equal(requests[0].signal.aborted,true);assert.equal(requests[1].signal.aborted,false);
-  requests[0].resolve({blob:new Blob(['stale']),fileName:'stale.pdf'});await firstRejected;
-  view.unmount();view=undefined;assert.equal(requests[1].signal.aborted,true);
-  requests[1].resolve({blob:new Blob(['unmounted']),fileName:'unmounted.pdf'});await secondRejected;
+  const first=callback(course,content);const firstRejected=assert.rejects(first,/annulée/);
+  const second=callback(course,content);const secondRejected=assert.rejects(second,/annulée/);
+  assert.equal(pending[0].signal.aborted,true);assert.equal(pending[1].signal.aborted,false);
+  pending[0].resolve({url:'https://storage.example/stale'});await firstRejected;
+  view.unmount();view=undefined;assert.equal(pending[1].signal.aborted,true);
+  pending[1].resolve({url:'https://storage.example/unmounted'});await secondRejected;
 });
 
-test('leaving the course screen with the browser back button cancels its pending download', async () => {
+test('leaving the course screen with the browser back button cancels its pending opening', async () => {
   const course = f.course(); const content = course.details.chapters[0].contents[0];
-  const requests = [];
-  const learnerPort = { downloadResource: (courseId, contentId, signal) => new Promise(resolve => requests.push({ signal, resolve })) };
+  const pending = [];
+  const learnerPort = { downloadResource: (target, signal) => new Promise(resolve => pending.push({ signal, resolve })) };
   await renderPlayer(course, f.catalogResponse([course]), () => React.createElement(ElearningModule, { learnerPort }));
-  const pending = view.props('CoursePlayer').onContentDownload(course, content);
-  const rejected = assert.rejects(pending, /annulé/);
-  assert.equal(requests[0].signal.aborted, false);
+  const opening = view.props('CoursePlayer').onContentDownload(course, content);
+  const rejected = assert.rejects(opening, /annulée/);
+  assert.equal(pending[0].signal.aborted, false);
   front.window().location.href = 'https://elearning.test.example/';
   await view.act(() => front.window().dispatchEvent(new Event('popstate')));
   await view.waitFor(() => view.find('CoursePlayer').length === 0);
-  assert.equal(requests[0].signal.aborted, true);
-  requests[0].resolve({ blob: new Blob(['late']), fileName: 'late.pdf' });
+  assert.equal(pending[0].signal.aborted, true);
+  pending[0].resolve({ url: 'https://storage.example/late' });
   await rejected;
+});
+
+// ---- E-learning V2 on the real BFF data (MAIR-1143, MAIR-1144, MAIR-1149, MAIR-1150, MAIR-817, MAIR-703) ----
+
+/** Replaces the browser saving of a PDF (temporary link) for the time of `run`. */
+async function capturingSaves(run) {
+  const previousDocument = global.document, create = URL.createObjectURL, revoke = URL.revokeObjectURL;
+  const saved = [];
+  global.document = { createElement: () => ({ click() { saved.push({ href: this.href, name: this.download }); }, remove() {} }), body: { append() {} } };
+  URL.createObjectURL = () => 'blob:attestation'; URL.revokeObjectURL = () => {};
+  front.window().setTimeout = callback => { callback(); return 1; };
+  try { await run(saved); } finally {
+    URL.createObjectURL = create; URL.revokeObjectURL = revoke;
+    previousDocument === undefined ? delete global.document : global.document = previousDocument;
+  }
+}
+const pdfReply = name => ({ raw: '%PDF-1.4', contentType: 'application/pdf', headers: { 'Content-Disposition': `attachment; filename="${name}"` } });
+const year = new Date().getFullYear();
+
+test('the agent reads its training time of the year and downloads its attestations from the drawer (MAIR-1144)', async () => {
+  await renderLoadedCatalog(f.catalogResponse([f.course('1', { statusValue: 'completed', completedAt: `${year}-02-01T10:00:00Z` })]));
+  await view.waitFor(() => view.props('LearnerMetrics').trainingTimeState === 'default');
+  assert.match(view.text(), new RegExp(`Terminées en ${year}`));
+  assert.equal(view.props('LearnerMetrics').metrics.completedInYear, 1);
+  assert.match(view.text(), new RegExp(`Temps de formation en ${year}`));
+  assert.match(view.text(), /2 h 15/);
+  assert.match(view.text(), /objectif annuel : 10 h/);
+  await view.click(props => typeof props['aria-label'] === 'string' && props['aria-label'].startsWith(`Temps de formation en ${year}`));
+  assert.match(view.html, /role="dialog"[^>]*aria-labelledby/);
+  assert.match(view.text(), /Mon temps de formation/);
+  assert.match(view.text(), /Accueil du public/);
+  await capturingSaves(async saved => {
+    bffElearning.on('get', '/elearning/certificates', pdfReply(`attestations-${year}.pdf`));
+    await view.click('Télécharger mes attestations');
+    await view.waitFor(() => saved.length === 1);
+    assert.deepEqual(saved, [{ href: 'blob:attestation', name: `attestations-${year}.pdf` }]);
+    await view.waitFor(html => toasts(html).some(toast => toast.includes('Attestations téléchargées')));
+    bffElearning.on('get', '/elearning/certificates', errorReply(404, 'NOT_FOUND', 'Nothing completed'));
+    await view.click('Télécharger mes attestations');
+    await view.waitFor(html => toasts(html).some(toast => toast.includes('Aucune attestation pour cette année')));
+    assert.equal(saved.length, 1);
+  });
+  assert.deepEqual(bffElearning.calls('/elearning/certificates', 'GET').map(({ url }) => url.searchParams.get('year')), [String(year), String(year)]);
+  assert.equal(bffElearning.calls('/elearning/admin/stats').length, 0, 'an agent never reads the administrator indicators');
+});
+
+test('an unavailable training time says so without blocking the catalogue', async () => {
+  bffElearning.on('get', '/elearning/training-time', errorReply(503, 'UNAVAILABLE', 'E-learning API down'));
+  await renderLoadedCatalog();
+  await view.waitFor(() => view.props('LearnerMetrics').trainingTimeState === 'unavailable');
+  assert.match(view.text(), /temporairement indisponible/);
+  assert.match(view.text(), /RGPD et collectivités/);
+});
+
+test('« Reprendre » follows the last activity of the agent and says when it was (MAIR-1143)', async () => {
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  await renderLoadedCatalog(f.catalogResponse([
+    f.course('1', { title: 'Très avancée', statusValue: 'in-progress', progress: 90, lastActivityAt: '2020-01-01T10:00:00Z' }),
+    f.course('2', { title: 'Touchée hier', statusValue: 'in-progress', progress: 10, lastActivityAt: yesterday, deadline: '2026-06-30' }),
+  ]));
+  assert.equal(view.props('ResumeCard').suggestion.course.id, '2');
+  assert.match(view.text(), /Reprendre où vous en étiez/);
+  assert.match(view.text(), /Avant le 30 juin 2026/);
+  assert.match(view.text(), /Dernière activité hier/);
+});
+
+test('the course sheet shows the V2 facts and the reminder of the administrator (MAIR-1147)', async () => {
+  const course = f.course('4', {
+    mandatory: true, level: 'intermediate', levelBadge: { label: 'Intermédiaire', variant: 'intermediate' }, deadline: '2026-06-30',
+    ratingCount: 12, lastReminderAt: '2026-10-02T08:00:00Z', source: 'platform', statusValue: 'in-progress',
+  });
+  course.details.ratingLabel = '4,5 (12 avis)';
+  course.details.duration = '2 h 15';
+  front.window().location.href = 'https://elearning.test.example/?course=4';
+  await renderLoadedCatalog(f.catalogResponse([course]));
+  const text = view.text();
+  for (const fact of ['Obligatoire', 'Intermédiaire', 'Juridique', 'Fournie par Mairie360', 'DPO Mairie', '2 h 15', '4,5 (12 avis)', '30 juin 2026', 'Relancé le 2 octobre 2026']) {
+    assert.ok(text.includes(fact), fact);
+  }
+});
+
+test('the end screen downloads the attestation of the course (MAIR-1149)', async () => {
+  const course = f.course();
+  course.progress = 100; course.details.progress = 100; course.details.completed = true;
+  await renderPlayer(course);
+  await view.click('Terminer');
+  await capturingSaves(async saved => {
+    bffElearning.on('get', '/elearning/courses/{courseId}/certificate', pdfReply('attestation-rgpd.pdf'));
+    await view.click('Télécharger l’attestation');
+    await view.waitFor(() => saved.length === 1);
+    assert.equal(saved[0].name, 'attestation-rgpd.pdf');
+    await view.waitFor(html => toasts(html).some(toast => toast.includes('Attestation téléchargée')));
+    bffElearning.on('get', '/elearning/courses/{courseId}/certificate', errorReply(502, 'BAD_GATEWAY', 'Upstream'));
+    await view.click('Télécharger l’attestation');
+    await view.waitFor(html => toasts(html).some(toast => toast.includes('Téléchargement impossible')));
+  });
+  assert.deepEqual(bffElearning.calls('/elearning/courses/{courseId}/certificate').map(({ pathParams }) => pathParams.courseId), ['4', '4']);
+});
+
+const adminCatalog = () => f.catalogResponse([
+  f.course('4', { title: 'RGPD interne', source: 'internal' }),
+  f.course('9', { title: 'Prise en main de l’outil', source: 'platform' }),
+], f.currentUser({ isAdmin: true, role: 'Admin' }));
+
+test('the administrator reads the indicators of the instance and filters the origin from them (MAIR-1150)', async () => {
+  await renderLoadedCatalog(adminCatalog());
+  await view.waitFor(() => view.props('ElearningAdminStats').state === 'default');
+  const text = view.text();
+  for (const figure of ['Formations internes', 'créées par la commune · 2 obligatoires', 'Formations de l’outil', 'fournies par Mairie360', '79,2 %', '61,4 %', 'Obligatoires en retard']) {
+    assert.ok(text.includes(figure), figure);
+  }
+  assert.equal(bffElearning.calls('/elearning/training-time').length, 0, 'an administrator page reads no training time');
+  await view.click(props => typeof props['aria-label'] === 'string' && props['aria-label'].startsWith('Formations de l’outil'));
+  assert.equal(view.props('CatalogFilters').source, 'platform');
+  assert.deepEqual(view.find('ManagedCourseCard').map(({ props }) => props.course.title), ['Prise en main de l’outil']);
+  await view.act(() => view.props('CatalogFilters').onSourceChange('internal'));
+  assert.deepEqual(view.find('ManagedCourseCard').map(({ props }) => props.course.title), ['RGPD interne']);
+  await view.act(() => view.props('CatalogFilters').onSourceChange('all'));
+  assert.equal(view.find('ManagedCourseCard').length, 2);
+});
+
+test('unavailable indicators do not block the catalogue, and « Actualiser » reads them again', async () => {
+  bffElearning.on('get', '/elearning/admin/stats', errorReply(503, 'UNAVAILABLE', 'E-learning API down'));
+  await renderLoadedCatalog(adminCatalog());
+  await view.waitFor(() => view.props('ElearningAdminStats').state === 'unavailable');
+  assert.match(view.text(), /Indicateurs temporairement indisponibles\./);
+  assert.equal(view.find('ManagedCourseCard').length, 2);
+  bffElearning.on('get', '/elearning/admin/stats', { body: f.adminStatsResponse({ internalCourses: 11 }) });
+  await view.click('Actualiser');
+  await view.waitFor(() => view.props('ElearningAdminStats').stats?.internalCourses === 11);
+  assert.equal(bffElearning.calls('/elearning/admin/stats').length, 2);
+  assert.equal(bffElearning.calls('/elearning/catalog').length, 1, '« Actualiser » reads the indicators only');
+});
+
+test('the late agents drawer reminds each course concerned and reports the total (MAIR-1150)', async () => {
+  await renderLoadedCatalog(adminCatalog());
+  await view.waitFor(() => view.props('ElearningAdminStats').state === 'default');
+  await view.click(props => typeof props['aria-label'] === 'string' && props['aria-label'].startsWith('Obligatoires en retard'));
+  assert.match(view.text(), /Agents en retard/);
+  assert.match(view.text(), /Chloé Roux/);
+  bffElearning.on('post', '/elearning/admin/courses/{courseId}/reminders', ({ body }) => ({ body: { sent: body.userIds.length } }));
+  await view.click('Relancer les 3 agents');
+  await view.waitFor(html => toasts(html).some(toast => toast.includes('Relances envoyées')));
+  assert.ok(toasts(view.html).some(toast => toast.includes('3 relances envoyées aux agents en retard.')));
+  assert.deepEqual(bffElearning.calls('/elearning/admin/courses/{courseId}/reminders').map(({ pathParams, body }) => [pathParams.courseId, body.userIds]).sort(),
+    [['4', ['42', '43']], ['7', ['44']]]);
+  await view.waitFor(() => bffElearning.calls('/elearning/admin/stats').length === 2);
+});
+
+test('the participation and completion drawers list the indicators of the instance', async () => {
+  await renderLoadedCatalog(adminCatalog());
+  await view.waitFor(() => view.props('ElearningAdminStats').state === 'default');
+  await view.click(props => typeof props['aria-label'] === 'string' && props['aria-label'].startsWith('Taux de participation'));
+  assert.match(view.text(), /Participation par service/);
+  assert.match(view.text(), /État civil/);
+  assert.match(view.text(), /Sans service/);
+  await view.click(props => props['aria-label'] === 'Fermer la participation par service');
+  assert.doesNotMatch(view.text(), /État civil/);
+  await view.click(props => typeof props['aria-label'] === 'string' && props['aria-label'].startsWith('Complétion moyenne'));
+  assert.match(view.text(), /Complétion par formation/);
+  assert.match(view.text(), /75,5 %/);
+});
+
+test('a create refused field by field shows the message under the resource and keeps the draft (MAIR-932)', async () => {
+  await renderLoadedCatalog(adminCatalog());
+  await view.click('Nouvelle formation');
+  const form = view.props('ElearningCourseFormModal');
+  const contentId = form.initialValues.chapters[0].contents[0].id;
+  for (const [id, value] of Object.entries({
+    'elearning-course-title': 'Prévention', 'elearning-course-description': 'Les bons réflexes', 'elearning-course-duration': '1 h',
+    [`chapter-title-${form.initialValues.chapters[0].id}`]: 'Alerter', [`content-title-${contentId}`]: 'Guide',
+    [`content-resource-${contentId}`]: 'https://exemple.fr/guide',
+  })) await view.fire(props => props.id === id, 'onChange', { target: { value } });
+  bffElearning.on('post', '/elearning/admin/courses', {
+    status: 400, outOfContract: true,
+    body: f.apiError('BAD_REQUEST', 'Validation failed', [
+      { path: 'body.details.chapters.0.contents.0.href', message: 'A link needs an absolute https:// URL.' },
+      { path: 'body.deadline', message: 'Expected a date (YYYY-MM-DD).' },
+    ]),
+  });
+  await view.fire((props, _text, tag) => tag === 'form' && 'aria-busy' in props, 'onSubmit');
+  await view.waitFor(html => html.includes('Le service de formation a refusé certains champs'));
+  assert.equal(view.props('ElearningCourseFormModal').isOpen, true);
+  assert.match(view.text(), /Saisissez une adresse sécurisée commençant par https:\/\//);
+  assert.match(view.text(), /Saisissez une date, par exemple 30 juin 2026\./);
+  assert.equal(view.hostElements(props => props.id === 'elearning-course-title')[0].props.value, 'Prévention');
+  const sent = requests().find(request => request.method === 'POST').body;
+  assert.equal(sent.source, 'internal');
+  assert.equal(sent.mandatory, false);
+  assert.equal(sent.details.chapters[0].contents[0].type, 'link');
+  assert.equal(sent.details.chapters[0].contents[0].href, 'https://exemple.fr/guide');
+  assert.equal(bffElearning.calls('/elearning/catalog').length, 1, 'a refused save reads nothing again');
 });

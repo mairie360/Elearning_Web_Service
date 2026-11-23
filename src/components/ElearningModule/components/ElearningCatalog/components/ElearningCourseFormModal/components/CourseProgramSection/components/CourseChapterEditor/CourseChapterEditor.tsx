@@ -10,6 +10,7 @@ export interface CourseChapterEditorProps {
   chapterIndex: number;
   removable: boolean;
   linkErrors: Record<string, string>;
+  fieldErrors?: Record<string, string>;
   onChange: (patch: Partial<ElearningCourseChapterFormValues>) => void;
   onRemove: () => void;
   onAddContent: () => void;
@@ -19,7 +20,7 @@ export interface CourseChapterEditorProps {
 
 /** A chapter card with its fields and its resources. */
 export const CourseChapterEditor = ({
-  chapter, chapterIndex, removable, linkErrors, onChange, onRemove, onAddContent, onContentChange, onContentRemove,
+  chapter, chapterIndex, removable, linkErrors, fieldErrors = {}, onChange, onRemove, onAddContent, onContentChange, onContentRemove,
 }: CourseChapterEditorProps) => (
   <article className="rounded-lg border border-[var(--mairie-border)] bg-[var(--mairie-surface)] p-4 shadow-sm sm:p-5">
     <div className="flex items-center justify-between gap-3">
@@ -28,9 +29,9 @@ export const CourseChapterEditor = ({
     </div>
 
     <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px]">
-      <TextField id={`chapter-title-${chapter.id}`} label="Titre du chapitre" required value={chapter.title} onChange={(event) => onChange({ title: event.target.value })} />
+      <TextField id={`chapter-title-${chapter.id}`} label="Titre du chapitre" required error={fieldErrors[`chapter-title-${chapter.id}`]} value={chapter.title} onChange={(event) => onChange({ title: event.target.value })} />
       <TextField id={`chapter-duration-${chapter.id}`} label="Durée" placeholder="30 min" required value={chapter.duration} onChange={(event) => onChange({ duration: event.target.value })} />
-      <TextArea id={`chapter-description-${chapter.id}`} className="sm:col-span-2" label="Description du chapitre" value={chapter.description ?? ''} onChange={(event) => onChange({ description: event.target.value })} />
+      <TextArea id={`chapter-description-${chapter.id}`} className="sm:col-span-2" label="Description du chapitre" error={fieldErrors[`chapter-description-${chapter.id}`]} value={chapter.description ?? ''} onChange={(event) => onChange({ description: event.target.value })} />
     </div>
 
     <div className="mt-4 rounded-md bg-[var(--mairie-surface-raised)] p-3 sm:p-4">
@@ -48,6 +49,7 @@ export const CourseChapterEditor = ({
             chapterIndex={chapterIndex}
             removable={chapter.contents.length > 1}
             linkError={linkErrors[content.id]}
+            fieldErrors={fieldErrors}
             onChange={(patch) => onContentChange(content.id, patch)}
             onRemove={() => onContentRemove(content.id)}
           />
