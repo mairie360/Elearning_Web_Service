@@ -76,4 +76,22 @@ describe('CoursePlayer', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Terminer' }));
     expect(screen.getByRole('heading', { name: 'Formation terminée' })).toBeVisible();
   });
+
+  it('keeps « Terminer » off while one required content of 200 is left, though the rounded progress reads 100 %', () => {
+    const contents = Array.from({ length: 200 }, (_, i) => ({ id: `x${i}`, title: `Contenu ${i}`, type: 'pdf' as const, completed: i < 199 }));
+    const almost = { id: 'c', title: 'RGPD', description: '', details: { title: 'RGPD', description: '', chapters: [{ id: 'a', title: 'Seul chapitre', duration: '', contents }] } };
+    render(<ToastProvider regionLabel="Notifications"><CoursePlayer course={almost} onExit={vi.fn()} onContentComplete={vi.fn()} /></ToastProvider>);
+    expect(screen.getByRole('button', { name: 'Terminer' })).toBeDisabled();
+  });
+
+  it('reports no failure for a download cancelled because the learner left the course screen', async () => {
+    let reject: (reason: Error) => void = () => {};
+    const onContentDownload = vi.fn(() => new Promise<boolean>((_, fail) => { reject = fail; }));
+    const view = renderPlayer({ onContentDownload });
+    await userEvent.click(screen.getAllByRole('button', { name: 'Télécharger le support' })[0]);
+    view.rerender(<ToastProvider regionLabel="Notifications">{null}</ToastProvider>);
+    reject(new Error('Le téléchargement a été annulé.'));
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(screen.queryByText('Téléchargement impossible')).toBeNull();
+  });
 });

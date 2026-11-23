@@ -49,6 +49,9 @@ export const CoursePlayer = ({ course, onExit, onContentComplete, onContentDownl
   const [downloadingId, setDownloadingId] = React.useState<string>();
   const [finished, setFinished] = React.useState(false);
   const pending = React.useRef(false);
+  // A download cancelled because the learner left the screen (browser Back) is no failure to report.
+  const mounted = React.useRef(true);
+  React.useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const index = Math.max(0, chapters.findIndex(chapter => chapter.id === currentId));
   const chapter = chapters[index];
   const summary = getElearningCourseProgressSummary(chapters);
@@ -56,7 +59,8 @@ export const CoursePlayer = ({ course, onExit, onContentComplete, onContentDownl
   // The confirmed progress of the service wins over the one the chapters imply.
   const progress = getDisplayedProgress(course.details?.progress ?? course.progress, chapters) ?? 0;
   // The confirmed completion of the service counts too: a chapter without required contents can still be done.
-  const completed = summary.completed || isCourseCompleted(course.details?.completed, progress, chapters);
+  // Only the service's own progress: the rounded value the chapters imply reads 100 % with one content of 200 left.
+  const completed = summary.completed || isCourseCompleted(course.details?.completed, course.details?.progress ?? course.progress, chapters);
   const remaining = chapter ? getChapterContents(chapter).filter(item => !item.completed && isRequiredContent(item)) : [];
 
   React.useEffect(() => {
@@ -112,10 +116,12 @@ export const CoursePlayer = ({ course, onExit, onContentComplete, onContentDownl
     void run(async () => {
       try {
         const ok = await confirmedResult(onContentDownload(course, content));
+        if (!mounted.current) return ok;
         if (ok) toast.success('Le support est enregistré sur votre appareil.', { title: 'Support téléchargé' });
         else toast.error('Le téléchargement n’a pas été confirmé.', { title: 'Téléchargement impossible' });
         return ok;
       } catch (reason) {
+        if (!mounted.current) return false;
         toast.error(reason instanceof Error ? reason.message : 'Le téléchargement a échoué.', { title: 'Téléchargement impossible' });
         return false;
       } finally { setDownloadingId(undefined); }
