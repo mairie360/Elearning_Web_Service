@@ -23,3 +23,16 @@ test('MAIR-877 the module draws no background, width or margin of its own around
     assert.doesNotMatch(text, /max-w-\[1130px\]|surface-raised|!px-6|!py-8|px-6 py-14/, file);
   }
 });
+
+test('MAIR-934 no colour of its own in the e-learning components: every colour is a lib token', () => {
+  const { readdirSync, statSync } = require('node:fs');
+  const walk = dir => readdirSync(dir).flatMap(name => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? walk(path) : [path];
+  });
+  for (const file of walk(join(__dirname, '../src/components')).filter(path => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path))) {
+    const text = readFileSync(file, 'utf8');
+    assert.doesNotMatch(text, /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/, `${file} holds a hard-coded colour`);
+    assert.doesNotMatch(text, /\b(?:text|bg|border)-(?:red|green|blue|gray|white|black)(?:-\d+)?\b/, `${file} holds a Tailwind palette colour`);
+  }
+});

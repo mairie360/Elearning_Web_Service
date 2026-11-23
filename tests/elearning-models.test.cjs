@@ -183,3 +183,24 @@ test('MAIR-1143 the top card resumes the most advanced course in progress, else 
   ] } }]);
   assert.deepEqual([inferred.chapterIndex, inferred.chapterTitle, inferred.completedChapters], [2, 'B', 1]);
 });
+
+test('MAIR-932 / MAIR-703 the course form is checked before it is sent', () => {
+  const values = form.normalizeCourseFormValues({
+    title: '', subtitle: '', description: ' ', category: '', statusValue: 'not-started', instructor: '', duration: '', deadline: '',
+    requirement: 'none', level: 'none', chapters: [{ id: 'c', title: 'C', duration: '', contents: [
+      { id: 'ok', title: 'Guide', type: 'link', href: 'https://www.cnil.fr' },
+      { id: 'local', title: 'Local', type: 'link', href: '/documents/a.pdf' },
+      { id: 'js', title: 'Script', type: 'link', href: 'javascript:alert(1)' },
+      { id: 'http', title: 'Clair', type: 'link', href: 'http://example.test' },
+      { id: 'file', title: 'Fichier', type: 'pdf', fileName: 'javascript:x.pdf' },
+    ] }],
+  });
+  const errors = form.validateCourseForm(values);
+  assert.ok(errors.title && errors.description && errors.duration);
+  assert.deepEqual(Object.keys(errors.links), ['js', 'http']);
+  assert.equal(form.hasCourseFormErrors(errors), true);
+  assert.equal(form.firstErrorFieldId(errors), 'elearning-course-title');
+  assert.equal(form.firstErrorFieldId({ links: { js: 'x' } }), 'content-resource-js');
+  assert.equal(form.hasCourseFormErrors({ links: {} }), false);
+  assert.equal(form.firstErrorFieldId({ links: {} }), undefined);
+});

@@ -11,11 +11,21 @@ import { CourseGeneralSection } from './CourseGeneralSection';
 describe('CourseGeneralSection', () => {
   it('keeps the field ids and reports each change', () => {
     const onChange = vi.fn();
-    render(<CourseGeneralSection values={values} onChange={onChange} />);
+    render(<CourseGeneralSection values={values} errors={{ links: {} }} categories={['RH', 'Sécurité']} onChange={onChange} />);
     expect(screen.getByRole('heading', { name: 'Informations générales' })).toBeVisible();
     fireEvent.change(document.getElementById('elearning-course-title')!, { target: { value: 'Nouveau' } });
     fireEvent.change(document.getElementById('elearning-course-deadline')!, { target: { value: '30 juin' } });
     fireEvent.change(document.getElementById('elearning-course-description')!, { target: { value: 'Texte' } });
-    expect(onChange.mock.calls).toEqual([['title', 'Nouveau'], ['deadline', '30 juin'], ['description', 'Texte']]); expect(document.getElementById('elearning-course-category')).toBeRequired();
+    fireEvent.change(document.getElementById('elearning-course-category')!, { target: { value: 'Sécurité' } });
+    expect(onChange.mock.calls).toEqual([['title', 'Nouveau'], ['deadline', '30 juin'], ['description', 'Texte'], ['category', 'Sécurité']]);
+    expect(document.getElementById('elearning-course-category')?.tagName).toBe('SELECT');
+  });
+
+  it('shows the error of each required field under it and types the category without a catalogue list', () => {
+    render(<CourseGeneralSection values={{ ...values, category: '' }} categories={[]} onChange={vi.fn()}
+      errors={{ title: 'Saisissez le titre de la formation.', duration: 'Saisissez la durée totale de la formation.', links: {} }} />);
+    expect(screen.getByText('Saisissez le titre de la formation.')).toBeVisible();
+    expect(screen.getByText('Saisissez la durée totale de la formation.')).toBeVisible();
+    expect(document.getElementById('elearning-course-category')?.tagName).toBe('INPUT');
   });
 });

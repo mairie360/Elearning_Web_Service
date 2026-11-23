@@ -1,5 +1,13 @@
 # Elearning_Web_Service — Documentation technique
 
+## V2 : arbre des composants et écran de suivi (MAIR-827)
+
+- `ElearningModule` choisit la coque : `AccessibleShell` pour le catalogue, `CoursePlayer` (`AppShell layout="focus"` de la lib 2.3) quand l'URL porte `?play=<id>` (`catalogQuery.ts`). `ToastProvider` (haut droite) enveloppe les deux ; `CatalogToasts` transforme les retours de `catalogActions.ts` en toasts titrés.
+- `ElearningCatalog` : `CatalogHeader` (PageHeader), `ResumeCard`, `LearnerMetrics` (MetricCard cliquables) ou `ElearningAdminStats` (Panel + RefreshButton), `CatalogFilters` (TextField + FilterSelect menu, filtre `requirement` dans l'URL), `ManagedCourseCard` → `ElearningCourseCard`, `SelectedCourseDetails` (fiche, Modal l), `ElearningCourseFormModal` (FormSection, validation `validateCourseForm`, ConfirmModal de suppression de chapitre).
+- `CoursePlayer` : `PlayerSummary`, `PlayerChapter` → `ChapterContentItem` (liens via `safeContentLink`), `CourseEndScreen` → `CourseRatingCard` (Rating).
+- Règles sans DOM : `catalog-model.ts` (filtres, indicateurs, `resumeSuggestion`, échéances), `course-progress.ts`, `course-rating.ts`, `safe-link.ts`, `course-form-values.ts`.
+- `subscribePageReturn` et `parseFrontUrl` viennent de `@mairie360/lib-components/shared` (le contrôle de provenance du bundle refuse une copie locale identique).
+
 ## Périmètre des tests du lecteur — MAIR-350
 
 Le harnais HTTP/HTML collecte récursivement les éléments dans les tableaux

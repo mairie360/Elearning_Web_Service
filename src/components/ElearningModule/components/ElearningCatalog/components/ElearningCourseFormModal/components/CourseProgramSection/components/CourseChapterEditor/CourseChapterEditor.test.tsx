@@ -11,7 +11,7 @@ import { CourseChapterEditor } from './CourseChapterEditor';
 describe('CourseChapterEditor', () => {
   it('edits its fields and adds a resource', async () => {
     const props = { onChange: vi.fn(), onRemove: vi.fn(), onAddContent: vi.fn(), onContentChange: vi.fn(), onContentRemove: vi.fn() };
-    render(<CourseChapterEditor chapter={chapter} chapterIndex={1} removable {...props} />);
+    render(<CourseChapterEditor chapter={chapter} chapterIndex={1} removable linkErrors={{}} {...props} />);
     expect(screen.getByRole('heading', { name: 'Chapitre 2' })).toBeVisible();
     fireEvent.change(document.getElementById('chapter-duration-c1')!, { target: { value: '20 min' } }); expect(props.onChange).toHaveBeenCalledWith({ duration: '20 min' });
     fireEvent.change(document.getElementById('content-title-r1')!, { target: { value: 'Nouveau titre' } }); expect(props.onContentChange).toHaveBeenCalledWith('r1', { title: 'Nouveau titre' });

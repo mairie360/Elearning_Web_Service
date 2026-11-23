@@ -11,8 +11,15 @@ import { CourseProgramSection } from './CourseProgramSection';
 describe('CourseProgramSection', () => {
   it('keeps the last chapter and adds chapters', async () => {
     const props = { onAddChapter: vi.fn(), onChapterChange: vi.fn(), onChapterRemove: vi.fn(), onAddContent: vi.fn(), onContentChange: vi.fn(), onContentRemove: vi.fn() };
-    render(<CourseProgramSection chapters={[chapter]} {...props} />);
+    render(<CourseProgramSection chapters={[chapter]} linkErrors={{}} {...props} />);
     expect(screen.getByRole('button', { name: 'Supprimer le chapitre 1' })).toBeDisabled();
     await userEvent.click(screen.getByRole('button', { name: 'Ajouter un chapitre' })); expect(props.onAddChapter).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks the parent to confirm a chapter removal', async () => {
+    const props = { onAddChapter: vi.fn(), onChapterChange: vi.fn(), onChapterRemove: vi.fn(), onAddContent: vi.fn(), onContentChange: vi.fn(), onContentRemove: vi.fn() };
+    render(<CourseProgramSection chapters={[chapter, { ...chapter, id: 'c2' }]} linkErrors={{}} {...props} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Supprimer le chapitre 2' }));
+    expect(props.onChapterRemove).toHaveBeenCalledWith(expect.objectContaining({ id: 'c2' }), 1);
   });
 });
