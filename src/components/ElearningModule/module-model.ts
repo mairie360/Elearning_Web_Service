@@ -7,7 +7,7 @@ import type { ElearningCatalogResponse } from '../../lib/elearning-api';
 import { parseFrontUrl } from '@mairie360/lib-components/shared';
 import { frontUrl } from '../../lib/front-urls';
 import { settingsProfileUrl } from '../../lib/settings-profile';
-import { withCategoryReset, withStatusReset } from '../../features/elearning/catalogFilters';
+import { withCategoryReset } from '../../features/elearning/catalogFilters';
 
 type CatalogProps = ComponentProps<typeof ElearningCatalog>;
 export type CatalogCourse = CatalogProps["courses"][number];
@@ -37,9 +37,9 @@ const distinctOptions = (values: Array<string | undefined>): FilterOption[] =>
 export const categoryOptionsFor = (catalog: Catalog | undefined, courses: CatalogCourse[]): FilterOption[] =>
   withCategoryReset(catalog?.categories) ?? [{ value: 'all', label: 'Toutes les catégories' }, ...distinctOptions(courses.map(course => course.category))];
 
-/** The BFF statuses with "all", else the statuses of the loaded courses. */
-export const statusOptionsFor = (catalog: Catalog | undefined, courses: CatalogCourse[]): FilterOption[] =>
-  withStatusReset(catalog?.statuses) ?? [{ value: 'all', label: 'Tous les statuts' }, ...distinctOptions(courses.map(course => course.statusValue))];
+/** MAIR-1145: the status and requirement filters the URL may carry. */
+export const STATUS_FILTERS: FilterOption[] = ['all', 'to-finish', 'not-started', 'in-progress', 'completed'].map(value => ({ value, label: value }));
+export const REQUIREMENT_FILTERS: FilterOption[] = ['all', 'mandatory', 'optional'].map(value => ({ value, label: value }));
 
 /** A filter from the URL counts only when it is an enabled option; otherwise "all". */
 export const offeredFilter = (options: FilterOption[], value: string) =>

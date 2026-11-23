@@ -1,6 +1,6 @@
 import { SelectField } from '@mairie360/lib-components/primitives';
 
-import type { ElearningFilterOption } from '@/components/ElearningModule/components/ElearningCatalog/components/ElearningFilterSelect';
+import type { ElearningFilterOption } from '@/components/ElearningModule/components/ElearningCatalog/catalog-types';
 import {
   currentStatusLabel,
   levelOptions,

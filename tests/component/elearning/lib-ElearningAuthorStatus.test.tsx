@@ -5,7 +5,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 
 import { ElearningCatalog, type ElearningCourse } from '@/components/ElearningModule/components/ElearningCatalog';
 import { ElearningCourseFormModal, type ElearningCourseFormValues } from '@/components/ElearningModule/components/ElearningCatalog/components/ElearningCourseFormModal';
-import type { ElearningFilterOption } from '@/components/ElearningModule/components/ElearningCatalog/components/ElearningFilterSelect';
+import type { ElearningFilterOption } from '@/components/ElearningModule/components/ElearningCatalog';
 
 const course: ElearningCourse = {
   id: 'confirmed-course', title: 'Formation confirmée', description: 'Présentation',
@@ -55,8 +55,6 @@ describe.each(['create', 'update'] as const)('Elearning author status in %s mode
     expect(status).toHaveValue('not-started');
     expect(options).toEqual(original);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Annuler' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Tous les statuts' }));
-    expect(screen.queryAllByRole('option').map((option) => option.textContent)).toEqual(original.map((option) => option.label));
   });
 });
 

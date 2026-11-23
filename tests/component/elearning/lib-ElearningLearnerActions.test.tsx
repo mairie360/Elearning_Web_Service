@@ -27,12 +27,11 @@ it('locks both card actions and the reader until the start promise settles, then
   const request = deferred();
   const start = vi.fn().mockReturnValueOnce(request.promise).mockReturnValue(true);
   render(<ElearningCatalog courses={[course]} onCourseAction={start} onCourseContentComplete={() => true} />);
-  const poster = screen.getByRole('button', { name: 'Ouvrir la formation Parcours apprenant' });
+  const poster = screen.getByRole('button', { name: 'Parcours apprenant' });
   fireEvent.click(poster);
   const dialog = screen.getByRole('dialog');
   expect(dialog).toHaveAttribute('aria-busy', 'true');
   expect(poster).toBeDisabled();
-  expect(screen.getByRole('button', { name: 'Commencer' })).toBeDisabled();
   expect(within(dialog).getByRole('button', { name: 'Marquer Ressource serveur comme terminé' })).toBeDisabled();
   // MAIR-608: the lib Modal keeps its close button enabled; a busy dialog ignores it (lib ConfirmModal rule).
   fireEvent.click(within(dialog).getByRole('button', { name: 'Fermer le détail du cours' }));

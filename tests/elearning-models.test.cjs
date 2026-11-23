@@ -90,10 +90,40 @@ test('MAIR-608 catalogue rules infer status, badges and stats from courses', () 
   assert.equal(catalog.getLevelBadge('none'), undefined);
   assert.deepEqual(catalog.getStatusBadge('unknown', { label: 'Perso', variant: 'default' }), { label: 'Perso', variant: 'default' });
   assert.deepEqual(catalog.buildCategories(courses).map(option => option.value), ['all', 'Juridique']);
-  assert.deepEqual(catalog.buildDefaultStats(courses, 3).map(stat => stat.value), [2, '100%', '100%', 3]);
+  assert.deepEqual(catalog.buildLearnerMetrics(courses), { inProgress: 1, mandatoryToFinish: 0, nextDeadline: undefined, completed: 1, available: 2 });
   assert.deepEqual(catalog.buildAdminStats(courses), { totalCourses: 2, totalLearners: 12, mandatoryCourses: 1, totalContents: 2, averageRating: 4, completionRate: 100 });
   assert.deepEqual(catalog.filterCourses(courses, 'drh', 'all', 'all').map(course => course.id), ['b']);
   assert.deepEqual(catalog.filterCourses(courses, '', 'Juridique', 'completed').map(course => course.id), ['a']);
+  // MAIR-1145: « À terminer » gathers not started and in progress; « Caractère » reads the mandatory badge.
+  assert.deepEqual(catalog.filterCourses(courses, '', 'all', 'to-finish').map(course => course.id), ['b']);
+  assert.deepEqual(catalog.filterCourses(courses, '', 'all', 'all', 'mandatory').map(course => course.id), ['a']);
+  assert.deepEqual(catalog.filterCourses(courses, '', 'all', 'all', 'optional').map(course => course.id), ['b']);
+  assert.equal(catalog.resultCountLabel(2, false), '2 formations');
+  assert.equal(catalog.resultCountLabel(1, true), '1 formation correspond à votre recherche');
+  assert.equal(catalog.resultCountLabel(3, true), '3 formations correspondent à votre recherche');
+});
+
+test('MAIR-1144 / MAIR-1146 deadlines are read, sorted and flagged when close', () => {
+  assert.equal(catalog.deadlineTime('30 juin 2026'), Date.UTC(2026, 5, 30));
+  assert.equal(catalog.deadlineTime('1er févr. 2027'), Date.UTC(2027, 1, 1));
+  assert.equal(catalog.deadlineTime('2026-12-01'), Date.UTC(2026, 11, 1));
+  assert.equal(catalog.deadlineTime('bientôt'), undefined);
+  assert.equal(catalog.deadlineTime(undefined), undefined);
+  const now = Date.UTC(2026, 5, 20);
+  assert.equal(catalog.isDeadlineSoon('30 juin 2026', now), true);
+  assert.equal(catalog.isDeadlineSoon('30 août 2026', now), false);
+  assert.equal(catalog.isDeadlineSoon(undefined, now), false);
+  const mandatory = { titleBadge: { label: 'Obligatoire', variant: 'mandatory' }, description: '' };
+  const courses = [
+    { ...mandatory, id: 'late', title: 'B', deadline: '30 août 2026' },
+    { ...mandatory, id: 'soon', title: 'A', deadline: '30 juin 2026' },
+    { ...mandatory, id: 'none', title: 'C' },
+  ];
+  assert.deepEqual(catalog.filterCourses(courses, '', 'all', 'to-finish', 'mandatory').map(course => course.id), ['soon', 'late', 'none']);
+  assert.equal(catalog.buildLearnerMetrics(courses).nextDeadline, '30 juin 2026');
+  assert.deepEqual(catalog.statusDisplay('completed'), { label: 'Terminée', tone: 'success' });
+  assert.deepEqual(catalog.statusDisplay('in-progress'), { label: 'En cours', tone: 'warning' });
+  assert.deepEqual(catalog.statusDisplay('not-started'), { label: 'Non commencée', tone: 'info' });
 });
 
 test('MAIR-608 a course and its author form convert both ways', () => {
