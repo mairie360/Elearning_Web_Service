@@ -1,4 +1,4 @@
-import { navigateToLogin } from "../../lib/auth-session";
+import { leaveForLogin } from "./session-expiry";
 import { BffRequestError, type BffErrorDetail } from "../../lib/bff-client";
 import { InvalidCatalogResponseError } from '../../lib/catalog-response';
 import {
@@ -104,7 +104,7 @@ export function replaceCatalogCourse(
 
 export function createCatalogActions(
   view: CatalogView,
-  onUnauthorized: () => Promise<void> = async () => { navigateToLogin(); },
+  onUnauthorized: () => Promise<void> = leaveForLogin((message) => view.setMutationError(message)),
 ) {
   let catalogRevision = 0;
   let pendingLearner: { key: string; result: Promise<boolean> } | null = null;

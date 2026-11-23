@@ -1028,3 +1028,53 @@ describe('Enrolment of agents by the administrator (MAIR-817)', () => {
     assert.deepEqual(appendPage([{ userId: '1' }], [{ userId: '1' }, { userId: '2' }]), [{ userId: '1' }, { userId: '2' }]);
   });
 });
+
+describe('A 401 whose redirect to Login cannot start is told to the agent', () => {
+  const { createEnrolmentActions } = require('../src/features/elearning/enrolmentActions.ts');
+  const { createInsightActions } = require('../src/features/elearning/insightActions.ts');
+  const { LOGIN_UNAVAILABLE_MESSAGE, LOGIN_UNAVAILABLE_TITLE } = require('../src/features/elearning/session-expiry.ts');
+
+  test('a refused navigation reports the expired session once per action, a redirect under way says nothing', async () => {
+    const reports = [];
+    const enrolment = createEnrolmentActions((tone, title, message) => reports.push({ tone, title, message }));
+    const location = front.window().location;
+    const assign = location.assign;
+    location.assign = () => { throw new Error('navigation blocked'); };
+    try {
+      bffElearning.on('delete', '/elearning/admin/courses/{courseId}/learners/{userId}', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
+      assert.equal(await enrolment.remove('4', f.courseLearner('43', 'Bruno', 'Petit')), false);
+      assert.deepEqual(reports, [{ tone: 'danger', title: LOGIN_UNAVAILABLE_TITLE, message: LOGIN_UNAVAILABLE_MESSAGE }]);
+    } finally {
+      location.assign = assign;
+    }
+
+    // The redirect starts this time; a second 401 meanwhile adds no message.
+    const insightReports = [];
+    const insights = createInsightActions({ report: (tone, title, message) => insightReports.push({ tone, title, message }) }, () => {});
+    bffElearning.on('post', '/elearning/admin/courses/{courseId}/learners', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
+    assert.equal(await enrolment.enrol('4', ['50']), false);
+    assert.deepEqual(front.window().location.assigned, [loginReturn()]);
+    bffElearning.on('get', '/elearning/admin/stats', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
+    await insights.loadAdminStats();
+    assert.equal(reports.length, 1);
+    assert.deepEqual(insightReports, []);
+  });
+
+  test('the catalogue and the profile show it where they show their errors', async () => {
+    const location = front.window().location;
+    const assign = location.assign;
+    location.assign = () => { throw new Error('navigation blocked'); };
+    try {
+      const { state, actions } = catalogState(f.catalogResponse());
+      bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
+      await actions.startCourse('4');
+      assert.equal(state.mutationError, LOGIN_UNAVAILABLE_MESSAGE);
+      const profile = { error: undefined };
+      bffElearning.on('get', '/elearning/profile', errorReply(401, 'UNAUTHORIZED', 'Session expirée'));
+      await loadProfile({ setProfile() {}, setLoading() {}, setError: (message) => { profile.error = message; } }, new AbortController().signal);
+      assert.equal(profile.error, LOGIN_UNAVAILABLE_MESSAGE);
+    } finally {
+      location.assign = assign;
+    }
+  });
+});

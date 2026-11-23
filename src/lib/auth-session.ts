@@ -11,6 +11,12 @@ export function isSessionRecoveryPending() {
   return typeof window !== 'undefined' && recoveryLocations.has(window.location);
 }
 
+/** A redirect to Login (or a session recovery) is already under way in this page. */
+export function isLoginNavigationPending() {
+  if (typeof window === 'undefined') return false;
+  return navigatingLocations.has(window.location) || recoveryLocations.has(window.location);
+}
+
 /** A persistent data refusal returns to Login without revoking Login-owned cookies. */
 export function navigateToLogin(options: { explicit?: boolean } = {}) {
   if (typeof window === 'undefined') return false;

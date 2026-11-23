@@ -1,4 +1,4 @@
-import { navigateToLogin } from "../../lib/auth-session";
+import { leaveForLogin, LOGIN_UNAVAILABLE_TITLE } from "./session-expiry";
 import { BffRequestError } from "../../lib/bff-client";
 import {
   downloadCourseCertificate,
@@ -51,7 +51,7 @@ export function remindersByCourse(agents: LateAgent[]) {
 export function createInsightActions(
   view: InsightView,
   save: SaveFile,
-  onUnauthorized: () => Promise<void> = async () => { navigateToLogin(); },
+  onUnauthorized: () => Promise<void> = leaveForLogin((message) => view.report('danger', LOGIN_UNAVAILABLE_TITLE, message)),
 ) {
   let trainingRevision = 0;
   let statsRevision = 0;
