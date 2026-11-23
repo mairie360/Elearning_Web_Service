@@ -3,3 +3,7 @@ export * from './catalog-model';
 export * from './catalog-types';
 export * from './course-types';
 export * from './elearning-style';
+export * from './course-progress';
+export * from './course-rating';
+export * from './content-types';
+export * from './safe-link';

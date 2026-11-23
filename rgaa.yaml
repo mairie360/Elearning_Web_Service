@@ -97,13 +97,13 @@ states:
     as: agent
     route: /
     steps:
-      - wait_for: { role: button, name: Ouvrir la formation Isolated stack onboarding }
+      - wait_for: { role: button, name: Isolated stack onboarding }
   - id: catalog-empty
     description: Search without result (empty state)
     as: agent
     route: /
     steps:
-      - wait_for: { role: button, name: Ouvrir la formation Isolated stack onboarding }
+      - wait_for: { role: button, name: Isolated stack onboarding }
       - fill: { selector: 'input[type="search"]', value: zzz introuvable }
       - wait_for: { text: Aucune formation ne correspond }
   - id: category-filter-open
@@ -111,17 +111,17 @@ states:
     as: agent
     route: /
     steps:
-      - click: { role: button, name: Toutes les catégories }
-      - wait_for: { role: listbox }
+      - click: { role: button, name: Catégorie }
+      - wait_for: { role: menu }
   - id: status-filter-open
     description: Status filter listbox opened
     as: agent
     route: /
     steps:
-      - click: { role: button, name: Tous les statuts }
-      - wait_for: { role: listbox }
+      - click: { role: button, name: Statut }
+      - wait_for: { role: menu }
   - id: course-details
-    description: Details dialog of a course, opened from the URL (no start request)
+    description: Sheet of a course, opened from the URL (no start request)
     as: agent
     route: /?course=1
     steps:
@@ -132,10 +132,16 @@ states:
     route: /?course=999
     steps:
       - wait_for: { text: Cette formation n’est plus disponible }
+  - id: course-player
+    description: Course screen (focus layout), opened from the URL
+    as: agent
+    route: /?play=1
+    steps:
+      - wait_for: { role: button, name: Quitter la formation }
   - id: course-content-completed
-    description: A content marked as done (progress updated in the dialog)
+    description: A content marked as done on the course screen (progress updated)
     as: progress
-    route: /?course=1
+    route: /?play=1
     steps:
       - click: { role: button, name: Marquer welcome.pdf comme terminé }
       - wait_for: { role: button, name: welcome.pdf terminé }

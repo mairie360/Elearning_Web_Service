@@ -2,12 +2,12 @@ import React from 'react';
 
 import { ElearningAdminStats, type ElearningAdminStatsData } from './components/ElearningAdminStats';
 import { ElearningCourseFormModal, type ElearningCourseFormValues } from './components/ElearningCourseFormModal';
-import type { ElearningLearnerActionResult } from './components/SelectedCourseDetails/components/ElearningCourseDetailsModal/components/ElearningCourseRating';
 import { CatalogEmptyState } from './components/CatalogEmptyState';
 import { CatalogFilters } from './components/CatalogFilters';
 import { CatalogHeader } from './components/CatalogHeader';
 import { LearnerMetrics } from './components/LearnerMetrics';
 import { ManagedCourseCard } from './components/ManagedCourseCard';
+import { ResumeCard } from './components/ResumeCard';
 import { SelectedCourseDetails } from './components/SelectedCourseDetails';
 import {
   buildAdminStats,
@@ -21,14 +21,11 @@ import {
   getCourseFormValues,
   requirementFilterOptions,
   resultCountLabel,
+  resumeSuggestion,
   statusFilterOptions,
 } from './catalog-model';
 import type { ElearningCourse, ElearningCourseSaveResult, ElearningFilterOption, ElearningUserRole } from './catalog-types';
-import type {
-  ElearningCourseContentCompletePayload,
-  ElearningCourseContentItem,
-  ElearningCourseRatingSummary,
-} from './course-types';
+import type { ElearningLearnerActionResult } from './course-types';
 import { joinClasses } from './elearning-style';
 
 export type { ElearningCourse, ElearningCourseSaveResult, ElearningFilterOption, ElearningUserRole } from './catalog-types';
@@ -60,12 +57,8 @@ export interface ElearningCatalogProps extends React.HTMLAttributes<HTMLElement>
   onCreateCourse?: (course: ElearningCourse, values: ElearningCourseFormValues) => ElearningCourseSaveResult;
   onUpdateCourse?: (course: ElearningCourse, values: ElearningCourseFormValues) => ElearningCourseSaveResult;
   onDeleteCourse?: (course: ElearningCourse) => void;
-  onCourseRatingSubmit?: (course: ElearningCourse, rating: number, summary: ElearningCourseRatingSummary) => ElearningLearnerActionResult;
-  allowRatingEdits?: boolean;
-  renderCourseReview?: (course: ElearningCourse) => React.ReactNode;
-  onCourseContentDownload?: (course: ElearningCourse, content: ElearningCourseContentItem) => ElearningLearnerActionResult;
-  canCompleteCourseContent?: (course: ElearningCourse, content: ElearningCourseContentItem) => boolean;
-  onCourseContentComplete?: (course: ElearningCourse, payload: ElearningCourseContentCompletePayload) => ElearningLearnerActionResult;
+  /** Opens the course screen (MAIR-1148) at the current chapter of the course. */
+  onPlayCourse?: (course: ElearningCourse) => void;
 }
 
 export const ElearningCatalog = ({
@@ -93,12 +86,7 @@ export const ElearningCatalog = ({
   onCreateCourse,
   onUpdateCourse,
   onDeleteCourse,
-  onCourseRatingSubmit,
-  allowRatingEdits = false,
-  onCourseContentComplete,
-  onCourseContentDownload,
-  canCompleteCourseContent,
-  renderCourseReview,
+  onPlayCourse,
   className = '',
   ...props
 }: ElearningCatalogProps) => {
@@ -125,6 +113,7 @@ export const ElearningCatalog = ({
   const learnerMetrics = React.useMemo(() => buildLearnerMetrics(courses), [courses]);
   const displayedAdminStats = adminStats ?? buildAdminStats(courses);
   const selectedCourseDetails = React.useMemo(() => (selectedCourse ? getCourseDetails(selectedCourse) : undefined), [selectedCourse]);
+  const suggestion = React.useMemo(() => (canManageCourses ? undefined : resumeSuggestion(courses)), [canManageCourses, courses]);
   const courseFormInitialValues = React.useMemo(() => getCourseFormValues(editingCourse ?? undefined), [editingCourse]);
 
   const filteredCourses = React.useMemo(() => filterCourses(courses, search, category, status, requirement), [category, courses, requirement, search, status]);
@@ -145,17 +134,18 @@ export const ElearningCatalog = ({
     setCourseFormOpen(true);
   };
 
-  const handleOpenCourse = async (course: ElearningCourse) => {
+  /** « Commencer » (sheet or top card): start the course, then open its screen once the start is confirmed. */
+  const handleStartCourse = async (course: ElearningCourse) => {
     if (pendingStart.current) return;
     pendingStart.current = true;
     setStartingCourseId(course.id);
     setStartError(null);
-    setSelectedCourseId(course.id);
     try {
       course.onAction?.();
       const result = onCourseAction?.(course);
       const confirmed = result && typeof result === 'object' ? await result : result;
       if (confirmed === false) setStartError('La formation n’a pas pu être démarrée. Fermez le détail puis réessayez.');
+      else if (onPlayCourse) { setSelectedCourseId(null); onPlayCourse(course); }
     } catch {
       setStartError('La formation n’a pas pu être démarrée. Fermez le détail puis réessayez.');
     } finally {
@@ -164,12 +154,23 @@ export const ElearningCatalog = ({
     }
   };
 
+  const openCourse = (course: ElearningCourse) => { setStartError(null); setSelectedCourseId(course.id); };
+
   const filtered = Boolean(search.trim()) || category !== 'all' || status !== 'all' || requirement !== 'all';
   const resetFilters = () => { setSearch(''); setCategory('all'); setStatus('all'); setRequirement('all'); };
 
   return (
     <section className={joinClasses('flex flex-col gap-6 text-[var(--mairie-text)]', className)} {...props}>
         <CatalogHeader title={title} subtitle={subtitle} onCreate={canManageCourses && onCreateCourse ? () => openCourseForm() : undefined} />
+
+        {suggestion ? (
+          <ResumeCard
+            suggestion={suggestion}
+            busy={startingCourseId === suggestion.course.id}
+            onResume={(course) => (suggestion.kind === 'resume' && onPlayCourse ? onPlayCourse(course) : void handleStartCourse(course))}
+            onShowDetails={openCourse}
+          />
+        ) : null}
 
         {canManageCourses ? <ElearningAdminStats stats={displayedAdminStats} state={adminStatsState} onRefresh={onRefreshStats} /> : (
           <LearnerMetrics
@@ -200,7 +201,7 @@ export const ElearningCatalog = ({
               key={course.id}
               course={course}
               busy={startingCourseId === course.id}
-              onOpen={(item) => { void handleOpenCourse(item); }}
+              onOpen={openCourse}
               onEdit={canManageCourses && onUpdateCourse ? openCourseForm : undefined}
               onDelete={canManageCourses && onDeleteCourse ? onDeleteCourse : undefined}
             />
@@ -215,14 +216,10 @@ export const ElearningCatalog = ({
         <SelectedCourseDetails
           course={selectedCourse}
           details={selectedCourseDetails}
-          starting={starting}
+          starting={startingCourseId === selectedCourse.id}
           startError={startError}
-          allowRatingEdits={allowRatingEdits}
-          review={renderCourseReview?.(selectedCourse)}
-          onRatingSubmit={onCourseRatingSubmit}
-          onContentComplete={onCourseContentComplete}
-          onContentDownload={onCourseContentDownload}
-          canCompleteContent={canCompleteCourseContent}
+          onStart={(course) => void handleStartCourse(course)}
+          onPlay={onPlayCourse ? (course) => { setSelectedCourseId(null); onPlayCourse(course); } : undefined}
           onClose={() => {
             setSelectedCourseId(null);
             onCourseClose?.();

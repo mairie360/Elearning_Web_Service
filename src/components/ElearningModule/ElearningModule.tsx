@@ -10,6 +10,7 @@ import { logout, navigateToLogin } from '../../lib/auth-session';
 import type { ElearningCatalogResponse } from '../../lib/elearning-api';
 import { courseIdFromSearch, urlWithoutCourse } from '../../lib/course-query';
 import { CourseReviewPanel } from './components/CourseReviewPanel';
+import { CoursePlayer } from './components/CoursePlayer';
 import { pendingLearnerPort } from '../../features/elearning/learnerFeatures';
 import type { LearnerFeaturePort, ReviewDraft } from '../../features/elearning/learnerFeatures';
 import { createCatalogActions } from '../../features/elearning/catalogActions';
@@ -149,16 +150,41 @@ export function ElearningModule({
     !!catalog &&
     !catalog.courses.some((course) => course.id === requestedCourseId);
   const user = catalogResponse?.user;
+  // MAIR-1148: `?play=<id>` shows the course screen in place of the application shell; the browser back button leaves it.
+  const playingCourse = pageUrl.state.play ? catalogCourses.find((course) => course.id === pageUrl.state.play) : undefined;
+  const playCourse = (course: CatalogCourse) => pageUrl.update({ play: course.id });
+  const leaveCourse = () => {
+    resourceDownload.abort();
+    pageUrl.update({ play: '' });
+    report('info', 'Progression enregistrée', 'Vous pouvez reprendre la formation où vous l’avez laissée.');
+  };
+  const review = (course: CatalogCourse) => <CourseReviewPanel key={course.id} courseId={course.id}
+    completed={course.details?.completed === true || course.details?.progress === 100}
+    draft={reviewDrafts[course.id] ?? { rating: 5, comment: '' }}
+    onDraftChange={draft => setReviewDrafts(current => ({ ...current, [course.id]: draft }))}
+    port={learnerPort} />;
 
   return (
+    <ToastProvider regionLabel="Notifications de la formation" closeLabel="Fermer la notification" placement="top-end">
+    <CatalogToasts feedback={feedback} onShown={feedbackShown} />
+    {playingCourse ? (
+      <CoursePlayer
+        key={playingCourse.id}
+        course={playingCourse}
+        onExit={leaveCourse}
+        onContentComplete={handleContentComplete}
+        onContentDownload={resourceDownload.download}
+        canCompleteContent={learnerPort.canCompleteResource ? (course, content) => learnerPort.canCompleteResource!(course.id, content.id) : undefined}
+        onRatingSubmit={capabilities.courseRating ? (course, rating) => actions.rateCourse(course.id, rating) : undefined}
+        review={review(playingCourse)}
+      />
+    ) : (
     <AccessibleShell
       activeItem="training"
       user={user ?? { name: "" }}
       onLogout={() => void requestLogout()}
       hrefs={elearningShellHrefs()}
     >
-      <ToastProvider regionLabel="Notifications de la formation" closeLabel="Fermer la notification" placement="top-end">
-      <CatalogToasts feedback={feedback} onShown={feedbackShown} />
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
       {logoutError && <LogoutErrorNotice message={logoutError} onBackToLogin={() => navigateToLogin({ explicit: true })} />}
       {loading && !catalog && <CatalogLoading subtitle={pageSubtitle(user?.isAdmin)} />}
@@ -198,25 +224,15 @@ export function ElearningModule({
             user?.isAdmin ? "administrator" : "user"
           }
           onCourseAction={(course) => actions.startCourse(course.id)}
-          onCourseContentComplete={handleContentComplete}
-          onCourseRatingSubmit={capabilities.courseRating ? (course, rating) =>
-            actions.rateCourse(course.id, rating) : undefined
-          }
-          renderCourseReview={course => <CourseReviewPanel key={course.id} courseId={course.id}
-            completed={course.details?.completed === true || course.details?.progress === 100}
-            draft={reviewDrafts[course.id] ?? { rating: 5, comment: '' }}
-            onDraftChange={draft => setReviewDrafts(current => ({ ...current, [course.id]: draft }))}
-            port={learnerPort} />}
-          onCourseContentDownload={resourceDownload.download}
-          canCompleteCourseContent={learnerPort.canCompleteResource ? (course,content) => learnerPort.canCompleteResource!(course.id,content.id) : undefined}
-          allowRatingEdits
+          onPlayCourse={playCourse}
           onCreateCourse={capabilities.courseManagement ? (course) => actions.createCourse(course) : undefined}
           onUpdateCourse={capabilities.courseManagement ? (course) => actions.updateCourse(course) : undefined}
           onDeleteCourse={capabilities.courseManagement ? (course) => void actions.deleteCourse(course.id) : undefined}
         />
       )}
       </div>
-      </ToastProvider>
     </AccessibleShell>
+    )}
+    </ToastProvider>
   );
 }

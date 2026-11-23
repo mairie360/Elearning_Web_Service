@@ -1,6 +1,5 @@
 import type { ElearningAdminStatsData } from './components/ElearningAdminStats';
-import type { ElearningLearnerActionResult } from './components/SelectedCourseDetails/components/ElearningCourseDetailsModal/components/ElearningCourseRating';
-import type { ElearningCourseDetails } from './course-types';
+import type { ElearningCourseDetails, ElearningLearnerActionResult } from './course-types';
 import {
   createEmptyCourseChapter,
   type ElearningCourseFormValues,
@@ -310,4 +309,42 @@ export const closeWhenSaved = (result: void | boolean | Promise<void | boolean>,
   // must return their promise and false when the mutation is refused.
   if (result !== false) close();
   return result;
+};
+
+/** MAIR-1143: the course the top of the agent's page suggests. */
+export interface ResumeSuggestion {
+  course: ElearningCourse;
+  kind: 'resume' | 'priority';
+  chapterIndex: number;
+  chapterCount: number;
+  chapterTitle?: string;
+  completedChapters: number;
+  progress: number;
+}
+
+/**
+ * The course in progress the agent should resume, else the next mandatory course not started (nearest deadline first),
+ * else nothing. The published catalogue has no date of last activity: among the courses in progress, the most advanced
+ * one comes first.
+ */
+export const resumeSuggestion = (courses: ElearningCourse[]): ResumeSuggestion | undefined => {
+  const inProgress = courses
+    .filter(course => inferStatusValue(course) === 'in-progress')
+    .sort((left, right) => getCourseProgress(right) - getCourseProgress(left));
+  const priority = courses
+    .filter(course => inferStatusValue(course) === 'not-started' && getRequirement(course) === 'mandatory')
+    .sort((left, right) => (deadlineTime(left.deadline) ?? Infinity) - (deadlineTime(right.deadline) ?? Infinity));
+  const course = inProgress[0] ?? priority[0];
+  if (!course) return undefined;
+  const chapters = course.details?.chapters ?? [];
+  const index = Math.max(0, chapters.findIndex(chapter => !chapter.completed));
+  return {
+    course,
+    kind: inProgress[0] ? 'resume' : 'priority',
+    chapterIndex: index + 1,
+    chapterCount: chapters.length,
+    chapterTitle: chapters[index]?.title,
+    completedChapters: chapters.filter(chapter => chapter.completed).length,
+    progress: getCourseProgress(course),
+  };
 };
