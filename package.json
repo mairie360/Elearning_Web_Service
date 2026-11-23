@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@mairie360/bff-elearning-openapi": "0.0.0-dev.d54c4d9d09071437d95791ba288d13922d4070be",
-    "@mairie360/lib-components": "2.3.0",
+    "@mairie360/lib-components": "2.3.2",
     "axios": "1.20.0",
     "lucide-react": "^1.0.0",
     "next": "16.4.2",
