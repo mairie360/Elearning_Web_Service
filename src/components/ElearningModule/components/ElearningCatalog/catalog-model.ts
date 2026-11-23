@@ -1,5 +1,6 @@
 import type { ElearningAdminStatsData } from './components/ElearningAdminStats';
 import type { ElearningCourseDetails, ElearningLearnerActionResult } from './course-types';
+import { normalizeChaptersForProgress } from './course-progress';
 import {
   createEmptyCourseChapter,
   type ElearningCourseFormValues,
@@ -336,7 +337,8 @@ export const resumeSuggestion = (courses: ElearningCourse[]): ResumeSuggestion |
     .sort((left, right) => (deadlineTime(left.deadline) ?? Infinity) - (deadlineTime(right.deadline) ?? Infinity));
   const course = inProgress[0] ?? priority[0];
   if (!course) return undefined;
-  const chapters = course.details?.chapters ?? [];
+  // Same inference as the course screen: a chapter whose required contents are all done is done.
+  const chapters = normalizeChaptersForProgress(course.details?.chapters ?? []);
   const index = Math.max(0, chapters.findIndex(chapter => !chapter.completed));
   return {
     course,

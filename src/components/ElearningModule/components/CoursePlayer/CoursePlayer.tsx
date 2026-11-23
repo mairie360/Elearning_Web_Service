@@ -13,6 +13,7 @@ import {
   getDisplayedProgress,
   getElearningCourseProgressSummary,
   getInitialChapter,
+  isCourseCompleted,
   isRequiredContent,
   normalizeChaptersForProgress,
   type ElearningCourse,
@@ -54,6 +55,8 @@ export const CoursePlayer = ({ course, onExit, onContentComplete, onContentDownl
   const last = index === chapters.length - 1;
   // The confirmed progress of the service wins over the one the chapters imply.
   const progress = getDisplayedProgress(course.details?.progress ?? course.progress, chapters) ?? 0;
+  // The confirmed completion of the service counts too: a chapter without required contents can still be done.
+  const completed = summary.completed || isCourseCompleted(course.details?.completed, progress, chapters);
   const remaining = chapter ? getChapterContents(chapter).filter(item => !item.completed && isRequiredContent(item)) : [];
 
   React.useEffect(() => {
@@ -156,7 +159,7 @@ export const CoursePlayer = ({ course, onExit, onContentComplete, onContentDownl
         <Button tone="success" label="Marquer comme terminé" loading={busy && !downloadingId} disabled={!onContentComplete || busy || remaining.length === 0} onClick={completeChapter} />
       )}
       {last ? (
-        <Button label="Terminer" disabled={!summary.completed || busy} onClick={() => setFinished(true)} />
+        <Button label="Terminer" disabled={!completed || busy} onClick={() => setFinished(true)} />
       ) : (
         <Button label="Suivant" disabled={busy} onClick={() => setCurrentId(chapters[index + 1]?.id)} />
       )}

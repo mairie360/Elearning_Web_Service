@@ -152,6 +152,10 @@ export function ElearningModule({
   const user = catalogResponse?.user;
   // MAIR-1148: `?play=<id>` shows the course screen in place of the application shell; the browser back button leaves it.
   const playingCourse = pageUrl.state.play ? catalogCourses.find((course) => course.id === pageUrl.state.play) : undefined;
+  // Leaving the course screen any way (back button included) cancels its pending download.
+  const playingId = playingCourse?.id;
+  const abortDownload = resourceDownload.abort;
+  useEffect(() => () => abortDownload(), [playingId, abortDownload]);
   const playCourse = (course: CatalogCourse) => pageUrl.update({ play: course.id });
   const leaveCourse = () => {
     resourceDownload.abort();

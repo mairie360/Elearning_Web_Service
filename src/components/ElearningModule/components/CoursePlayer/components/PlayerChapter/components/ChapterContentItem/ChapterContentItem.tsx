@@ -23,7 +23,10 @@ export interface ChapterContentItemProps {
 /** One content of a chapter: type, duration, optional flag, download or safe link (MAIR-703), completion. */
 export const ChapterContentItem = ({ content, busy, onDownload, downloading = false, onComplete, canComplete }: ChapterContentItemProps) => {
   const completed = Boolean(content.completed);
-  const link = onDownload ? undefined : safeContentLink(content.href);
+  // A link resource is always a link (MAIR-703); the download through the service is for file supports.
+  const isLink = content.type === 'link';
+  const download = isLink ? undefined : onDownload;
+  const link = download ? undefined : safeContentLink(content.href);
   return (
     <li className={`flex items-start gap-3 rounded-[var(--mairie-radius-m)] border p-3 ${completed ? 'border-[var(--mairie-success-text)]' : 'border-[var(--mairie-border)]'}`}>
       <Icon icon={completed ? CircleCheck : contentTypeIcons[content.type]} size="l"
@@ -35,10 +38,10 @@ export const ChapterContentItem = ({ content, busy, onDownload, downloading = fa
         </Text>
         {content.description ? <Text size="s" tone="muted" className="break-words">{content.description}</Text> : null}
         {content.fileName ? <Text size="xs" tone="muted" className="break-words">{content.fileName}</Text> : null}
-        {!onDownload && content.href && !link ? <Text size="xs" tone="warning">Lien non sécurisé : il n’est pas proposé.</Text> : null}
+        {!download && content.href && !link ? <Text size="xs" tone="warning">Lien non sécurisé : il n’est pas proposé.</Text> : null}
       </div>
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-        {onDownload ? <DownloadButton size="s" label="Télécharger le support" loading={downloading} disabled={busy && !downloading} onClick={() => onDownload(content)} /> : null}
+        {download ? <DownloadButton size="s" label="Télécharger le support" loading={downloading} disabled={busy && !downloading} onClick={() => download(content)} /> : null}
         {link ? (
           <a href={link.href} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1 rounded-[var(--mairie-radius-s)] px-2 py-1 text-sm font-semibold text-[var(--mairie-accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mairie-accent)]">

@@ -993,3 +993,19 @@ test('a superseded module download is cancelled and cannot create a stale downlo
   view.unmount();view=undefined;assert.equal(requests[1].signal.aborted,true);
   requests[1].resolve({blob:new Blob(['unmounted']),fileName:'unmounted.pdf'});await secondRejected;
 });
+
+test('leaving the course screen with the browser back button cancels its pending download', async () => {
+  const course = f.course(); const content = course.details.chapters[0].contents[0];
+  const requests = [];
+  const learnerPort = { downloadResource: (courseId, contentId, signal) => new Promise(resolve => requests.push({ signal, resolve })) };
+  await renderPlayer(course, f.catalogResponse([course]), () => React.createElement(ElearningModule, { learnerPort }));
+  const pending = view.props('CoursePlayer').onContentDownload(course, content);
+  const rejected = assert.rejects(pending, /annulé/);
+  assert.equal(requests[0].signal.aborted, false);
+  front.window().location.href = 'https://elearning.test.example/';
+  await view.act(() => front.window().dispatchEvent(new Event('popstate')));
+  await view.waitFor(() => view.find('CoursePlayer').length === 0);
+  assert.equal(requests[0].signal.aborted, true);
+  requests[0].resolve({ blob: new Blob(['late']), fileName: 'late.pdf' });
+  await rejected;
+});

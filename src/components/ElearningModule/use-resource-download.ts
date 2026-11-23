@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { prepareResourceDownload, type LearnerFeaturePort } from '../../features/elearning/learnerFeatures';
 import type { CatalogCourse } from './module-model';
@@ -27,5 +27,7 @@ export function useResourceDownload(learnerPort: LearnerFeaturePort) {
     } finally { if (downloadRef.current === controller) downloadRef.current = null; }
   };
 
-  return { download: learnerPort.downloadResource ? download : undefined, abort: () => downloadRef.current?.abort() };
+  // Stable, so a page effect can cancel the pending download when the course screen closes.
+  const abort = useCallback(() => downloadRef.current?.abort(), []);
+  return { download: learnerPort.downloadResource ? download : undefined, abort };
 }
