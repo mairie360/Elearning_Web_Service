@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 
 import type { ElearningCatalog } from './components/ElearningCatalog';
 import type { ElearningCatalogResponse } from '../../lib/elearning-api';
-import { parseFrontUrl } from '../../lib/front-url';
+import { parseFrontUrl } from '@mairie360/lib-components/shared';
 import { frontUrl } from '../../lib/front-urls';
 import { settingsProfileUrl } from '../../lib/settings-profile';
 import { withCategoryReset } from '../../features/elearning/catalogFilters';

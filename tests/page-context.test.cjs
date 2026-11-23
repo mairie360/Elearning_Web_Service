@@ -43,7 +43,7 @@ test('foreground events coalesce, hidden pages stay quiet and cleanup cancels ca
   const target = prefix => ({ addEventListener: (name, handler) => handlers.set(prefix + name, handler), removeEventListener: name => handlers.delete(prefix + name) });
   global.window = target('window:'); global.document = { ...target('document:'), hidden: false };
   try {
-    const { subscribePageReturn } = requireSrc('lib/page-return.ts');
+    const { subscribePageReturn } = require('@mairie360/lib-components/shared');
     let reads = 0;
     const close = subscribePageReturn(() => reads++);
     handlers.get('window:focus')(); handlers.get('document:visibilitychange')();

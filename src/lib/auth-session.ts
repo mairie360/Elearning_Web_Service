@@ -1,7 +1,7 @@
 "use client";
 
 import { frontUrl } from './front-urls';
-import { parseFrontUrl } from './front-url';
+import { parseFrontUrl } from '@mairie360/lib-components/shared';
 import { clearStoredAuthJwtToken } from './auth-token';
 
 const navigatingLocations = new WeakSet<Location>();
