@@ -32,6 +32,10 @@ const ELEARNING_OPERATIONS = [
   'GET /elearning/courses/{courseId}/chapters/{chapterId}/contents/{contentId}/file',
   'GET /elearning/admin/stats',
   'POST /elearning/admin/courses/{courseId}/reminders',
+  'GET /elearning/admin/courses/{courseId}/learners',
+  'GET /elearning/admin/agents',
+  'POST /elearning/admin/courses/{courseId}/learners',
+  'DELETE /elearning/admin/courses/{courseId}/learners/{userId}',
 ];
 
 const operations = (contract) => Object.entries(contract.document.paths)

@@ -15,6 +15,7 @@ import { elearningLearnerPort } from '../../features/elearning/learnerFeatures';
 import type { LearnerFeaturePort, ReviewDraft } from '../../features/elearning/learnerFeatures';
 import { createCatalogActions } from '../../features/elearning/catalogActions';
 import { createInsightActions, type InsightState } from '../../features/elearning/insightActions';
+import { createEnrolmentActions } from '../../features/elearning/enrolmentActions';
 import type { AdminStatsResponse, TrainingTimeResponse } from '../../lib/elearning-api';
 import { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, pinnedBffCapabilities } from '../../features/elearning/bffCapabilities';
 import type { CatalogCapabilities } from '../../features/elearning/bffCapabilities';
@@ -109,6 +110,8 @@ export function ElearningModule({
     setAdminStats: (value, state) => setAdminStats(current => ({ value: value ?? (state === 'loading' ? current.value : undefined), state })),
     report,
   }, saveFile), [report]);
+  // MAIR-817: the administrator enrols and unenrols agents (« Agents inscrits » of a course).
+  const enrolment = useMemo(() => createEnrolmentActions(report), [report]);
   const [year] = useState(() => new Date().getFullYear());
   const isAdmin = catalogResponse ? catalogResponse.user?.isAdmin === true : undefined;
   // Read once the catalogue says who the caller is; a role change (another session) reads the other side.
@@ -245,6 +248,8 @@ export function ElearningModule({
           adminStatsState={adminStats.state}
           onRefreshStats={() => void insights.loadAdminStats()}
           onRemindLateAgents={agents => insights.remindLateAgents(agents)}
+          enrolment={capabilities.courseManagement ? enrolment : undefined}
+          onEnrolmentChanged={() => { void actions.loadCatalog(); void insights.loadAdminStats(); }}
           trainingTime={trainingTime.value}
           trainingTimeState={trainingTime.state}
           onTrainingTimeRetry={() => void insights.loadTrainingTime(year)}

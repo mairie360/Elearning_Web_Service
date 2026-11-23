@@ -119,6 +119,17 @@ const LEGACY_CODES: Record<string, string> = {
 };
 
 /** Format d'erreur commun des BFFs (`ErrorResponse` : { error: { code, message, details } }), le code dans l'enum publié. */
+export function courseLearner(userId: string, firstName: string, lastName: string, overrides: Record<string, unknown> = {}) {
+  return {
+    userId, name: `${firstName} ${lastName}`, firstName, lastName, status: 'not-started', progress: 0,
+    startedAt: null, completedAt: null, lastActivityAt: null, lastReminderAt: null, ...overrides,
+  };
+}
+
+export function agent(userId: string, firstName: string, lastName: string) {
+  return { userId, name: `${firstName} ${lastName}`, firstName, lastName };
+}
+
 export function apiError(code: string, message: string, details: Array<{ path?: string; message: string }> = []) {
   return { error: { code: ERROR_CODES.has(code) ? code : (LEGACY_CODES[code] ?? 'INTERNAL_ERROR'), message, details } };
 }

@@ -41,6 +41,10 @@ const CONSUMED = [
   'GET /elearning/courses/{courseId}/chapters/{chapterId}/contents/{contentId}/file',
   'GET /elearning/admin/stats',
   'POST /elearning/admin/courses/{courseId}/reminders',
+  'GET /elearning/admin/courses/{courseId}/learners',
+  'GET /elearning/admin/agents',
+  'POST /elearning/admin/courses/{courseId}/learners',
+  'DELETE /elearning/admin/courses/{courseId}/learners/{userId}',
 ];
 
 after(() => {
@@ -917,5 +921,110 @@ describe('E-learning V2 reads and actions (MAIR-1144, MAIR-1149, MAIR-1150, MAIR
     assert.deepEqual(result, { fieldErrors: [{ path: 'body.details.chapters.0.contents.0.href', message: 'A link needs an absolute https:// URL.' }] });
     assert.match(state.mutationError, /Certains champs/);
     assert.deepEqual(operations(), ['POST /elearning/admin/courses']);
+  });
+});
+
+describe('Enrolment of agents by the administrator (MAIR-817)', () => {
+  const { agentName, appendPage, createEnrolmentActions, enrolmentSummary, LEARNERS_PAGE, AGENTS_PAGE } = require('../src/features/elearning/enrolmentActions.ts');
+
+  function enrolment() {
+    const state = { reports: [], unauthorized: 0 };
+    const actions = createEnrolmentActions((tone, title, message) => state.reports.push({ tone, title, message }), async () => { state.unauthorized += 1; });
+    return { state, actions };
+  }
+
+  test('the learners of a course are read a page at a time; an unreadable page is null, a 401 leaves the page', async () => {
+    const { state, actions } = enrolment();
+    bffElearning.on('get', '/elearning/admin/courses/{courseId}/learners', ({ url, pathParams }) => ({
+      body: {
+        courseId: pathParams.courseId, total: 51, limit: Number(url.searchParams.get('limit')), offset: Number(url.searchParams.get('offset')),
+        nextOffset: 50, learners: [f.courseLearner('42', 'Alice', 'Martin', { status: 'in-progress', progress: 50 })],
+      },
+    }));
+    const page = await actions.loadLearners('4');
+    assert.deepEqual(page, { items: [f.courseLearner('42', 'Alice', 'Martin', { status: 'in-progress', progress: 50 })], total: 51, nextOffset: 50 });
+    const [read] = bffElearning.calls('/elearning/admin/courses/{courseId}/learners', 'GET');
+    assert.equal(read.url.searchParams.get('limit'), String(LEARNERS_PAGE));
+    assert.equal(read.url.searchParams.get('offset'), '0');
+    bffElearning.on('get', '/elearning/admin/courses/{courseId}/learners', errorReply(502, 'BAD_GATEWAY', 'Upstream'));
+    assert.equal(await actions.loadLearners('4', 50), null);
+    bffElearning.on('get', '/elearning/admin/courses/{courseId}/learners', errorReply(401, 'UNAUTHORIZED', 'Session'));
+    assert.equal(await actions.loadLearners('4'), null);
+    assert.equal(state.unauthorized, 1);
+    assert.deepEqual(state.reports, [], 'a read reports in the drawer, not as a toast');
+  });
+
+  test('the picker searches the agents who do not follow the course', async () => {
+    const { actions } = enrolment();
+    bffElearning.on('get', '/elearning/admin/agents', { body: { agents: [f.agent('50', 'Chloé', 'Durand')], limit: AGENTS_PAGE, offset: 0, nextOffset: null } });
+    assert.deepEqual(await actions.searchAgents('4', '  chlo '), { items: [f.agent('50', 'Chloé', 'Durand')], nextOffset: null });
+    const [search] = bffElearning.calls('/elearning/admin/agents', 'GET');
+    assert.equal(search.url.searchParams.get('search'), 'chlo');
+    assert.equal(search.url.searchParams.get('excludeCourseId'), '4');
+    assert.equal(search.url.searchParams.get('limit'), String(AGENTS_PAGE));
+    await actions.searchAgents('4', '', 20);
+    const second = bffElearning.calls('/elearning/admin/agents', 'GET')[1];
+    assert.equal(second.url.searchParams.has('search'), false);
+    assert.equal(second.url.searchParams.get('offset'), '20');
+    bffElearning.on('get', '/elearning/admin/agents', errorReply(503, 'SERVICE_UNAVAILABLE', 'Down'));
+    assert.equal(await actions.searchAgents('4', 'x'), null);
+    const aborted = new AbortController();
+    aborted.abort();
+    await assert.rejects(actions.searchAgents('4', 'x', 0, { signal: aborted.signal }), { name: 'AbortError' });
+  });
+
+  test('« Inscrire » reports who was enrolled, a click twice shares the request, a refusal is told in French', async () => {
+    const { state, actions } = enrolment();
+    bffElearning.on('post', '/elearning/admin/courses/{courseId}/learners', ({ pathParams, body }) => ({
+      body: { courseId: pathParams.courseId, enrolled: body.userIds.slice(1), alreadyEnrolled: body.userIds.slice(0, 1), failed: [] },
+    }));
+    const first = actions.enrol('4', ['42', '50', '51']);
+    assert.equal(actions.enrol('4', ['42', '50', '51']), first);
+    const other = actions.enrol('4', ['60']);
+    assert.notEqual(other, first, 'another selection is not the pending one');
+    assert.deepEqual(await Promise.all([first, other]), [true, true]);
+    const posts = bffElearning.calls('/elearning/admin/courses/{courseId}/learners', 'POST').map(({ body }) => body.userIds);
+    assert.deepEqual(posts.sort(), [['42', '50', '51'], ['60']]);
+    assert.ok(state.reports.some((report) => report.message === '2 agents inscrits ; 1 agent déjà inscrit.'));
+    state.reports.length = 0;
+    assert.equal(await actions.enrol('4', []), false);
+
+    bffElearning.on('post', '/elearning/admin/courses/{courseId}/learners', { body: { courseId: '4', enrolled: ['50'], alreadyEnrolled: [], failed: ['51', '52'] } });
+    assert.equal(await actions.enrol('4', ['50', '51', '52']), false);
+    assert.deepEqual(state.reports[0], { tone: 'danger', title: 'Inscription incomplète', message: '1 agent inscrit ; 2 inscriptions impossibles.' });
+    bffElearning.on('post', '/elearning/admin/courses/{courseId}/learners', { body: { courseId: '4', enrolled: [], alreadyEnrolled: [], failed: ['51'] } });
+    assert.equal(await actions.enrol('4', ['51']), false);
+    assert.equal(state.reports[1].title, 'Inscription impossible');
+    bffElearning.on('post', '/elearning/admin/courses/{courseId}/learners', errorReply(404, 'NOT_FOUND', 'Course not found.'));
+    assert.equal(await actions.enrol('4', ['51']), false);
+    assert.deepEqual(state.reports[2], { tone: 'danger', title: 'Inscription impossible', message: 'Cette formation n’existe plus.' });
+    bffElearning.on('post', '/elearning/admin/courses/{courseId}/learners', errorReply(401, 'UNAUTHORIZED', 'Session'));
+    assert.equal(await actions.enrol('4', ['51']), false);
+    assert.equal(state.unauthorized, 1);
+    assert.equal(state.reports.length, 3);
+  });
+
+  test('« Désinscrire » removes the learner; one already gone counts as done', async () => {
+    const { state, actions } = enrolment();
+    const learner = f.courseLearner('43', 'Bruno', 'Petit');
+    bffElearning.on('delete', '/elearning/admin/courses/{courseId}/learners/{userId}', ({ pathParams }) => ({ body: { removed: true, ...pathParams } }));
+    assert.equal(await actions.remove('4', learner), true);
+    assert.deepEqual(bffElearning.calls('/elearning/admin/courses/{courseId}/learners/{userId}', 'DELETE')[0].pathParams, { courseId: '4', userId: '43' });
+    assert.deepEqual(state.reports[0], { tone: 'success', title: 'Agent désinscrit', message: 'Bruno Petit ne suit plus cette formation.' });
+    bffElearning.on('delete', '/elearning/admin/courses/{courseId}/learners/{userId}', errorReply(404, 'NOT_FOUND', 'Enrolment not found.'));
+    assert.equal(await actions.remove('4', learner), true);
+    assert.equal(state.reports[1].tone, 'info');
+    bffElearning.on('delete', '/elearning/admin/courses/{courseId}/learners/{userId}', errorReply(502, 'BAD_GATEWAY', 'Upstream'));
+    assert.equal(await actions.remove('4', learner), false);
+    assert.equal(state.reports[2].title, 'Désinscription impossible');
+    bffElearning.on('delete', '/elearning/admin/courses/{courseId}/learners/{userId}', errorReply(401, 'UNAUTHORIZED', 'Session'));
+    assert.equal(await actions.remove('4', learner), false);
+    assert.equal(state.unauthorized, 1);
+  });
+
+  test('names, summaries and pages', () => {
+    assert.equal(agentName({ firstName: '', lastName: '', name: 'Solo' }), 'Solo');
+    assert.equal(enrolmentSummary({ enrolled: [], alreadyEnrolled: ['1', '2'], failed: [] }), '2 agents déjà inscrits');
+    assert.deepEqual(appendPage([{ userId: '1' }], [{ userId: '1' }, { userId: '2' }]), [{ userId: '1' }, { userId: '2' }]);
   });
 });
