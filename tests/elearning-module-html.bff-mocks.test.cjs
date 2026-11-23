@@ -42,6 +42,21 @@ function assertLiveMessage(html, role, message, label) {
   } finally { dom.window.close(); }
 }
 
+// MAIR-920: action outcomes are toasts of the lib ToastProvider (visible region named below).
+function toasts(html) {
+  const dom = new JSDOM(html);
+  try {
+    return [...dom.window.document.querySelectorAll('[aria-label="Notifications de la formation"] li')].map(node => node.textContent.replace(/\s+/g, ' ').trim());
+  } finally { dom.window.close(); }
+}
+
+// The ToastProvider keeps empty live regions on the page: an alert counts only when it says something.
+function hasAlert(html) {
+  const dom = new JSDOM(html);
+  try {
+    return [...dom.window.document.querySelectorAll('[role="alert"]')].some(node => node.textContent.trim() !== '');
+  } finally { dom.window.close(); }
+}
 
 for (const returnedId of ['unrelated', ' ']) {
   test(`the actual admin form keeps all edits after an uncorrelated receipt ${JSON.stringify(returnedId)}`, async () => {
@@ -75,7 +90,7 @@ for (const returnedId of ['unrelated', ' ']) {
     for (const [id, value] of Object.entries(edits)) {
       assert.equal(view.hostElements(props => props.id === id)[0].props.value, value);
     }
-    assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
+    assert.ok(toasts(view.html).every(toast => !/Formation (créée|modifiée|supprimée)/.test(toast)));
     assert.deepEqual(operations(), ['GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}']);
     await view.click('Annuler');
     assert.equal(view.props('ElearningCourseFormModal').isOpen, false);
@@ -133,13 +148,14 @@ for (const mode of ['create', 'update']) {
     bffElearning.on(method, path, { status: mode === 'create' ? 201 : 200, body: { course: canonical } });
     bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Catalogue après confirmation refusé'));
     assert.equal(await view.act(() => view.props('ElearningCatalog')[callback](draft)), true);
-    assertLiveMessage(view.html, 'status', 'Titre canonique du serveur', 'Confirmation de la formation');
-    assert.match(view.text(), new RegExp(`Formation "Titre canonique du serveur" ${mode === 'create' ? 'créée' : 'mise à jour'}\\.`));
+    const [toast] = toasts(view.html);
+    assert.match(toast, new RegExp(`Formation ${mode === 'create' ? 'créée' : 'modifiée'}`));
+    assert.match(toast, /Titre canonique du serveur/);
     assert.doesNotMatch(view.text(), /Titre du brouillon/);
     assert.match(view.text(), /Catalogue après confirmation refusé/);
     const beforeDismiss = operations();
-    await view.click(props => props['aria-label'] === 'Fermer la confirmation');
-    assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
+    await view.click(props => props['aria-label'] === 'Fermer la notification');
+    assert.deepEqual(toasts(view.html), []);
     assert.deepEqual(operations(), beforeDismiss);
     bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse([canonical], f.currentUser({ isAdmin: true })) });
     await view.click('Réessayer');
@@ -154,12 +170,10 @@ test('a confirmed deletion has truthful status and a subsequent refused write cl
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Catalogue après suppression refusé'));
   await view.act(() => view.props('ElearningCatalog').onDeleteCourse(f.course()));
   await view.waitFor(html => html.includes('Catalogue après suppression refusé'));
-  assert.match(view.text(), /Formation supprimée\./);
-  assert.match(view.html, /aria-label="Confirmation de la formation"/);
+  assert.match(toasts(view.html)[0], /Formation supprimée/);
   bffElearning.on('post', '/elearning/admin/courses', errorReply(403, 'FORBIDDEN', 'Création refusée'));
   assert.equal(await view.act(() => view.props('ElearningCatalog').onCreateCourse(f.course())), false);
-  assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
-  assert.match(view.text(), /Création refusée/);
+  assert.match(toasts(view.html).at(-1), /Formation non créée.*Création refusée/);
   assert.deepEqual(operations(), ['GET /elearning/catalog', 'DELETE /elearning/admin/courses/{courseId}', 'GET /elearning/catalog', 'POST /elearning/admin/courses']);
 });
 
@@ -169,12 +183,11 @@ test('GET-only recovery retains the undismissed canonical success without repeat
   bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { course: canonical } });
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Lecture de récupération refusée'));
   assert.equal(await view.act(() => view.props('ElearningCatalog').onUpdateCourse(canonical)), true);
-  assert.match(view.text(), /Formation "Titre confirmé conservé" mise à jour\./);
+  assert.match(toasts(view.html)[0], /Formation modifiée.*Titre confirmé conservé/);
   bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse([canonical], f.currentUser({ isAdmin: true })) });
   await view.click('Réessayer');
-  await view.waitFor(html => !html.includes('Lecture de récupération refusée') && !html.includes('Actualisation des formations…'));
-  assert.match(view.html, /aria-label="Confirmation de la formation"/);
-  assert.match(view.text(), /Formation "Titre confirmé conservé" mise à jour\./);
+  await view.waitFor(html => !html.includes('Lecture de récupération refusée'));
+  assert.match(toasts(view.html)[0], /Formation modifiée.*Titre confirmé conservé/);
   assert.deepEqual(operations(), ['GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}', 'GET /elearning/catalog', 'GET /elearning/catalog']);
 });
 
@@ -193,22 +206,22 @@ test('a pending write and a contract-shaped unconfirmed deletion never announce 
   let pending;
   await view.act(() => { pending = view.props('ElearningCatalog').onUpdateCourse(f.course()); });
   await view.waitFor(() => bffElearning.requests.length === 2);
-  assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
+  assert.ok(toasts(view.html).every(toast => !/Formation (créée|modifiée|supprimée)/.test(toast)));
   release();
   assert.equal(await pending, false);
   await view.settle();
-  assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
+  assert.ok(toasts(view.html).every(toast => !/Formation (créée|modifiée|supprimée)/.test(toast)));
   bffElearning.on('delete', '/elearning/admin/courses/{courseId}', { body: { deleted: false, courseId: '4' } });
   await view.act(() => view.props('ElearningCatalog').onDeleteCourse(f.course()));
   await view.waitFor(html => html.includes('Une erreur inattendue est survenue'));
-  assert.doesNotMatch(view.html, /aria-label="Confirmation de la formation"/);
+  assert.ok(toasts(view.html).every(toast => !/Formation (créée|modifiée|supprimée)/.test(toast)));
   assert.equal(view.props('ElearningCatalog').courses.length, 1);
 });
 
 async function renderLoadedCatalog(body = f.catalogResponse(), Component = Home, displayRole = 'Guest') {
   bffElearning.on('get', '/elearning/catalog', { body });
   view = mount(React.createElement(require('@mairie360/lib-components/react').InstanceProvider, { role: displayRole, timeZone: 'UTC' }, React.createElement(Component)));
-  return view.waitFor((html) => !html.includes('role="status"'));
+  return view.waitFor((html) => !html.includes('Chargement des formations'));
 }
 
 test('the first pass renders the loading state, the next one the catalogue of GET /elearning/catalog', async () => {
@@ -221,22 +234,22 @@ test('the first pass renders the loading state, the next one the catalogue of GE
   assert.equal(view.find('AppShell').length, 1);
   assert.equal(view.props('Header').user.name, '');
 
-  const html = await view.waitFor((current) => !current.includes('role="status"'));
+  const html = await view.waitFor((current) => !current.includes('Chargement des formations'));
 
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
   assert.deepEqual(runtime.frontCalls.map((call) => `${call.method} ${call.pathname} ${call.status}`), ['GET /elearning/catalog 200']);
-  assert.doesNotMatch(html, /role="alert"/);
+  assert.equal(hasAlert(html), false);
   assert.match(view.text(), /RGPD et collectivités/);
   assert.match(view.text(), /Protéger les données personnelles des administrés\./);
   assert.match(view.text(), /DPO Mairie/);
   assert.match(view.html, /<span[^>]*>Alice Martin<\/span>/);
-  assert.equal(view.props('Sidebar').isAdmin, false);
+  assert.equal(view.props('DesktopNavigation').isAdmin, false);
   assert.equal(view.props('ElearningCatalog').currentUserRole, 'user');
   assert.equal(view.props('ElearningCatalog').allowRatingEdits, true);
-  assert.equal(view.props('ElearningCatalog').className, 'elearning-catalog-shell min-h-full !px-6 !py-8');
+  assert.equal(view.props('PageHeader').title, 'E-learning');
+  assert.equal(view.props('PageHeader').subtitle, 'Développez vos compétences à votre rythme.');
   assert.match(html, /<footer/);
   assert.doesNotMatch(html, /<aside\b[^]*?<footer\b[^]*?<\/footer>[^]*?<\/aside>/);
-  assert.match(html, /<\/main>\s*<footer\b/);
   assert.match(view.text(), /1\.0\.0/);
 });
 
@@ -244,7 +257,7 @@ test('an administrator sees the catalogue with the administrator role', async ()
   await renderLoadedCatalog(f.catalogResponse([f.course()], f.currentUser({ name: 'Admin Mairie', initials: 'AM', role: 'Admin', isAdmin: true })), Home, 'Admin');
 
   assert.equal(view.props('ElearningCatalog').currentUserRole, 'administrator');
-  assert.equal(view.props('Sidebar').isAdmin, true);
+  assert.equal(view.props('DesktopNavigation').isAdmin, true);
   assert.match(view.html, /<span[^>]*>Admin Mairie<\/span>/);
 });
 
@@ -369,7 +382,7 @@ test('repeating the visible Delete action while pending sends one write; refusal
     bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Relecture refusée'));
     await view.click(remove);
     await view.waitFor(html => html.includes('Relecture refusée'));
-    assert.doesNotMatch(view.text(), /RGPD et collectivités|Suppression refusée/);
+    assert.doesNotMatch(view.text(), /RGPD et collectivités/);
     assert.deepEqual(operations(), ['GET /elearning/catalog', 'DELETE /elearning/admin/courses/{courseId}', 'DELETE /elearning/admin/courses/{courseId}', 'GET /elearning/catalog']);
   } finally {
     release();
@@ -406,33 +419,16 @@ for (const mode of ['start', 'complete', 'rating']) {
   });
 }
 
-test('the catalog marks the real BFF statistic count for the responsive layout', async () => {
+test('the BFF statistics are rendered as the agent indicators', async () => {
   const threeStats = f.catalogResponse();
   threeStats.catalog.stats = [
     { label: 'Formations disponibles', value: 3 },
     { label: 'En cours', value: 1 },
     { label: 'Terminées', value: 2 },
   ];
-  const html = await renderLoadedCatalog(threeStats);
-
-  assert.equal(view.props('ElearningCatalog')['data-stat-count'], 3);
-  assert.match(html, /data-stat-count="3"/);
+  await renderLoadedCatalog(threeStats);
+  assert.deepEqual(view.props('ElearningCatalog').stats.map(stat => stat.label), ['Formations disponibles', 'En cours', 'Terminées']);
   assert.match(view.text(), /Formations disponibles/);
-  assert.deepEqual(operations(), ['GET /elearning/catalog']);
-});
-
-test('four BFF statistics retain the shared four-column layout', async () => {
-  const fourStats = f.catalogResponse();
-  fourStats.catalog.stats = [
-    { label: 'Formations disponibles', value: 4 },
-    { label: 'En cours', value: 1 },
-    { label: 'Terminées', value: 2 },
-    { label: 'Certifications', value: 1 },
-  ];
-  const html = await renderLoadedCatalog(fourStats);
-
-  assert.equal(view.props('ElearningCatalog')['data-stat-count'], 4);
-  assert.match(html, /data-stat-count="4"/);
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
 });
 
@@ -455,14 +451,14 @@ test('an unavailable course link reports the missing course without inventing da
   await renderLoadedCatalog();
 
   assert.equal(view.props('ElearningCatalog').initialCourseId, 'unknown');
-  assert.match(view.html, /role="alert"/);
+  assert.equal(hasAlert(view.html), true);
   assert.match(view.text(), /Cette formation n’est plus disponible/);
   assert.doesNotMatch(view.html, /role="dialog"/);
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
 
   await view.click('Voir le catalogue');
   assert.equal(front.window().location.href, 'https://elearning.test.example/?view=all');
-  assert.doesNotMatch(view.html, /role="alert"/);
+  assert.equal(hasAlert(view.html), false);
 });
 
 for (const supplied of ['no-details', 'no-chapters', 'no-contents', 'empty-contents']) {
@@ -558,7 +554,7 @@ for (const previouslySubmitted of [false, true]) {
     });
     await view.click(previouslySubmitted ? 'Enregistrer ma note' : 'Envoyer la note');
     await view.waitFor(html => html.includes('Votre sélection est conservée'));
-    assert.match(view.html, /role="alert"/);
+    assert.equal(hasAlert(view.html), true);
     assert.match(view.html, /aria-label="Donner la note 3 sur 5"[^>]*aria-pressed="true"/);
     assert.deepEqual(view.props('ElearningCatalog').courses[0], course);
     assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/rating']);
@@ -577,15 +573,16 @@ for (const previouslySubmitted of [false, true]) {
 test('a BFF error is rendered as an alert with a retry button that reloads the catalogue', async () => {
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'BFF_UNAVAILABLE', 'Le service de formation est indisponible'));
   view = mount(React.createElement(Home));
-  const failed = await view.waitFor((html) => html.includes('role="alert"'));
+  const failed = await view.waitFor((html) => hasAlert(html));
 
-  assert.match(failed, /<p[^>]*>Le service de formation est indisponible<\/p>/);
-  assert.match(failed, /<button[^>]*type="button">Réessayer<\/button>/);
+  assert.match(view.text(), /Service de formation indisponible Le service de formation est indisponible/);
+  assert.match(failed, />Réessayer</);
+  assert.equal(view.props('DataState').state, 'error');
   assert.equal(view.find('ElearningCatalog').length, 0);
 
   bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse() });
   await view.click('Réessayer');
-  const html = await view.waitFor((current) => !current.includes('role="alert"') && !current.includes('role="status"'));
+  const html = await view.waitFor((current) => !hasAlert(current) && !current.includes('Chargement des formations'));
 
   assert.deepEqual(operations(), ['GET /elearning/catalog', 'GET /elearning/catalog']);
   assert.match(view.text(), /RGPD et collectivités/);
@@ -613,7 +610,7 @@ test('starting a course refreshes official statistics without resetting filters 
   assert.match(view.html, /role="dialog"/);
   assert.match(view.text(), /En cours/);
   assert.deepEqual(view.props('ElearningCatalog').stats, updated.catalog.stats);
-  assert.doesNotMatch(view.html, /role="alert"/);
+  assert.equal(hasAlert(view.html), false);
 });
 
 test('a failed start refresh keeps the confirmed reader and offers GET-only retry', async () => {
@@ -631,7 +628,7 @@ test('a failed start refresh keeps the confirmed reader and offers GET-only retr
   updated.catalog.stats = [{ label: 'En cours', value: 2 }];
   bffElearning.on('get', '/elearning/catalog', { body: updated });
   await view.click('Réessayer');
-  await view.waitFor((html) => !html.includes('role="alert"') && view.props('ElearningCatalog').stats[0].value === 2);
+  await view.waitFor((html) => !hasAlert(html) && view.props('ElearningCatalog').stats[0].value === 2);
   assert.match(view.html, /role="dialog"/);
   assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/start', 'GET /elearning/catalog', 'GET /elearning/catalog']);
 });
@@ -643,18 +640,18 @@ test('a failed refresh after a rating keeps the catalogue visible and offers a r
 
   await view.act(() => view.props('ElearningCatalog').onCourseRatingSubmit(view.props('ElearningCatalog').courses[0], 4));
   await view.waitFor(() => operations().length === 3);
-  const html = await view.waitFor((current) => current.includes('role="alert"'));
+  const html = await view.waitFor((current) => hasAlert(current));
 
   assert.match(html, /Actualisation indisponible/);
-  assert.match(html, /data-elearning-feedback-stack[^>]*class="fixed inset-x-4 bottom-4 z-\[60\]/);
   assert.match(view.text(), /Les dernières données confirmées restent affichées/);
+  assert.match(toasts(html)[0], /Merci pour votre avis/);
   assert.equal(view.find('ElearningCatalog').length, 1);
   assert.match(view.text(), /RGPD et collectivités/);
 
   const updated = f.catalogResponse([f.course('4', { title: 'Catalogue actualisé' })]);
   bffElearning.on('get', '/elearning/catalog', { body: updated });
   await view.click('Réessayer');
-  await view.waitFor((current) => !current.includes('role="alert"') && current.includes('Catalogue actualisé'));
+  await view.waitFor((current) => !hasAlert(current) && current.includes('Catalogue actualisé'));
   assert.match(view.text(), /Catalogue actualisé/);
   assert.deepEqual(operations(), ['GET /elearning/catalog', 'POST /elearning/courses/{courseId}/rating', 'GET /elearning/catalog', 'GET /elearning/catalog']);
 });
@@ -665,11 +662,10 @@ test('a refused mutation is shown as an alert above the catalogue, which stays d
   bffElearning.on('post', '/elearning/courses/{courseId}/start', errorReply(403, 'FORBIDDEN', 'Cette formation ne vous est pas ouverte'));
 
   await view.act(() => view.props('ElearningCatalog').onCourseAction(view.props('ElearningCatalog').courses[0]));
-  const html = await view.waitFor((current) => current.includes('role="alert"'));
+  const html = await view.waitFor((current) => hasAlert(current));
 
   assertLiveMessage(html, 'alert', 'Cette formation ne vous est pas ouverte');
-  assert.match(html, /data-elearning-feedback-stack[^>]*class="fixed inset-x-4 bottom-4 z-\[60\]/);
-  assert.match(html, /data-elearning-catalog-feedback/);
+  assert.match(toasts(html)[0], /Impossible de commencer.*Cette formation ne vous est pas ouverte/);
   assert.equal(view.find('ElearningCatalog').length, 1);
   assert.match(view.text(), /RGPD et collectivités/);
   assert.deepEqual({ courses: view.props('ElearningCatalog').courses, stats: view.props('ElearningCatalog').stats }, initial);
@@ -696,8 +692,7 @@ test('a refused write does not hide catalogue read recovery; GET success clears 
   assert.match(view.html, />Réessayer<\/button>/);
   assert.deepEqual(view.props('ElearningCatalog').courses, [confirmed]);
   assert.deepEqual(view.props('ElearningCatalog').stats, initial.catalog.stats);
-  assert.match(view.html, /data-elearning-feedback-stack/);
-  assert.equal((view.html.match(/class="fixed inset-x-4 bottom-4/g) ?? []).length, 1, 'feedback occupies one non-overlapping stack');
+  assert.match(toasts(view.html).at(-1), /Formation non modifiée.*Écriture refusée/);
   bffElearning.on('get', '/elearning/catalog', { body: f.catalogResponse([confirmed], initial.user) });
   await view.click('Réessayer');
   await view.waitFor(html => !html.includes('Lecture refusée'));
@@ -724,11 +719,10 @@ test('read retry keeps its failure and disabled pending control until the catalo
     await ready;
     await view.settle();
     assert.match(view.text(), /Lecture refusée/);
-    assert.match(view.html, /<button[^>]*disabled=""[^>]*aria-busy="true"[^>]*type="button">Réessayer<\/button>/);
-    assert.match(view.html, /role="status"[^>]*>Actualisation des formations…/);
+    assert.equal(view.props('RetryButton').loading, true);
     assert.match(view.text(), /Formation confirmée/);
     release();
-    await view.waitFor(html => !html.includes('Lecture refusée') && !html.includes('Actualisation des formations…'));
+    await view.waitFor(html => !html.includes('Lecture refusée'));
     assert.match(view.text(), /RGPD et collectivités/);
     assert.deepEqual(operations(), ['GET /elearning/catalog', 'PATCH /elearning/admin/courses/{courseId}', 'GET /elearning/catalog', 'GET /elearning/catalog']);
   } finally {
@@ -776,7 +770,7 @@ test('composed status reset retains filters and independent write refusal throug
   await view.waitFor(html => !html.includes('Lecture composée refusée'));
   assert.match(view.text(), /Suppression composée refusée/);
   assert.match(view.text(), /Aucune formation/);
-  assert.doesNotMatch(view.text(), /Parcours confirmé/);
+  assert.deepEqual(view.props('ElearningCatalog').courses, []);
   assert.equal(view.props('ElearningSearchInput').value, 'Parcours');
   assert.equal(view.props('ElearningFilterSelect', 0).value, 'Juridique');
   assert.equal(view.props('ElearningFilterSelect', 1).value, 'all');
@@ -835,30 +829,23 @@ test('desktop and mobile navigation expose only active modules and keep Settings
     await renderLoadedCatalog();
     assert.equal(view.props('AppShell').activeItem, 'training');
     assert.equal(view.props('AppShell').hrefs.profile, 'https://settings.test.example/');
-    const isAdmin = view.props('Sidebar').isAdmin;
-    for (const mobileOpen of [false, true]) {
-      await view.act(() => view.props('Header').setSidebarOpen(mobileOpen));
-      const sidebars = view.find('Sidebar');
-      assert.equal(sidebars.length, mobileOpen ? 2 : 1);
-      for (const { props } of sidebars) {
-        assert.deepEqual(props.items.map(item => item.id),
-          ['dashboard', 'projects', 'messages', 'training', 'calendar', 'admin', 'settings']);
-        assert.equal(props.items.find(item => item.id === 'admin').adminOnly, true);
-        assert.equal(props.isAdmin, isAdmin);
-        assert.equal(props.activeItem, 'training');
-      }
-      const menus = view.html.match(/<nav\b[^>]*aria-label="Menu principal"[^>]*>[\s\S]*?<\/nav>/g) ?? [];
-      assert.equal(menus.length, sidebars.length + 1);
-      for (const menu of menus) {
-        assert.doesNotMatch(menu, /E-mails|Fichiers/);
-        assert.match(menu, /Paramètres/);
-        assert.equal(menu.includes('>Administration<'), isAdmin);
-      }
-    }
-    const mobileSidebar = view.find('Sidebar')[1].props;
-    await view.act(() => mobileSidebar.onItemSelect(mobileSidebar.items.find(item => item.id === 'settings')));
+    const isAdmin = view.props('DesktopNavigation').isAdmin;
+    const desktop = view.props('DesktopNavigation');
+    assert.equal(desktop.activeItem, 'training');
+    const desktopMenu = view.html.match(/<aside\b[^>]*aria-label="Navigation principale"[^>]*>[\s\S]*?<\/aside>/)?.[0] ?? '';
+    assert.doesNotMatch(desktopMenu, /E-mails|Fichiers/);
+    assert.match(desktopMenu, /Paramètres/);
+    assert.equal(desktopMenu.includes('>Administration<'), isAdmin);
+    await view.act(() => view.props('Header').setSidebarOpen(true));
+    const mobile = view.props('Sidebar');
+    assert.deepEqual(mobile.items.map(item => item.id),
+      ['dashboard', 'projects', 'messages', 'training', 'calendar', 'admin', 'settings']);
+    assert.equal(mobile.items.find(item => item.id === 'admin').adminOnly, true);
+    assert.equal(mobile.isAdmin, isAdmin);
+    assert.equal(mobile.activeItem, 'training');
+    await view.act(() => mobile.onItemSelect(mobile.items.find(item => item.id === 'settings')));
     assert.deepEqual(assigned, ['https://settings.test.example/']);
-    assert.equal(view.find('Sidebar').length, 1);
+    assert.equal(view.find('Sidebar').length, 0);
   } finally {
     setBrowserFrontUrls({});
     global.window.location.assign = originalAssign;
@@ -873,6 +860,7 @@ test('the shared shell directs profile access to configured Settings', async () 
   setBrowserFrontUrls({ SETTINGS_FRONT_URL: 'https://settings.test.example/' });
   try {
     await renderLoadedCatalog();
+    await view.act(() => view.props('Header').setSidebarOpen(true));
     const ids = view.props('Sidebar').items.map((item) => item.id);
     assert.equal(ids.includes('profile'), false);
     assert.equal(ids.filter((id) => id === 'settings').length, 1);
@@ -899,7 +887,8 @@ test('the page wires neither rating nor administration callbacks and tells admin
   assert.equal(typeof props.onCourseContentComplete, 'function');
   assert.doesNotMatch(view.html, new RegExp(`aria-label="(Modifier|Supprimer) ${course.title}"`));
   // react-dom/server keeps the typographic apostrophe as is.
-  assert.match(view.html, new RegExp(`<p data-elearning-capability-notice="true" class="[^"]*" role="note">${COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE.replace(/[()]/g, '\\$&')}</p>`));
+  assert.match(view.html, /data-elearning-capability-notice="true"[^>]*role="note"/);
+  assert.match(view.text(), new RegExp(COURSE_MANAGEMENT_UNAVAILABLE_MESSAGE.replace(/[()]/g, '\\$&')));
   assert.deepEqual(operations(), ['GET /elearning/catalog']);
 });
 

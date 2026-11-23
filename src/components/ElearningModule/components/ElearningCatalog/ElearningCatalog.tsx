@@ -60,8 +60,8 @@ export interface ElearningCatalogProps extends React.HTMLAttributes<HTMLElement>
 }
 
 export const ElearningCatalog = ({
-  title = 'Centre de formation',
-  subtitle = 'Développez vos compétences professionnelles',
+  title = 'E-learning',
+  subtitle = 'Développez vos compétences à votre rythme.',
   certificationCount = 0,
   courses,
   stats,
@@ -71,7 +71,7 @@ export const ElearningCatalog = ({
   defaultSearch = '',
   defaultCategory = 'all',
   defaultStatus = 'all',
-  emptyLabel = 'Aucune formation ne correspond aux filtres.',
+  emptyLabel = 'Aucune formation disponible pour l’instant.',
   currentUserRole = 'user',
   initialCourseId = null,
   onCourseClose,
@@ -147,11 +147,14 @@ export const ElearningCatalog = ({
   const filtered = search.trim() || category !== 'all' || status !== 'all';
 
   return (
-    <section className={joinClasses('bg-[var(--mairie-surface-raised)] px-6 py-14 text-[var(--mairie-text)]', className)} {...props}>
-      <div className="mx-auto max-w-[1130px]">
+    <section className={joinClasses('flex flex-col gap-6 text-[var(--mairie-text)]', className)} {...props}>
         <CatalogHeader title={title} subtitle={subtitle} onCreate={canManageCourses && onCreateCourse ? () => openCourseForm() : undefined} />
 
-        {canManageCourses ? <ElearningAdminStats stats={displayedAdminStats} /> : null}
+        {canManageCourses ? <ElearningAdminStats stats={displayedAdminStats} /> : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {displayedStats.map((stat) => <ElearningStatCard key={stat.label} {...stat} />)}
+          </div>
+        )}
 
         <CatalogFilters
           search={search}
@@ -164,11 +167,7 @@ export const ElearningCatalog = ({
           onStatusChange={setStatus}
         />
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {displayedStats.map((stat) => <ElearningStatCard key={stat.label} {...stat} />)}
-        </div>
-
-        <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid items-stretch gap-6 md:grid-cols-2 xl:grid-cols-3">
           {filteredCourses.map((course) => (
             <ManagedCourseCard
               key={course.id}
@@ -182,9 +181,8 @@ export const ElearningCatalog = ({
         </div>
 
         {filteredCourses.length === 0 ? (
-          <CatalogEmptyState label={emptyLabel} onResetFilters={filtered ? () => { setSearch(''); setCategory('all'); setStatus('all'); } : undefined} />
+          <CatalogEmptyState label={filtered ? 'Aucune formation ne correspond à votre recherche.' : emptyLabel} onResetFilters={filtered ? () => { setSearch(''); setCategory('all'); setStatus('all'); } : undefined} />
         ) : null}
-      </div>
 
       {selectedCourse && selectedCourseDetails ? (
         <SelectedCourseDetails

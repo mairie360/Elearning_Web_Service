@@ -11,6 +11,6 @@ import { ElearningModule } from './ElearningModule';
 describe('ElearningModule', () => {
   it('renders the shell and the loading state until the catalogue is read', () => {
     render(<ElearningModule />);
-    expect(screen.getByRole('status')).toHaveTextContent('Chargement des formations…');
+    expect(screen.getByRole('status', { name: 'Chargement des formations…' })).toBeVisible();
   });
 });

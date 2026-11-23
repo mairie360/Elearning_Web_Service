@@ -4,32 +4,22 @@ const { join } = require('node:path');
 const { createRequire } = require('node:module');
 const { test } = require('node:test');
 const postcss = createRequire(require.resolve('next/package.json'))('postcss');
-const compact = text => text.replace(/\s+/g, '');
-function policy() {
+
+// MAIR-877 / MAIR-890: the shell, the surfaces and the components come from lib-components. The front keeps
+// no stylesheet rule of its own (no background, width, sidebar or catalogue override), only the theme tokens.
+test('MAIR-877 globals.css holds no front-specific rule on the shell or the catalogue', () => {
   const parsed = postcss.parse(readFileSync(join(__dirname, '../src/app/globals.css'), 'utf8'));
-  const value = (selector, property, media = null) => {
-    let result;
-    parsed.walkRules(rule => {
-      const conditions = [];
-      for (let parent = rule.parent; parent; parent = parent.parent) if (parent.type === 'atrule' && parent.name === 'media') conditions.unshift(compact(parent.params));
-      if (compact(rule.selector) === compact(selector) && (conditions.join(' and ') || null) === (media ? compact(media) : null)) rule.walkDecls(property, declaration => { result = declaration.value; });
-    });
-    assert.ok(result, `Keep ${selector} / ${property} / ${media || 'base'}`); return result;
-  };
-  return { parsed, value };
-}
-test('MAIR-608 the course reader has no stylesheet override: the lib Modal owns its header and scrolling body', () => {
-  const { parsed } = policy();
-  const readerRules = [];
-  parsed.walkRules(rule => { if (rule.selector.includes(':has(> div > aside)')) readerRules.push(rule.selector); });
-  assert.deepEqual(readerRules, []);
-});
-test('parsed catalog policies preserve tablet controls, desktop tracks and the system token', () => {
-  const { parsed, value } = policy(), controls = '.elearning-catalog-shell > div > .mt-7.grid.gap-4';
-  assert.equal(compact(value(controls, 'grid-template-columns', '(min-width: 768px) and (max-width: 1023px)')), 'minmax(0,1fr)');
-  assert.equal(compact(value(controls, 'grid-template-columns', '(min-width: 1024px)')), 'repeat(3,minmax(0,1fr))');
-  assert.equal(compact(value('.elearning-catalog-shell[data-stat-count="3"] > div > .mt-6.grid.gap-4', 'grid-template-columns', '(min-width: 768px)')), 'repeat(3,minmax(0,1fr))');
+  const rules = [];
+  parsed.walkRules(rule => rules.push(rule.selector));
+  assert.deepEqual(rules, []);
   let font;
-  parsed.walkDecls('--font-sans', declaration => { if (declaration.parent.type === 'atrule' && declaration.parent.name === 'theme') font = declaration.value.split(',').map(name => name.trim()); });
+  parsed.walkDecls('--font-sans', declaration => { font = declaration.value.split(',').map(name => name.trim()); });
   assert.deepEqual(font, ['system-ui', 'sans-serif']);
+});
+
+test('MAIR-877 the module draws no background, width or margin of its own around the catalogue', () => {
+  for (const file of ['src/components/ElearningModule/ElearningModule.tsx', 'src/components/ElearningModule/components/ElearningCatalog/ElearningCatalog.tsx']) {
+    const text = readFileSync(join(__dirname, '..', file), 'utf8');
+    assert.doesNotMatch(text, /max-w-\[1130px\]|surface-raised|!px-6|!py-8|px-6 py-14/, file);
+  }
 });

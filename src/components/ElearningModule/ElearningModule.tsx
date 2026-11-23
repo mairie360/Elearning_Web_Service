@@ -2,9 +2,10 @@
 import { subscribePageReturn } from '../../lib/page-return';
 
 import { AccessibleShell } from "@mairie360/lib-components/shell";
+import { ToastProvider } from "@mairie360/lib-components/primitives";
 
 import { ElearningCatalog } from './components/ElearningCatalog';
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { logout, navigateToLogin } from '../../lib/auth-session';
 import type { ElearningCatalogResponse } from '../../lib/elearning-api';
 import { courseIdFromSearch, urlWithoutCourse } from '../../lib/course-query';
@@ -18,8 +19,9 @@ import { withCategoryReset, withStatusReset } from '../../features/elearning/cat
 import { usePageUrlState } from '../../lib/use-page-url-state';
 import { parseCatalogResponse, type InitialCatalog } from '../../lib/catalog-response';
 import { catalogUrlSchema } from '../../features/elearning/catalogQuery';
-import { CatalogFeedbackStack } from './components/CatalogFeedbackStack';
 import { CatalogLoading } from './components/CatalogLoading';
+import { CatalogReadError } from './components/CatalogReadError';
+import { CatalogToasts } from './components/CatalogToasts';
 import { CourseManagementNotice } from './components/CourseManagementNotice';
 import { LogoutErrorNotice } from './components/LogoutErrorNotice';
 import { MissingCourseNotice } from './components/MissingCourseNotice';
@@ -27,7 +29,9 @@ import {
   categoryOptionsFor,
   elearningShellHrefs,
   offeredFilter,
+  pageSubtitle,
   statusOptionsFor,
+  type CatalogFeedback,
   withChapterDurations,
   type CatalogCourse,
   type ContentCompletePayload,
@@ -53,8 +57,17 @@ export function ElearningModule({
     useState<ElearningCatalogResponse | null>(() => initial?.data ?? null);
   const [loading, setLoading] = useState(initial === undefined);
   const [error, setError] = useState<string | null>(() => initial?.error ?? null);
-  const [mutationError, setMutationError] = useState<string | null>(null);
-  const [mutationSuccess, setMutationSuccess] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<CatalogFeedback[]>([]);
+  const feedbackId = useRef(0);
+  const report = useCallback((tone: CatalogFeedback['tone'], title: string, message?: string) =>
+    setFeedback(current => [...current, { id: ++feedbackId.current, tone, title, message }]), []);
+  const setMutationError = useCallback((message: string | null, title?: string) => {
+    if (message) report('danger', title ?? 'Action impossible', message);
+  }, [report]);
+  const setMutationSuccess = useCallback((message: string | null, title?: string) => {
+    if (message) report('success', title ?? message, title ? message : undefined);
+  }, [report]);
+  const feedbackShown = useCallback((id: number) => setFeedback(current => current.filter(item => item.id !== id)), []);
   const [requestedCourseId, setRequestedCourseId] = useState<string | null>(() => courseIdFromSearch(initialSearch ?? ''));
 
   const [logoutError, setLogoutError] = useState("");
@@ -76,7 +89,7 @@ export function ElearningModule({
         setMutationError,
         setMutationSuccess,
       }),
-    [],
+    [setMutationError, setMutationSuccess],
   );
 
   useEffect(() => {
@@ -151,21 +164,18 @@ export function ElearningModule({
           className: "shrink-0",
         } : undefined
       }
-      className="elearning-shell"
     >
-      <h1 className="sr-only">Formation</h1>
+      <ToastProvider regionLabel="Notifications de la formation" closeLabel="Fermer la notification" placement="top-end">
+      <CatalogToasts feedback={feedback} onShown={feedbackShown} />
+      <div className="flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
       {logoutError && <LogoutErrorNotice message={logoutError} onBackToLogin={() => navigateToLogin({ explicit: true })} />}
-      {loading && !catalog && <CatalogLoading />}
+      {loading && !catalog && <CatalogLoading subtitle={pageSubtitle(user?.isAdmin)} />}
 
-      <CatalogFeedbackStack
+      <CatalogReadError
         hasCatalog={Boolean(catalog)}
         loading={loading}
         error={error}
-        mutationError={mutationError}
-        mutationSuccess={mutationSuccess}
         onRetry={() => void actions.loadCatalog()}
-        onDismissError={() => setMutationError(null)}
-        onDismissSuccess={() => setMutationSuccess(null)}
       />
 
       {catalog && user?.isAdmin && !capabilities.courseManagement && <CourseManagementNotice />}
@@ -193,16 +203,13 @@ export function ElearningModule({
           }}
           initialCourseId={requestedCourseId}
           onCourseClose={clearRequestedCourse}
-          title={catalog.title}
-          subtitle={catalog.subtitle}
+          subtitle={pageSubtitle(user?.isAdmin)}
           certificationCount={catalog.certificationCount}
           courses={catalogCourses}
           stats={catalog.stats}
-          data-stat-count={catalog.stats?.length}
           adminStats={catalog.adminStats}
           categories={withCategoryReset(catalog.categories)}
           statuses={withStatusReset(catalog.statuses)}
-          emptyLabel={catalog.emptyLabel}
           currentUserRole={
             user?.isAdmin ? "administrator" : "user"
           }
@@ -222,9 +229,10 @@ export function ElearningModule({
           onCreateCourse={capabilities.courseManagement ? (course) => actions.createCourse(course) : undefined}
           onUpdateCourse={capabilities.courseManagement ? (course) => actions.updateCourse(course) : undefined}
           onDeleteCourse={capabilities.courseManagement ? (course) => void actions.deleteCourse(course.id) : undefined}
-          className="elearning-catalog-shell min-h-full !px-6 !py-8"
         />
       )}
+      </div>
+      </ToastProvider>
     </AccessibleShell>
   );
 }

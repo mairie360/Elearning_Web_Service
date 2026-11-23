@@ -1,7 +1,8 @@
-/** A deep link to a course the catalogue no longer holds. */
+import { Alert } from '@mairie360/lib-components/primitives';
+
+/** MAIR-934: a deep link to a course the catalogue no longer holds (not a service failure). */
 export const MissingCourseNotice = ({ onShowCatalog }: { onShowCatalog: () => void }) => (
-  <div className="mx-auto mt-6 max-w-[1130px] rounded-md border border-[#efb9bd] bg-white px-4 py-3 text-sm text-[#a4232c]" role="alert">
-    Cette formation n’est plus disponible. Vous pouvez consulter les autres formations.
-    <button className="ml-3 font-semibold underline" onClick={onShowCatalog} type="button">Voir le catalogue</button>
-  </div>
+  <Alert role="alert" tone="warning" title="Formation introuvable"
+    description="Cette formation n’est plus disponible. Vous pouvez consulter les autres formations."
+    actionLabel="Voir le catalogue" onAction={onShowCatalog} />
 );

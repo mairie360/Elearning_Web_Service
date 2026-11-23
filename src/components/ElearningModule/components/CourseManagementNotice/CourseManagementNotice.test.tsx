@@ -8,6 +8,6 @@ import { CourseManagementNotice } from './CourseManagementNotice';
 describe('CourseManagementNotice', () => {
   it('tells administrators why the author actions are missing', () => {
     render(<CourseManagementNotice />);
-    expect(screen.getByRole('note')).toBeVisible();
+    expect(screen.getByRole('note')).toHaveTextContent('Gestion des formations indisponible');
   });
 });

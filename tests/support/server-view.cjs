@@ -232,7 +232,8 @@ class Instance {
   cleanupAll() {
     for (const index of [...this.effectSlots].reverse()) {
       const state = this.slots[index];
-      state?.cleanup?.();
+      // A test may drop its fake `window` before unmounting: a cleanup removing a window listener has nothing left to do.
+      try { state?.cleanup?.(); } catch (error) { if (!(error instanceof ReferenceError)) throw error; }
       if (state) state.cleanup = undefined;
     }
   }
@@ -510,6 +511,10 @@ function ensureBrowserGlobals() {
   root.style ??= {};
   root.style.setProperty ??= function (name, value) { this[name] = value; };
   root.style.removeProperty ??= function (name) { delete this[name]; };
+  // The lib ToastProvider pauses its countdown while the window is not focused.
+  globalThis.document.hasFocus ??= () => true;
+  // ToastProvider remembers the focused element (`instanceof HTMLElement`) to give the focus back.
+  globalThis.HTMLElement ??= class HTMLElement {};
   const window = globalThis.window;
   if (!window || typeof window !== 'object') return;
   if (!window.addEventListener) eventTarget(window);

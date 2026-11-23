@@ -41,7 +41,7 @@ export {
 
 export interface ElearningCourseDetailsModalProps
   extends ElearningCourseDetails,
-    Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
+    Omit<React.HTMLAttributes<HTMLDivElement>, 'title' | 'role'> {
   open: boolean;
   onClose?: () => void;
   closeLabel?: string;

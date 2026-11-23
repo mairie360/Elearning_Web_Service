@@ -599,7 +599,7 @@ describe('Elearning components', () => {
       target: { value: 'archives' },
     });
 
-    expect(screen.getByText('Aucune formation ne correspond aux filtres.')).toBeInTheDocument();
+    expect(screen.getByText('Aucune formation ne correspond à votre recherche.')).toBeInTheDocument();
   });
 
   it('hides formation management actions from standard users', () => {

@@ -52,7 +52,7 @@ test('update: an explicit coherent retry confirms only its course and a refused 
   assert.equal(await actions.updateCourse(draft), true);
   assert.deepEqual(state.catalog.catalog.courses, [canonical, initial.catalog.courses[1]]);
   assert.deepEqual(state.catalog.catalog.stats, initial.catalog.stats);
-  assert.equal(state.mutationSuccess, 'Formation "Canonical received title" mise à jour.');
+  assert.equal(state.mutationSuccess, '« Canonical received title » est à jour.');
   assert.equal(state.error, 'Refresh refused');
   assert.equal(state.mutationError, null);
   bffElearning.on('get', '/elearning/catalog', { body: state.catalog });

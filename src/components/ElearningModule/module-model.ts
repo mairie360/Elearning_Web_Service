@@ -60,3 +60,16 @@ export const elearningShellHrefs = () => {
     settings: settingsUrl,
   };
 };
+
+/** MAIR-920: one action outcome, shown once as a toast. */
+export interface CatalogFeedback {
+  id: number;
+  tone: 'success' | 'danger' | 'info' | 'warning';
+  title: string;
+  message?: string;
+}
+
+/** MAIR-1142: the page title is « E-learning »; its subtitle depends on the role. */
+export const PAGE_TITLE = 'E-learning';
+export const pageSubtitle = (isAdmin: boolean | undefined) =>
+  isAdmin ? 'Pilotez les formations proposées aux agents de la commune.' : 'Développez vos compétences à votre rythme.';
