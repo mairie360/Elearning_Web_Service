@@ -1,4 +1,5 @@
-import type { ElearningAdminStatsData } from './components/ElearningAdminStats';
+import { formatDateTime, formatRelative, parseDateValue } from '@mairie360/lib-components/primitives';
+
 import type { ElearningCourseDetails, ElearningLearnerActionResult } from './course-types';
 import { normalizeChaptersForProgress } from './course-progress';
 import {
@@ -7,7 +8,7 @@ import {
   type ElearningCourseLevel,
   type ElearningCourseRequirement,
 } from './components/ElearningCourseFormModal';
-import type { ElearningBadgeVariant, ElearningCourse, ElearningFilterOption } from './catalog-types';
+import { isSaveRefusal, type ElearningBadgeVariant, type ElearningCourse, type ElearningCourseSaveOutcome, type ElearningCourseSaveResult, type ElearningFilterOption } from './catalog-types';
 
 export const defaultStatuses: ElearningFilterOption[] = [
   { label: 'Tous les statuts', value: 'all' },
@@ -39,14 +40,6 @@ export const afterLearnerAction = (result: ElearningLearnerActionResult, next: (
 
 const clampProgress = (value: number) => Math.min(100, Math.max(0, Math.round(value)));
 
-const parseNumberValue = (value?: number | string) => {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isNaN(parsed) ? 0 : parsed;
-  }
-  return 0;
-};
 
 /** The explicit status, else the one the badge label implies. */
 export const inferStatusValue = (course: ElearningCourse) => {
@@ -63,8 +56,6 @@ export const getCourseProgress = (course: ElearningCourse) => {
   return 0;
 };
 
-const hasCourseProgress = (course: ElearningCourse) =>
-  typeof course.progress === 'number' || typeof course.details?.progress === 'number';
 
 export const getStatusBadge = (statusValue: string, fallback?: ElearningCourse['statusBadge']) => ({
   ...fallback,
@@ -73,6 +64,7 @@ export const getStatusBadge = (statusValue: string, fallback?: ElearningCourse['
 });
 
 export const getRequirement = (course?: ElearningCourse): ElearningCourseRequirement => {
+  if (course?.mandatory === true) return 'mandatory';
   if (course?.titleBadge?.variant === 'mandatory' || normalize(course?.titleBadge?.label ?? '').includes('obligatoire')) {
     return 'mandatory';
   }
@@ -81,6 +73,7 @@ export const getRequirement = (course?: ElearningCourse): ElearningCourseRequire
 };
 
 export const getLevel = (course?: ElearningCourse): ElearningCourseLevel => {
+  if (course?.level) return course.level;
   const variant = course?.levelBadge?.variant;
   if (variant === 'beginner' || variant === 'intermediate' || variant === 'advanced') return variant;
   return 'none';
@@ -103,29 +96,6 @@ export const buildCategories = (courses: ElearningCourse[]) => {
   ];
 };
 
-const averageProgress = (courses: ElearningCourse[]) => {
-  const withProgress = courses.filter(hasCourseProgress);
-  return withProgress.length
-    ? Math.round(withProgress.reduce((total, course) => total + getCourseProgress(course), 0) / withProgress.length)
-    : 0;
-};
-
-export const buildAdminStats = (courses: ElearningCourse[]): ElearningAdminStatsData => {
-  const ratings = courses.map((course) => Number(course.rating)).filter((rating) => Number.isFinite(rating));
-  return {
-    totalCourses: courses.length,
-    totalLearners: courses.reduce((total, course) => total + parseNumberValue(course.learners), 0),
-    mandatoryCourses: courses.filter((course) => getRequirement(course) === 'mandatory').length,
-    totalContents: courses.reduce(
-      (total, course) =>
-        total + (course.details?.chapters ?? []).reduce((chapterTotal, chapter) => chapterTotal + (chapter.contents?.length ?? 0), 0),
-      0
-    ),
-    averageRating: ratings.length ? Math.round((ratings.reduce((total, rating) => total + rating, 0) / ratings.length) * 10) / 10 : 0,
-    completionRate: averageProgress(courses),
-  };
-};
-
 export const getCourseDetails = (course: ElearningCourse): ElearningCourseDetails => course.details ?? {
   title: course.title,
   description: course.description,
@@ -146,7 +116,8 @@ export const getCourseFormValues = (course?: ElearningCourse): ElearningCourseFo
     statusValue: course ? inferStatusValue(course) : 'not-started',
     instructor: course?.instructor ?? '',
     duration: course?.duration ?? '',
-    deadline: course?.deadline ?? '',
+    // The BFF reads a French date as well as an ISO one: the administrator edits « 30 juin 2026 ».
+    deadline: frenchDate(course?.deadline) ?? '',
     requirement: getRequirement(course),
     level: getLevel(course),
     chapters: details?.chapters.length
@@ -159,6 +130,7 @@ export const getCourseFormValues = (course?: ElearningCourse): ElearningCourseFo
   };
 };
 
+/** A draft id the BFF ignores (the E-learning API allocates the id of a new course). */
 const createCourseId = (title: string) => {
   const slug = normalize(title).replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   return `${slug || 'formation'}-${Date.now().toString(36)}`;
@@ -184,6 +156,10 @@ export const buildCourseFromFormValues = (values: ElearningCourseFormValues, exi
     chapters: chapters.length,
     learners: existingCourse?.learners ?? 0,
     progress: existingCourse?.progress,
+    // MAIR-1150: what the E-learning API stores. A course the commune creates is `internal`.
+    mandatory: values.requirement === 'mandatory',
+    level: values.level === 'none' ? undefined : values.level,
+    source: existingCourse?.source ?? 'internal',
     titleBadge: getTitleBadge(values.requirement),
     levelBadge: getLevelBadge(values.level),
     statusBadge: getStatusBadge(statusValue, existingCourse?.statusBadge),
@@ -222,6 +198,15 @@ const matchesStatus = (course: ElearningCourse, status: string) => {
   return status === 'to-finish' ? value !== 'completed' : value === status;
 };
 
+/** MAIR-1150: « Origine » filter of the administrator (`internal` / `platform`). */
+export const sourceFilterOptions: ElearningFilterOption[] = [
+  { label: 'Formations internes', value: 'internal' },
+  { label: 'Formations de l’outil', value: 'platform' },
+];
+
+const matchesSource = (course: ElearningCourse, source: string) =>
+  source === 'all' || (course.source ?? 'internal') === source;
+
 const matchesRequirement = (course: ElearningCourse, requirement: string) => {
   if (requirement === 'all') return true;
   const mandatory = getRequirement(course) === 'mandatory';
@@ -229,11 +214,12 @@ const matchesRequirement = (course: ElearningCourse, requirement: string) => {
 };
 
 /** Courses matching the search (title, description, instructor), the category, the status and the requirement. */
-export const filterCourses = (courses: ElearningCourse[], search: string, category: string, status: string, requirement = 'all') => {
+export const filterCourses = (courses: ElearningCourse[], search: string, category: string, status: string, requirement = 'all', source = 'all') => {
   const normalizedSearch = normalize(search.trim());
   const matching = courses.filter((course) => {
     const matchesSearch = !normalizedSearch || normalize(`${course.title} ${course.description} ${course.instructor ?? ''}`).includes(normalizedSearch);
-    return matchesSearch && (category === 'all' || course.category === category) && matchesStatus(course, status) && matchesRequirement(course, requirement);
+    return matchesSearch && (category === 'all' || course.category === category) && matchesStatus(course, status) &&
+      matchesRequirement(course, requirement) && matchesSource(course, source);
   });
   // Mandatory courses to finish are read by deadline, the nearest first (MAIR-1144).
   if (requirement !== 'mandatory') return matching;
@@ -262,6 +248,46 @@ export const deadlineTime = (deadline?: string) => {
 
 const DAY = 24 * 60 * 60 * 1000;
 
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * « 30 juin 2026 » for an ISO day or date-time of the BFF; any other text (older catalogues) is shown as it came.
+ * A bare day is read in UTC so that it never moves to the day before.
+ */
+export const frenchDate = (value?: string | null) => {
+  if (!value?.trim()) return undefined;
+  const text = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}/.test(text)) return text;
+  return formatDateTime(text, 'dateOnly', ISO_DAY.test(text) ? 'UTC' : undefined) ?? text;
+};
+
+/** « aujourd’hui », « hier », « il y a 3 jours », then the date (« le 12 mars 2026 ») past a week (MAIR-1143). */
+export const lastActivityLabel = (value?: string | null, now = new Date()) => {
+  const date = parseDateValue(value);
+  if (!date) return undefined;
+  const days = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())) / DAY);
+  if (days <= 0) return date.getTime() > now.getTime() ? 'aujourd’hui' : formatRelative(date, now);
+  if (days === 1) return 'hier';
+  if (days < 7) return `il y a ${days} jours`;
+  return `le ${frenchDate(value ?? undefined)}`;
+};
+
+/** « 2 h 15 », « 45 min », « 0 min » for a number of seconds. */
+export const formatDurationSeconds = (seconds: number) => {
+  const minutes = Math.max(0, Math.round(seconds / 60));
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (!hours) return `${rest} min`;
+  return rest ? `${hours} h ${String(rest).padStart(2, '0')}` : `${hours} h`;
+};
+
+/** The calendar year of an ISO date (UTC for a bare day). */
+export const yearOf = (value?: string | null) => {
+  const date = parseDateValue(value);
+  if (!date) return undefined;
+  return value && ISO_DAY.test(value.trim()) ? date.getUTCFullYear() : date.getFullYear();
+};
+
 /** MAIR-1146: a deadline within 15 days is shown in the warning tone. */
 export const isDeadlineSoon = (deadline: string | undefined, now = Date.now()) => {
   const time = deadlineTime(deadline);
@@ -274,10 +300,13 @@ export interface LearnerMetrics {
   mandatoryToFinish: number;
   nextDeadline?: string;
   completed: number;
+  /** Courses completed during `year` (from their `completedAt`). */
+  completedInYear: number;
+  year: number;
   available: number;
 }
 
-export const buildLearnerMetrics = (courses: ElearningCourse[]): LearnerMetrics => {
+export const buildLearnerMetrics = (courses: ElearningCourse[], year = new Date().getFullYear()): LearnerMetrics => {
   const mandatory = courses.filter(course => getRequirement(course) === 'mandatory' && inferStatusValue(course) !== 'completed');
   const next = [...mandatory]
     .filter(course => deadlineTime(course.deadline) !== undefined)
@@ -285,8 +314,10 @@ export const buildLearnerMetrics = (courses: ElearningCourse[]): LearnerMetrics 
   return {
     inProgress: courses.filter(course => inferStatusValue(course) === 'in-progress').length,
     mandatoryToFinish: mandatory.length,
-    nextDeadline: next?.deadline,
+    nextDeadline: frenchDate(next?.deadline),
     completed: courses.filter(course => inferStatusValue(course) === 'completed').length,
+    completedInYear: courses.filter(course => inferStatusValue(course) === 'completed' && yearOf(course.completedAt) === year).length,
+    year,
     available: courses.length,
   };
 };
@@ -299,17 +330,19 @@ export const statusDisplay = (statusValue: string) => (
 );
 
 /** Close the form once the save is confirmed; `false` (sync or async) keeps the draft open. */
-export const closeWhenSaved = (result: void | boolean | Promise<void | boolean>, close: () => void) => {
-  if (result && typeof result === 'object' && typeof result.then === 'function') {
+export const closeWhenSaved = (result: ElearningCourseSaveResult, close: () => void): ElearningCourseSaveResult => {
+  const saved = (confirmed: ElearningCourseSaveOutcome) => confirmed !== false && !isSaveRefusal(confirmed);
+  if (result && typeof result === 'object' && 'then' in result && typeof result.then === 'function') {
     return result.then((confirmed) => {
-      if (confirmed !== false) close();
+      if (saved(confirmed)) close();
       return confirmed;
     });
   }
   // Existing synchronous callbacks remain supported. Hosts with remote persistence
   // must return their promise and false when the mutation is refused.
-  if (result !== false) close();
-  return result;
+  const outcome = result as ElearningCourseSaveOutcome;
+  if (saved(outcome)) close();
+  return outcome;
 };
 
 /** MAIR-1143: the course the top of the agent's page suggests. */
@@ -321,17 +354,20 @@ export interface ResumeSuggestion {
   chapterTitle?: string;
   completedChapters: number;
   progress: number;
+  /** « il y a 2 jours »: the last activity of the agent on the course, when the BFF knows it. */
+  lastActivity?: string;
 }
 
+const activityTime = (course: ElearningCourse) => parseDateValue(course.lastActivityAt)?.getTime();
+
 /**
- * The course in progress the agent should resume, else the next mandatory course not started (nearest deadline first),
- * else nothing. The published catalogue has no date of last activity: among the courses in progress, the most advanced
- * one comes first.
+ * The course in progress the agent touched last (`lastActivityAt`, else the most advanced one), else the next mandatory
+ * course not started (nearest deadline first), else nothing.
  */
-export const resumeSuggestion = (courses: ElearningCourse[]): ResumeSuggestion | undefined => {
+export const resumeSuggestion = (courses: ElearningCourse[], now = new Date()): ResumeSuggestion | undefined => {
   const inProgress = courses
     .filter(course => inferStatusValue(course) === 'in-progress')
-    .sort((left, right) => getCourseProgress(right) - getCourseProgress(left));
+    .sort((left, right) => ((activityTime(right) ?? -Infinity) - (activityTime(left) ?? -Infinity)) || getCourseProgress(right) - getCourseProgress(left));
   const priority = courses
     .filter(course => inferStatusValue(course) === 'not-started' && getRequirement(course) === 'mandatory')
     .sort((left, right) => (deadlineTime(left.deadline) ?? Infinity) - (deadlineTime(right.deadline) ?? Infinity));
@@ -348,5 +384,6 @@ export const resumeSuggestion = (courses: ElearningCourse[]): ResumeSuggestion |
     chapterTitle: chapters[index]?.title,
     completedChapters: chapters.filter(chapter => chapter.completed).length,
     progress: getCourseProgress(course),
+    lastActivity: inProgress[0] ? lastActivityLabel(course.lastActivityAt, now) : undefined,
   };
 };

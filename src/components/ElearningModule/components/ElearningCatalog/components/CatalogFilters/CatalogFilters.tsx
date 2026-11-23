@@ -10,6 +10,10 @@ export interface CatalogFiltersProps {
   categories: ElearningFilterOption[];
   statuses: ElearningFilterOption[];
   requirements: ElearningFilterOption[];
+  /** MAIR-1150: « Origine » (internal / platform), administrators only; absent hides the filter. */
+  source?: string;
+  sources?: ElearningFilterOption[];
+  onSourceChange?: (value: string) => void;
   /** « 2 formations en cours »: announced to screen readers when it changes. */
   resultLabel: string;
   onSearchChange: (value: string) => void;
@@ -30,7 +34,7 @@ const allLabel = (options: ElearningFilterOption[], fallback: string) => options
  */
 export const CatalogFilters = ({
   search, category, status, requirement, categories, statuses, requirements, resultLabel,
-  onSearchChange, onCategoryChange, onStatusChange, onRequirementChange,
+  onSearchChange, onCategoryChange, onStatusChange, onRequirementChange, source = 'all', sources, onSourceChange,
 }: CatalogFiltersProps) => (
   <div className="flex flex-col gap-3">
     <div className="flex flex-wrap items-end gap-3">
@@ -49,6 +53,10 @@ export const CatalogFilters = ({
         value={toFilter(status)} onChange={value => onStatusChange(fromFilter(value))} />
       <FilterSelect mode="menu" label="Caractère" allLabel="Obligatoires et facultatives" options={choices(requirements)}
         value={toFilter(requirement)} onChange={value => onRequirementChange(fromFilter(value))} />
+      {sources && onSourceChange ? (
+        <FilterSelect mode="menu" label="Origine" allLabel="Toutes les origines" options={choices(sources)}
+          value={toFilter(source)} onChange={value => onSourceChange(fromFilter(value))} />
+      ) : null}
     </div>
     <Text tone="muted" size="s" aria-live="polite">{resultLabel}</Text>
   </div>

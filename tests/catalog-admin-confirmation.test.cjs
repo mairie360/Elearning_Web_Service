@@ -27,7 +27,7 @@ for (const returnedId of ['unrelated', 'foreign-new', ' ', '']) {
     const { state, actions } = stateFor(initial);
     state.mutationSuccess = 'Earlier success';
     bffElearning.on('patch', '/elearning/admin/courses/{courseId}', {
-      body: { course: f.course(returnedId, { title: 'Foreign canonical title' }) },
+      body: { id: '1', course: f.course(returnedId, { title: 'Foreign canonical title' }) },
     });
     assert.equal(await actions.updateCourse(f.course('existing', { title: 'Retained draft' })), false);
     assert.equal(state.catalog, initial);
@@ -44,10 +44,10 @@ test('update: an explicit coherent retry confirms only its course and a refused 
   const { state, actions } = stateFor(initial);
   const draft = f.course('existing', { title: 'Retained draft' });
   const path = '/elearning/admin/courses/{courseId}';
-  bffElearning.on('patch', path, { body: { course: f.course('unrelated') } });
+  bffElearning.on('patch', path, { body: { id: '1', course: f.course('unrelated') } });
   assert.equal(await actions.updateCourse(draft), false);
   const canonical = f.course('existing', { title: 'Canonical received title' });
-  bffElearning.on('patch', path, { body: { course: canonical } });
+  bffElearning.on('patch', path, { body: { id: '1', course: canonical } });
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Refresh refused'));
   assert.equal(await actions.updateCourse(draft), true);
   assert.deepEqual(state.catalog.catalog.courses, [canonical, initial.catalog.courses[1]]);
@@ -66,7 +66,7 @@ test('update: the requested identity is captured before awaiting its receipt, no
   const { state, actions } = stateFor(initial);
   const draft = f.course('existing', { title: 'Original request' });
   const canonical = f.course('existing', { title: 'Canonical confirmation' });
-  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { course: canonical } });
+  bffElearning.on('patch', '/elearning/admin/courses/{courseId}', { body: { id: '1', course: canonical } });
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Read refused'));
   const originalFetch = global.fetch;
   let release, received, pending;
@@ -143,7 +143,7 @@ test('create: an already-received server ID is updated without a duplicate or su
   const initial = f.catalogResponse([f.course('existing'), f.course('unrelated')]);
   const { state, actions } = stateFor(initial);
   const confirmed = f.course('existing', { title: 'Server canonical title' });
-  bffElearning.on('post', '/elearning/admin/courses', { status: 201, body: { course: confirmed } });
+  bffElearning.on('post', '/elearning/admin/courses', { status: 201, body: { id: '1', course: confirmed } });
   bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Refresh refused'));
   assert.equal(await actions.createCourse(f.course('draft-id')), true);
   assert.deepEqual(state.catalog.catalog.courses, [confirmed, initial.catalog.courses[1]]);
@@ -233,7 +233,7 @@ for (const mode of ['create', 'update', 'delete']) {
     const confirmed = f.course(mode === 'create' ? 'server-created-id' : 'existing', { title: 'Confirmed server title' });
     bffElearning.on(method, template, {
       status: mode === 'create' ? 201 : 200,
-      body: mode === 'delete' ? { deleted: true, courseId: 'existing' } : { course: confirmed },
+      body: mode === 'delete' ? { deleted: true, courseId: 'existing' } : { id: '1', course: confirmed },
     });
     return confirmed;
   }

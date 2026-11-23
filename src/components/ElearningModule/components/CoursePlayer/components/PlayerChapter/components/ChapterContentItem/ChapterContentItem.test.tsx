@@ -21,11 +21,11 @@ describe('ChapterContentItem', () => {
     expect(screen.getByText(/Lien non sécurisé/)).toBeVisible();
   });
 
-  it('downloads through the service and completes the content', async () => {
+  it('opens a stored file through the service and completes the content (MAIR-817)', async () => {
     const onDownload = vi.fn(); const onComplete = vi.fn();
     render(<ul><ChapterContentItem busy={false} canComplete onDownload={onDownload} onComplete={onComplete}
       content={{ id: 'p', title: 'Support', type: 'pdf', href: '/documents/support.pdf', fileName: 'support.pdf' }} /></ul>);
-    await userEvent.click(screen.getByRole('button', { name: 'Télécharger le support' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ouvrir le support Support dans un nouvel onglet' }));
     await userEvent.click(screen.getByRole('button', { name: 'Marquer Support comme terminé' }));
     expect(onDownload).toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalled();
@@ -35,6 +35,11 @@ describe('ChapterContentItem', () => {
   it('keeps a link resource a link when the service downloads supports', () => {
     render(<ul><ChapterContentItem busy={false} canComplete onDownload={vi.fn()} content={{ id: 'l', title: 'Guide', type: 'link', href: 'https://www.cnil.fr/guide' }} /></ul>);
     expect(screen.getByRole('link', { name: /Ouvrir \(www.cnil.fr\)/ })).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(screen.queryByRole('button', { name: 'Télécharger le support' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ouvrir le support/ })).not.toBeInTheDocument();
+  });
+
+  it.each(['quiz', 'other'] as const)('offers no file to open for a %s, which has none', (type) => {
+    render(<ul><ChapterContentItem busy={false} canComplete onDownload={vi.fn()} content={{ id: 'q', title: 'Quiz', type }} /></ul>);
+    expect(screen.queryByRole('button', { name: /Ouvrir le support/ })).not.toBeInTheDocument();
   });
 });

@@ -26,6 +26,12 @@ const ELEARNING_OPERATIONS = [
   'POST /elearning/admin/courses',
   'PATCH /elearning/admin/courses/{courseId}',
   'DELETE /elearning/admin/courses/{courseId}',
+  'GET /elearning/training-time',
+  'GET /elearning/certificates',
+  'GET /elearning/courses/{courseId}/certificate',
+  'GET /elearning/courses/{courseId}/chapters/{chapterId}/contents/{contentId}/file',
+  'GET /elearning/admin/stats',
+  'POST /elearning/admin/courses/{courseId}/reminders',
 ];
 
 const operations = (contract) => Object.entries(contract.document.paths)
@@ -122,8 +128,12 @@ describe('fixtures conform to the published contract', () => {
     valid('post', '/elearning/courses/c/start', 200, { course: fixtures.course('c', { statusValue: 'in-progress', progress: 10 }) });
     valid('post', '/elearning/courses/c/contents/x/complete', 200, fixtures.contentCompleteResponse());
     valid('post', '/elearning/courses/c/rating', 200, fixtures.ratingResponse());
-    valid('post', '/elearning/admin/courses', 201, { course: fixtures.course('nouveau') });
-    valid('patch', '/elearning/admin/courses/c', 200, { course: fixtures.course('c') });
+    valid('post', '/elearning/admin/courses', 201, fixtures.adminCourseResponse(fixtures.course('nouveau')));
+    valid('patch', '/elearning/admin/courses/c', 200, fixtures.adminCourseResponse(fixtures.course('c')));
+    valid('get', '/elearning/training-time', 200, fixtures.trainingTimeResponse(2026));
+    valid('get', '/elearning/admin/stats', 200, fixtures.adminStatsResponse());
+    valid('post', '/elearning/admin/courses/c/reminders', 200, { sent: 2 });
+    valid('get', '/elearning/courses/c/chapters/h/contents/x/file', 200, { url: 'https://storage.example/signed' });
     valid('delete', '/elearning/admin/courses/c', 200, { deleted: true, courseId: 'c' });
   });
 

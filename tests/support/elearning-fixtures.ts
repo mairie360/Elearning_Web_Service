@@ -68,7 +68,46 @@ export function contentCompleteResponse() {
 }
 
 export function ratingResponse(rating = 4) {
-  return { rating, ratingCount: 13, ratingDistribution: { 1: 0, 2: 0, 3: 1, 4: 4, 5: 8 }, submitted: true };
+  return { rating, ratingCount: 13, ratingLabel: `${String(rating).replace('.', ',')} (13 avis)`, myRating: Math.round(rating), ratingDistribution: { 1: 0, 2: 0, 3: 1, 4: 4, 5: 8 }, submitted: true };
+}
+
+/** `AdminCourseResponse` of a create or an update: the id the E-learning API gave and the saved course. */
+export function adminCourseResponse(saved: { id: string } & Record<string, unknown>) {
+  return { id: saved.id, course: saved };
+}
+
+/** `TrainingTimeResponse` (MAIR-1144). */
+export function trainingTimeResponse(year = new Date().getFullYear(), overrides: Record<string, unknown> = {}) {
+  return {
+    year, goalMinutes: 600, timeSpentSeconds: 8100, completedCount: 1,
+    courses: [
+      { id: '4', title: 'RGPD et collectivités', status: 'completed', timeSpentSeconds: 5400, completedAt: `${year}-03-12T09:30:00Z` },
+      { id: '5', title: 'Accueil du public', status: 'in-progress', timeSpentSeconds: 2700, completedAt: null },
+    ],
+    ...overrides,
+  };
+}
+
+/** `AdminStatsResponse` (MAIR-1150). */
+export function adminStatsResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    internalCourses: 6, platformCourses: 3, mandatoryInternalCourses: 2, agents: 48, participants: 38,
+    participationRate: 79.2, averageCompletion: 61.4, lateMandatory: 3,
+    byService: [
+      { serviceId: '1', serviceName: 'État civil', agents: 12, participants: 10, participationRate: 83.3 },
+      { serviceId: null, serviceName: null, agents: 4, participants: 1, participationRate: 25 },
+    ],
+    byCourse: [
+      { id: '4', title: 'RGPD et collectivités', source: 'internal', mandatory: true, enrolled: 30, completed: 20, averageProgress: 75.5 },
+      { id: '9', title: 'Prise en main de Mairie360', source: 'platform', mandatory: false, enrolled: 25, completed: 5, averageProgress: 32 },
+    ],
+    lateAgents: [
+      { userId: '42', firstName: 'Alice', lastName: 'Martin', courseId: '4', courseTitle: 'RGPD et collectivités', deadline: '2026-06-30', progress: 50, lastReminderAt: null },
+      { userId: '43', firstName: 'Bruno', lastName: 'Petit', courseId: '4', courseTitle: 'RGPD et collectivités', deadline: '2026-06-30', progress: 0, lastReminderAt: '2026-10-02T08:00:00Z' },
+      { userId: '44', firstName: 'Chloé', lastName: 'Roux', courseId: '7', courseTitle: 'Sécurité incendie', deadline: '2026-09-15', progress: 20, lastReminderAt: null },
+    ],
+    ...overrides,
+  };
 }
 
 /** Codes publiés par ErrorResponseErrorCode (enveloppe d'erreur commune des BFFs, MAIR-234). */

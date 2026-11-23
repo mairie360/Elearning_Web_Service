@@ -1,10 +1,11 @@
 import { CircleCheck, ExternalLink } from 'lucide-react';
-import { Button, DownloadButton, Icon, Text } from '@mairie360/lib-components/primitives';
+import { Button, Icon, Text } from '@mairie360/lib-components/primitives';
 
 import {
   contentTypeIcons,
   contentTypeLabels,
   isRequiredContent,
+  isStoredFileContent,
   safeContentLink,
   type ElearningCourseContentItem,
 } from '../../../../../ElearningCatalog';
@@ -12,7 +13,7 @@ import {
 export interface ChapterContentItemProps {
   content: ElearningCourseContentItem;
   busy: boolean;
-  /** Download through the BFF; without it a content with a safe address gets an « Ouvrir » link. */
+  /** Opens a stored file through the BFF (MAIR-817); a link keeps its own safe « Ouvrir » link. */
   onDownload?: (content: ElearningCourseContentItem) => void;
   downloading?: boolean;
   /** Undefined hides the completion button. */
@@ -23,10 +24,9 @@ export interface ChapterContentItemProps {
 /** One content of a chapter: type, duration, optional flag, download or safe link (MAIR-703), completion. */
 export const ChapterContentItem = ({ content, busy, onDownload, downloading = false, onComplete, canComplete }: ChapterContentItemProps) => {
   const completed = Boolean(content.completed);
-  // A link resource is always a link (MAIR-703); the download through the service is for file supports.
-  const isLink = content.type === 'link';
-  const download = isLink ? undefined : onDownload;
-  const link = download ? undefined : safeContentLink(content.href);
+  // A link resource is always a link (MAIR-703); the service only opens stored files (no file for a quiz or `other`).
+  const download = isStoredFileContent(content) ? onDownload : undefined;
+  const link = content.type === 'link' ? safeContentLink(content.href) : undefined;
   return (
     <li className={`flex items-start gap-3 rounded-[var(--mairie-radius-m)] border p-3 ${completed ? 'border-[var(--mairie-success-text)]' : 'border-[var(--mairie-border)]'}`}>
       <Icon icon={completed ? CircleCheck : contentTypeIcons[content.type]} size="l"
@@ -38,10 +38,10 @@ export const ChapterContentItem = ({ content, busy, onDownload, downloading = fa
         </Text>
         {content.description ? <Text size="s" tone="muted" className="break-words">{content.description}</Text> : null}
         {content.fileName ? <Text size="xs" tone="muted" className="break-words">{content.fileName}</Text> : null}
-        {!download && content.href && !link ? <Text size="xs" tone="warning">Lien non sécurisé : il n’est pas proposé.</Text> : null}
+        {content.type === 'link' && content.href && !link ? <Text size="xs" tone="warning">Lien non sécurisé : il n’est pas proposé.</Text> : null}
       </div>
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-        {download ? <DownloadButton size="s" label="Télécharger le support" loading={downloading} disabled={busy && !downloading} onClick={() => download(content)} /> : null}
+        {download ? <Button size="s" variant="outline" icon={ExternalLink} label="Ouvrir le support" aria-label={`Ouvrir le support ${content.title} dans un nouvel onglet`} loading={downloading} disabled={busy && !downloading} onClick={() => download(content)} /> : null}
         {link ? (
           <a href={link.href} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1 rounded-[var(--mairie-radius-s)] px-2 py-1 text-sm font-semibold text-[var(--mairie-accent)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mairie-accent)]">

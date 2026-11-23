@@ -1,6 +1,6 @@
 import { Alert, Body, Card, ProgressMeter, StatusPill, Text } from '@mairie360/lib-components/primitives';
 
-import { statusDisplay } from '../../../../catalog-model';
+import { frenchDate, statusDisplay } from '../../../../catalog-model';
 import type { ElearningCourseChapter } from '../../../../course-types';
 
 export interface CourseProgressCardProps {
@@ -34,7 +34,7 @@ export const CourseProgressCard = ({ statusValue, progress, chapters, next, dead
         </div>
       ) : null}
       {statusValue === 'completed' ? <Text size="s">Formation terminée</Text> : (
-        <Text size="s" tone="muted">{deadline ? `À terminer avant le ${deadline}` : 'Sans échéance'}</Text>
+        <Text size="s" tone="muted">{deadline ? `À terminer avant le ${frenchDate(deadline)}` : 'Sans échéance'}</Text>
       )}
       {unrated ? <Alert tone="info" title="Formation non notée" description="Donnez votre avis depuis l’écran de fin de la formation." /> : null}
     </Card>

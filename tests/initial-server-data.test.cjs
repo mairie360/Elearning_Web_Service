@@ -26,7 +26,14 @@ before(async () => {
   try { Home = require('../src/app/page.tsx').default; } finally { Module._load = load; }
 });
 after(async () => { await bff.stop(); for (const [key, value] of Object.entries(previous)) value === undefined ? delete process.env[key] : process.env[key] = value; });
-beforeEach(() => { access = fixtures.accessToken(); process.env.ELEARNING_FRONT_URL = FRONT_ORIGIN; process.env.BFF_ELEARNING_BASE_URL = bff.url; process.env.LOGIN_FRONT_URL = 'https://login.mairie.test/'; });
+// E-learning V2 reads the page makes once it knows the role (training time, administrator indicators): not bootstraps.
+const SIDE_PATHS = new Set(['/elearning/training-time', '/elearning/admin/stats']);
+const frontCalls = () => runtime.frontCalls.filter(call => !SIDE_PATHS.has(call.pathname));
+const catalogRequests = () => bff.requests.filter(request => !SIDE_PATHS.has(request.template));
+beforeEach(() => {
+  bff.on('get', '/elearning/training-time', ({ url }) => ({ body: fixtures.trainingTimeResponse(Number(url.searchParams.get('year')) || undefined) }));
+  bff.on('get', '/elearning/admin/stats', { body: fixtures.adminStatsResponse() });
+  access = fixtures.accessToken(); process.env.ELEARNING_FRONT_URL = FRONT_ORIGIN; process.env.BFF_ELEARNING_BASE_URL = bff.url; process.env.LOGIN_FRONT_URL = 'https://login.mairie.test/'; });
 afterEach(() => { view?.unmount(); view = undefined; runtime.restore(); assert.deepEqual([...bff.violations, ...runtime.violations], []); bff.reset(); runtime.reset(); delete global.window; delete global.document; });
 
 test('the real server page reads the published catalog once and contains its data before any effect', async () => {
@@ -35,15 +42,15 @@ test('the real server page reads the published catalog once and contains its dat
   const html = renderToStaticMarkup(element);
   assert.match(html, /RGPD et collectivités/);
   assert.doesNotMatch(html, /Chargement des formations/);
-  assert.deepEqual(bff.requests.map(request => request.template), ['/elearning/catalog']);
-  assert.equal(bff.requests[0].headers.authorization, `Bearer ${access}`);
-  assert.equal(bff.requests[0].headers.cookie, undefined);
+  assert.deepEqual(catalogRequests().map(request => request.template), ['/elearning/catalog']);
+  assert.equal(catalogRequests()[0].headers.authorization, `Bearer ${access}`);
+  assert.equal(catalogRequests()[0].headers.cookie, undefined);
   assert.doesNotMatch(JSON.stringify(element.props), new RegExp(access.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   installWindow(); runtime.accessToken = access; runtime.install();
   view = mount(element);
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(bff.requests.length, 1, 'Hydration must retain the confirmed server receipt without a second bootstrap.');
-  assert.deepEqual(runtime.frontCalls, []);
+  assert.equal(catalogRequests().length, 1, 'Hydration must retain the confirmed server receipt without a second bootstrap.');
+  assert.deepEqual(frontCalls(), []);
 });
 
 test('the server seeds bounded URL filters and a new opaque client identity on every RSC read', async () => {
@@ -58,7 +65,7 @@ test('the server seeds bounded URL filters and a new opaque client identity on e
   assert.equal(second.props.initialSearch, '');
   assert.match(renderToStaticMarkup(second), /Nouvelle lecture RSC/);
   assert.ok(first.key && second.key && first.key !== second.key);
-  assert.equal(bff.requests.length, 2, 'Each RSC render owns exactly one fresh contract read.');
+  assert.equal(catalogRequests().length, 2, 'Each RSC render owns exactly one fresh contract read.');
 });
 
 test('the immediate loading structure is accessible and respects reduced motion', () => {
@@ -77,7 +84,7 @@ for (const [label, prepare, pattern] of [
   ['invalid configured origin', () => { process.env.ELEARNING_FRONT_URL = 'https://outside.test/?unsafe=1'; }, /indisponible|configur/i],
 ]) test(`${label} leaves an explicit server state and makes no upstream request`, async () => {
   prepare(); const element = await Home(); const html = renderToStaticMarkup(element);
-  assert.match(html, pattern); assert.equal(bff.requests.length, 0);
+  assert.match(html, pattern); assert.equal(catalogRequests().length, 0);
   assert.match(html, /Réessayer/);
 });
 
@@ -85,7 +92,7 @@ for (const [status, body] of [[403, { error: { message: 'sensitive upstream diag
   bff.on('get', '/elearning/catalog', { status, body, outOfContract: true });
   const element = await Home(); const html = renderToStaticMarkup(element);
   assert.match(html, /Réessayer/); assert.doesNotMatch(html, /sensitive upstream diagnostic|private|Aucune formation/);
-  assert.equal(bff.requests.length, 1);
+  assert.equal(catalogRequests().length, 1);
   assert.equal(element.props.initialState.data, null);
 });
 
@@ -113,7 +120,7 @@ test('foreground client refresh preserves the initial reader draft and refuses a
   view = mount(element);
   await view.click('Terminer');
   await view.fire((_props, _text, tag) => tag === 'textarea', 'onChange', { target: { value: 'Brouillon conservé après retour au premier plan.' } });
-  assert.equal(bff.requests.length, 1);
+  assert.equal(catalogRequests().length, 1);
   const updated = structuredClone(first); updated.catalog.courses[0].title = 'Formation actualisée';
   bff.on('get', '/elearning/catalog', { body: updated });
   events.dispatchEvent(new Event('focus'));
@@ -122,7 +129,7 @@ test('foreground client refresh preserves the initial reader draft and refuses a
   bff.on('get', '/elearning/catalog', { body: { catalog: { courses: [] } }, outOfContract: true });
   events.dispatchEvent(new Event('focus'));
   // The refusal is reported in the catalogue; the course screen keeps the last coherent data.
-  await view.waitFor(() => bff.requests.length === 3);
+  await view.waitFor(() => catalogRequests().length === 3);
   await view.settle();
   assert.equal(view.props('CoursePlayer').course.title, 'Formation actualisée');
   assert.equal(view.hostElements((_props, _text, tag) => tag === 'textarea')[0].props.value, 'Brouillon conservé après retour au premier plan.');
@@ -149,14 +156,14 @@ test('the compact projection remains derived exactly from the pinned published c
 });
 
 test('an unconfirmed SSR catalog recovers through the actual same-origin client route on explicit retry', async () => {
-  access = undefined; const element = await Home(); assert.equal(bff.requests.length, 0);
+  access = undefined; const element = await Home(); assert.equal(catalogRequests().length, 0);
   bff.on('get', '/elearning/catalog', { body: fixtures.catalogResponse() });
   installWindow(); runtime.accessToken = fixtures.accessToken(); runtime.install(); view = mount(element);
-  assert.equal(runtime.frontCalls.length, 0);
+  assert.equal(frontCalls().length, 0);
   await view.click((_props, text, tag) => tag === 'button' && text.includes('Réessayer'));
   await view.waitFor(() => view.text().includes('RGPD et collectivités'));
-  assert.equal(bff.requests.length, 1);
-  assert.equal(runtime.frontCalls.filter(call => call.pathname === '/elearning/catalog').length, 1);
+  assert.equal(catalogRequests().length, 1);
+  assert.equal(frontCalls().filter(call => call.pathname === '/elearning/catalog').length, 1);
 });
 
 test('a contract-valid Admin catalog with integer adminStats is accepted and fractional counts are refused', async () => {

@@ -2,7 +2,7 @@ import { BookOpen } from 'lucide-react';
 import { Caption, Card, Icon, ProgressMeter, StatusPill, Text } from '@mairie360/lib-components/primitives';
 
 import type { ElearningCourse } from '../../../../catalog-types';
-import { getCourseProgress, getRequirement, inferStatusValue, isDeadlineSoon, statusDisplay } from '../../../../catalog-model';
+import { frenchDate, getCourseProgress, getRequirement, inferStatusValue, isDeadlineSoon, statusDisplay } from '../../../../catalog-model';
 
 export interface ElearningCourseCardProps {
   course: ElearningCourse;
@@ -22,7 +22,7 @@ const facts = (course: ElearningCourse) => [
 
 const deadlineLine = (course: ElearningCourse, completed: boolean) => {
   if (completed) return 'Formation terminée';
-  return course.deadline ? `Avant le ${course.deadline}` : 'Sans échéance';
+  return course.deadline ? `Avant le ${frenchDate(course.deadline)}` : 'Sans échéance';
 };
 
 /**

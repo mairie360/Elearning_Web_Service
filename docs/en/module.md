@@ -5,17 +5,20 @@
 The module follows the V2 mock-up and only uses components of `@mairie360/lib-components` 2.3 (light mode only).
 
 - **Page**: « E-learning » header (agent subtitle « Développez vos compétences à votre rythme. », administrator « Pilotez les formations proposées aux agents de la commune. » with « Nouvelle formation »), no page footer.
-- **Resume**: at the top of the agent's page, the most advanced course in progress (« Reprendre où vous en étiez »), else the next mandatory course not started (« À commencer en priorité »).
-- **Mon suivi**: courses in progress, mandatory to finish (next deadline), completed, available. Each indicator filters the list in place; a second click removes the filter. Administrators see « Indicateurs du centre de formation » with « Actualiser » instead.
-- **Search and filters**: search, Catégorie, Statut (« À terminer » gathers not started and in progress), Caractère (mandatory / optional), result counter; filters are kept in the URL.
+- **Resume**: at the top of the agent's page, the course in progress the agent touched last (« Reprendre où vous en étiez », with « Dernière activité hier »), else the next mandatory course not started, nearest deadline first (« À commencer en priorité »).
+- **Mon suivi**: courses in progress, mandatory to finish (next deadline), « Terminées en <year> » (completion dates of the year) and « Temps de formation en <year> » with the yearly goal. The first three filter the list in place (a second click removes the filter); the training time opens the « Mon temps de formation » drawer (time per course, status, total) with « Télécharger mes attestations » (one PDF for the year; « Aucune attestation pour cette année » when nothing was completed).
+- **Administrators** see « Indicateurs du centre de formation » with « Actualiser » instead (MAIR-1150): « Formations internes » and « Formations de l’outil » set the « Origine » filter in place, « Taux de participation » opens « Participation par service », « Complétion moyenne » opens « Complétion par formation », « Obligatoires en retard » opens « Agents en retard » with « Relancer les n agents » (one reminder per course concerned, toast with the number sent). When the indicators cannot be read the panel says « Indicateurs temporairement indisponibles. » and the catalogue stays usable.
+- **Search and filters**: search, Catégorie, Statut (« À terminer » gathers not started and in progress), Caractère (mandatory / optional), Origine (administrators: internal / Mairie360), result counter; filters are kept in the URL.
 - **Tiles**: the same fields for every course; the whole tile opens the course sheet.
-- **Sheet**: the course facts and « Votre avancement »; « Commencer », « Continuer » or « Revoir » open the course screen.
+- **Sheet**: category, level, mandatory, origin, trainer, duration, average rating with its label (« 4,5 (12 avis) »), deadline (« 30 juin 2026 »), « Relancé le … » when an administrator reminded the agent of a course not finished, and « Votre avancement »; « Commencer », « Continuer » or « Revoir » open the course screen.
 - **Course screen** (`?play=<id>`): full screen without the navigation band, table of contents, chapter, « Marquer comme terminé » (every remaining content of the chapter is completed one after the other), « Précédent » / « Suivant » / « Terminer ». The browser back button or « Quitter la formation » returns to the catalogue.
-- **End of course**: star rating (when the service offers it), written reviews, back to the catalogue.
+- **Course contents**: each content shows its type, duration and optional flag; a link opens its `https://` address, a stored file (video, PDF, document, audio) opens through a signed URL the service gives at every opening (new tab); a quiz or « Autre » has no file.
+- **End of course**: « Télécharger l’attestation » (PDF), star rating (« Merci pour votre avis · Votre note : n/5 », the choice is kept when the service refuses it), written reviews, back to the catalogue.
+- **Course form** (administrators): create, edit and delete through the service. A new resource is a link, a quiz or « Autre » (there is no upload); a link needs an absolute `https://` address. A field the service refuses is shown under that field. A course the commune creates is internal.
 - **Feedback**: every action shows a toast (success, failure, information); read errors stay above the catalogue with « Réessayer ».
-- **Links**: only `https://` links (domain shown, new tab) and paths of this site are offered; the form refuses the others.
+- **Links**: only `https://` links (domain shown, new tab) and paths of this site are offered; the form only accepts absolute `https://` addresses.
 
-Limits: the published training service exposes no time spent, certificate, date of last activity nor course origin; the mock-up parts that need them are not shown.
+Limits: written reviews and un-ticking a completed content are not served by the training service.
 
 ## Learner receipt identity (MAIR-350)
 
@@ -107,7 +110,8 @@ Business domain: E-learning.
 - Catalogue, filters and course details.
 - Start, resume and content progress, persisted per chapter by the E-learning API. The catalogue lists the courses the learner is enrolled in.
 - Account access through Settings.
-- Not available yet, so not offered (MAIR-513): course rating, administrator course management (an administrator sees a French notice instead of the Create / Edit / Delete controls) and un-ticking a completed content, which is refused locally. The BFF answers 501 to those operations until the E-learning API persists them; a 501 that still arrives is shown in French.
+- Course rating, attestations, training time and stored files (agents); indicators, reminders and course management (administrators).
+- Not available yet (MAIR-513): un-ticking a completed content, refused locally (the BFF answers 501; a 501 that still arrives is shown in French).
 
 ## Typical workflow
 
@@ -123,7 +127,7 @@ This repository contains the browser interface and its Next.js adapters. The ass
 
 ## Data and current state
 
-Since MAIR-401 the BFF reads the E-learning API: the catalogue is the learner's enrolments, course starts and progress are persisted per chapter. Course rating, course administration and un-completing a content are not persisted by any upstream service yet and answer 501; the page does not offer them (`pinnedBffCapabilities`, MAIR-513). Identity comes from the session token.
+Since MAIR-401 the BFF reads the E-learning API: the catalogue is the learner's enrolments, course starts and progress are persisted per chapter. Ratings, course administration, reminders, indicators, training time and attestations are served by the E-learning API through the BFF (E-learning V2); un-completing a content still answers 501 and is refused locally (`pinnedBffCapabilities`, MAIR-513). Identity comes from the session token.
 
 ## Scope and limitations
 

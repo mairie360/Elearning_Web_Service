@@ -31,7 +31,7 @@ for (const previouslySubmitted of [false, true]) {
   test(`submitted:false preserves all confirmed data without a refresh (prior=${previouslySubmitted})`, async () => {
     const { initial, state, actions, course } = stateFor(previouslySubmitted);
     bffElearning.on('post', template, {
-      body: { rating: 1, ratingCount: 99, ratingDistribution: { 1: 99 }, submitted: false },
+      body: { rating: 1, ratingCount: 99, ratingLabel: '1 (99 avis)', myRating: 1, ratingDistribution: { 1: 99 }, submitted: false },
     });
     assert.equal(await actions.rateCourse(course.id, 3), false);
     assert.equal(state.catalog, initial, 'no personal note, aggregate, unrelated course or statistics change');
@@ -45,7 +45,7 @@ for (const previouslySubmitted of [false, true]) {
     const { initial, state, actions, course } = stateFor(previouslySubmitted);
     bffElearning.on('post', template, { body: { ...f.ratingResponse(1), submitted: false } });
     assert.equal(await actions.rateCourse(course.id, 3), false);
-    const confirmed = { rating: 3.5, ratingCount: 2, ratingDistribution: { 3: 1, 4: 1 }, submitted: true };
+    const confirmed = { rating: 3.5, ratingCount: 2, ratingLabel: '3,5 (2 avis)', myRating: 3, ratingDistribution: { 3: 1, 4: 1 }, submitted: true };
     bffElearning.on('post', template, { body: confirmed });
     bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Later read refused'));
     assert.equal(await actions.rateCourse(course.id, 3), true);

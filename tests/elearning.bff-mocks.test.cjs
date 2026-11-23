@@ -35,6 +35,12 @@ const CONSUMED = [
   'POST /elearning/admin/courses',
   'PATCH /elearning/admin/courses/{courseId}',
   'DELETE /elearning/admin/courses/{courseId}',
+  'GET /elearning/training-time',
+  'GET /elearning/certificates',
+  'GET /elearning/courses/{courseId}/certificate',
+  'GET /elearning/courses/{courseId}/chapters/{chapterId}/contents/{contentId}/file',
+  'GET /elearning/admin/stats',
+  'POST /elearning/admin/courses/{courseId}/reminders',
 ];
 
 after(() => {
@@ -184,7 +190,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.deepEqual(state.catalogResponse.catalog.courses[0].ratingDistribution, previousDistribution);
     assert.deepEqual(operations(), [`POST ${template}`]);
 
-    const response = { rating: 3.5, ratingCount: 2, ratingDistribution: { 3: 1, 4: 1 }, submitted: true };
+    const response = { rating: 3.5, ratingCount: 2, ratingLabel: '3,5 (2 avis)', myRating: 3, ratingDistribution: { 3: 1, 4: 1 }, submitted: true };
     bffElearning.on('post', template, { body: response });
     bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Actualisation refusée'));
     assert.equal(await actions.rateCourse(initialCourse.id, 3), true);
@@ -499,8 +505,8 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
   });
 
   test('admin create, update and delete use the contract operations and bodies', async () => {
-    bffElearning.on('post', '/elearning/admin/courses', ({ body }) => ({ status: 201, body: { course: body } }));
-    bffElearning.on('patch', '/elearning/admin/courses/{courseId}', ({ body }) => ({ body: { course: body } }));
+    bffElearning.on('post', '/elearning/admin/courses', ({ body }) => ({ status: 201, body: { id: '1', course: body } }));
+    bffElearning.on('patch', '/elearning/admin/courses/{courseId}', ({ body }) => ({ body: { id: '1', course: body } }));
     bffElearning.on('delete', '/elearning/admin/courses/{courseId}', ({ pathParams }) => ({ body: { deleted: true, courseId: pathParams.courseId } }));
     reloadCatalog();
     const { state, actions } = catalogState();
@@ -552,7 +558,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     assert.equal(await actions.updateCourse(course), false);
     assert.equal(state.mutationError, 'Enregistrement indisponible.');
     assert.deepEqual(operations(), ['PATCH /elearning/admin/courses/{courseId}']);
-    bffElearning.on('patch', '/elearning/admin/courses/{courseId}', ({ body }) => ({ body: { course: body } }));
+    bffElearning.on('patch', '/elearning/admin/courses/{courseId}', ({ body }) => ({ body: { id: '1', course: body } }));
     reloadCatalog();
     assert.equal(await actions.updateCourse(course), true);
     assert.equal(state.mutationError, null);
@@ -564,7 +570,7 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
     test(`${method} remains confirmed when only catalogue refresh fails; retry does not resend the saved course`, async () => {
       const verb = method === 'create' ? 'post' : 'patch';
       const path = method === 'create' ? '/elearning/admin/courses' : '/elearning/admin/courses/{courseId}';
-      bffElearning.on(verb, path, ({ body }) => ({ status: method === 'create' ? 201 : 200, body: { course: body } }));
+      bffElearning.on(verb, path, ({ body }) => ({ status: method === 'create' ? 201 : 200, body: { id: '1', course: body } }));
       bffElearning.on('get', '/elearning/catalog', errorReply(503, 'UNAVAILABLE', 'Catalogue indisponible.'));
       const { state, actions } = catalogState();
       assert.equal(await actions[`${method}Course`](f.course('confirmed-course')), true);
@@ -790,5 +796,126 @@ describe('logout and stored session without another BFF', () => {
     delete globalThis.window;
     assert.equal(getStoredAuthJwtToken(), null);
     assert.doesNotThrow(() => { storeAuthJwtToken('jwt'); clearStoredAuthJwtToken(); });
+  });
+});
+
+describe('E-learning V2 reads and actions (MAIR-1144, MAIR-1149, MAIR-1150, MAIR-817)', () => {
+  const { createInsightActions, remindersByCourse, remindersSentLabel } = require('../src/features/elearning/insightActions.ts');
+  const { elearningLearnerPort, prepareResourceDownload } = require('../src/features/elearning/learnerFeatures.ts');
+  const { fileNameFromDisposition } = require('../src/lib/elearning-api.ts');
+
+  function insights() {
+    const state = { trainingTime: [], adminStats: [], reports: [], saved: [], unauthorized: 0 };
+    const actions = createInsightActions({
+      setTrainingTime: (value, status) => state.trainingTime.push({ value, status }),
+      setAdminStats: (value, status) => state.adminStats.push({ value, status }),
+      report: (tone, title, message) => state.reports.push({ tone, title, message }),
+    }, file => state.saved.push(file), async () => { state.unauthorized += 1; });
+    return { state, actions };
+  }
+  const pdf = (name) => ({ raw: '%PDF-1.4 attestation', contentType: 'application/pdf', headers: { 'Content-Disposition': `attachment; filename="${name}"` } });
+
+  test('the training time of a year is read with its year and replaces the loading state', async () => {
+    const { state, actions } = insights();
+    bffElearning.on('get', '/elearning/training-time', ({ url }) => ({ body: f.trainingTimeResponse(Number(url.searchParams.get('year'))) }));
+    await actions.loadTrainingTime(2026);
+    assert.equal(bffElearning.requests[0].url.searchParams.get('year'), '2026');
+    assert.deepEqual(state.trainingTime.map(({ status }) => status), ['loading', 'default']);
+    assert.equal(state.trainingTime[1].value.timeSpentSeconds, 8100);
+    bffElearning.on('get', '/elearning/training-time', errorReply(503, 'UNAVAILABLE', 'E-learning API down'));
+    await actions.loadTrainingTime(2026);
+    assert.deepEqual(state.trainingTime.at(-1), { value: undefined, status: 'unavailable' });
+  });
+
+  test('the administrator indicators are read, an unavailable read keeps the page and a 401 leaves it', async () => {
+    const { state, actions } = insights();
+    await actions.loadAdminStats();
+    assert.deepEqual(state.adminStats.at(-1), { value: f.adminStatsResponse(), status: 'default' });
+    bffElearning.on('get', '/elearning/admin/stats', errorReply(502, 'BAD_GATEWAY', 'Upstream'));
+    await actions.loadAdminStats();
+    assert.deepEqual(state.adminStats.at(-1), { value: undefined, status: 'unavailable' });
+    bffElearning.on('get', '/elearning/admin/stats', errorReply(401, 'UNAUTHORIZED', 'Session'));
+    await actions.loadAdminStats();
+    assert.equal(state.unauthorized, 1);
+  });
+
+  test('« Relancer » sends one reminder per course concerned, then reads the indicators again', async () => {
+    const { state, actions } = insights();
+    const agents = f.adminStatsResponse().lateAgents;
+    assert.deepEqual(remindersByCourse(agents), [{ courseId: '4', userIds: ['42', '43'] }, { courseId: '7', userIds: ['44'] }]);
+    bffElearning.on('post', '/elearning/admin/courses/{courseId}/reminders', ({ body }) => ({ body: { sent: body.userIds.length } }));
+    const first = actions.remindLateAgents(agents);
+    assert.equal(actions.remindLateAgents(agents), first, 'a second click shares the pending reminders');
+    assert.equal(await first, true);
+    const posts = bffElearning.calls('/elearning/admin/courses/{courseId}/reminders', 'POST');
+    assert.deepEqual(posts.map(({ pathParams, body }) => [pathParams.courseId, body]).sort(), [['4', { userIds: ['42', '43'] }], ['7', { userIds: ['44'] }]]);
+    assert.deepEqual(state.reports, [{ tone: 'success', title: 'Relances envoyées', message: '3 relances envoyées aux agents en retard.' }]);
+    assert.equal(bffElearning.calls('/elearning/admin/stats', 'GET').length, 1);
+    assert.equal(remindersSentLabel(1), '1 relance envoyée');
+    assert.equal(await actions.remindLateAgents([]), false);
+  });
+
+  test('a refused course leaves the others reminded, and every refusal is reported without a re-read', async () => {
+    const { state, actions } = insights();
+    const agents = f.adminStatsResponse().lateAgents;
+    bffElearning.on('post', '/elearning/admin/courses/{courseId}/reminders', ({ pathParams }) => pathParams.courseId === '7'
+      ? errorReply(409, 'CONFLICT', 'Not mandatory') : { body: { sent: 2 } });
+    assert.equal(await actions.remindLateAgents(agents), false);
+    assert.equal(state.reports[0].title, 'Relances incomplètes');
+    assert.match(state.reports[0].message, /2 relances envoyées ; 1 formation n’a pas pu être relancée/);
+    bffElearning.on('post', '/elearning/admin/courses/{courseId}/reminders', errorReply(503, 'UNAVAILABLE', 'Down'));
+    assert.equal(await actions.remindLateAgents(agents), false);
+    assert.equal(state.reports[1].title, 'Relances non envoyées');
+    assert.equal(bffElearning.calls('/elearning/admin/stats', 'GET').length, 1);
+  });
+
+  test('the attestations of the year are saved under the name the BFF gives; none completed is an information', async () => {
+    const { state, actions } = insights();
+    bffElearning.on('get', '/elearning/certificates', pdf('attestations-2026.pdf'));
+    assert.equal(await actions.downloadYearCertificates(2026), true);
+    assert.equal(bffElearning.requests[0].url.searchParams.get('year'), '2026');
+    assert.equal(state.saved[0].fileName, 'attestations-2026.pdf');
+    assert.equal(await state.saved[0].blob.text(), '%PDF-1.4 attestation');
+    assert.equal(state.reports[0].title, 'Attestations téléchargées');
+    bffElearning.on('get', '/elearning/certificates', errorReply(404, 'NOT_FOUND', 'Nothing completed'));
+    assert.equal(await actions.downloadYearCertificates(2026), false);
+    assert.deepEqual(state.reports[1], { tone: 'info', title: 'Aucune attestation pour cette année', message: 'Vous n’avez terminé aucune formation en 2026.' });
+    bffElearning.on('get', '/elearning/certificates', errorReply(502, 'BAD_GATEWAY', 'Upstream'));
+    assert.equal(await actions.downloadYearCertificates(2026), false);
+    assert.equal(state.reports[2].tone, 'danger');
+  });
+
+  test('the attestation of a course is saved; a course not completed is refused with a French reason', async () => {
+    const { state, actions } = insights();
+    bffElearning.on('get', '/elearning/courses/{courseId}/certificate', { raw: '%PDF-1.4', contentType: 'application/pdf' });
+    assert.equal(await actions.downloadCourseCertificate('4'), true);
+    assert.equal(state.saved[0].fileName, 'attestation-4.pdf', 'without Content-Disposition the name is built locally');
+    bffElearning.on('get', '/elearning/courses/{courseId}/certificate', errorReply(409, 'CONFLICT', 'Not completed'));
+    assert.equal(await actions.downloadCourseCertificate('4'), false);
+    assert.deepEqual(state.reports.at(-1), { tone: 'danger', title: 'Téléchargement impossible', message: 'L’attestation sera disponible une fois la formation terminée.' });
+    assert.equal(fileNameFromDisposition("attachment; filename*=UTF-8''attestation%20%C3%A9t%C3%A9.pdf", 'x.pdf'), 'attestation été.pdf');
+    assert.equal(fileNameFromDisposition('attachment', 'x.pdf'), 'x.pdf');
+  });
+
+  test('a stored file opens through its signed URL; an unsafe address is refused', async () => {
+    bffElearning.on('get', '/elearning/courses/{courseId}/chapters/{chapterId}/contents/{contentId}/file', { body: { url: 'https://storage.example/signed?X-Amz=1' } });
+    const signal = new AbortController().signal;
+    const target = { courseId: '4', chapterId: '41', contentId: '411' };
+    assert.deepEqual(await prepareResourceDownload(elearningLearnerPort, target, signal), { url: 'https://storage.example/signed?X-Amz=1' });
+    assert.deepEqual(bffElearning.requests[0].pathParams, { courseId: '4', chapterId: '41', contentId: '411' });
+    bffElearning.on('get', '/elearning/courses/{courseId}/chapters/{chapterId}/contents/{contentId}/file', { body: { url: 'javascript:alert(1)' } });
+    await assert.rejects(prepareResourceDownload(elearningLearnerPort, target, signal), /pas sûre/);
+  });
+
+  test('a create refused field by field returns the fields to the form and does not reload the catalogue', async () => {
+    const { state, actions } = catalogState(f.catalogResponse());
+    bffElearning.on('post', '/elearning/admin/courses', {
+      status: 400, outOfContract: true,
+      body: f.apiError('BAD_REQUEST', 'Validation failed', [{ path: 'body.details.chapters.0.contents.0.href', message: 'A link needs an absolute https:// URL.' }]),
+    });
+    const result = await actions.createCourse(f.course('draft-1'));
+    assert.deepEqual(result, { fieldErrors: [{ path: 'body.details.chapters.0.contents.0.href', message: 'A link needs an absolute https:// URL.' }] });
+    assert.match(state.mutationError, /Certains champs/);
+    assert.deepEqual(operations(), ['POST /elearning/admin/courses']);
   });
 });

@@ -7,9 +7,13 @@ import type { CatalogCourse } from './module-model';
 
 type Content = { id: string };
 
+/** Chapter holding `contentId` in the course the screen shows. */
+export const chapterOfContent = (course: CatalogCourse, contentId: string) =>
+  course.details?.chapters.find(chapter => chapter.contents?.some(content => content.id === contentId))?.id;
+
 /**
- * One resource download at a time: a new one (or closing the course) aborts the previous,
- * and the file is saved through a temporary link.
+ * MAIR-817: one stored file at a time. A new opening (or closing the course) aborts the previous one; the signed URL
+ * the BFF gives is opened in a new tab through a temporary link (the browser renders or saves it).
  */
 export function useResourceDownload(learnerPort: LearnerFeaturePort) {
   const downloadRef = useRef<AbortController | null>(null);
@@ -18,16 +22,18 @@ export function useResourceDownload(learnerPort: LearnerFeaturePort) {
   const download = async (course: CatalogCourse, content: Content) => {
     downloadRef.current?.abort(); const controller = new AbortController(); downloadRef.current = controller;
     try {
-      const file = await prepareResourceDownload(learnerPort, course.id, content.id, controller.signal);
+      const chapterId = chapterOfContent(course, content.id);
+      if (!chapterId) throw new Error('Ce support n’appartient à aucun chapitre de la formation.');
+      const file = await prepareResourceDownload(learnerPort, { courseId: course.id, chapterId, contentId: content.id }, controller.signal);
       if (controller.signal.aborted) return false;
-      const url = URL.createObjectURL(file.blob); const link = document.createElement('a');
-      link.href = url; link.download = file.fileName; document.body.append(link); link.click(); link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const link = document.createElement('a');
+      link.href = file.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+      document.body.append(link); link.click(); link.remove();
       return true;
     } finally { if (downloadRef.current === controller) downloadRef.current = null; }
   };
 
-  // Stable, so a page effect can cancel the pending download when the course screen closes.
+  // Stable, so a page effect can cancel the pending opening when the course screen closes.
   const abort = useCallback(() => downloadRef.current?.abort(), []);
   return { download: learnerPort.downloadResource ? download : undefined, abort };
 }

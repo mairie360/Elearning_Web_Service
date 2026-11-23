@@ -49,6 +49,8 @@ describe.each(['create', 'update'] as const)('Elearning author status in %s mode
     fireEvent.change(within(dialog).getByLabelText('Catégorie'), { target: { value: 'Accueil' } });
     fireEvent.change(within(dialog).getByLabelText('Durée totale'), { target: { value: '20 min' } });
     fireEvent.change(dialog.querySelector('#elearning-course-description')!, { target: { value: 'Présentation' } });
+    // A new resource is a link (MAIR-817): its absolute https:// address is required (MAIR-703).
+    fireEvent.change(within(dialog).getByLabelText('Lien ou fichier'), { target: { value: 'https://exemple.fr/guide' } });
     fireEvent.submit(dialog.querySelector('form')!);
     await waitFor(() => expect(within(dialog).getByRole('alert')).toBeInTheDocument());
     expect(save).toHaveBeenCalledTimes(1);

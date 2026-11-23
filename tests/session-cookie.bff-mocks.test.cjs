@@ -88,7 +88,7 @@ test('learner start and the following catalogue read both use the current cookie
 test('administrator creation and its refresh use the cookie rather than a legacy JWT', async () => {
   front.window().localStorage.setItem(legacyKey, 'stale-legacy-token');
   const course = f.course();
-  bffElearning.on('post', '/elearning/admin/courses', { body: { course } });
+  bffElearning.on('post', '/elearning/admin/courses', { body: { id: course.id, course } });
   catalogue();
   const controller = actions();
   assert.equal(await controller.actions.createCourse(course), true);

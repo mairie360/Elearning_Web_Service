@@ -40,6 +40,8 @@ export const categoryOptionsFor = (catalog: Catalog | undefined, courses: Catalo
 /** MAIR-1145: the status and requirement filters the URL may carry. */
 export const STATUS_FILTERS: FilterOption[] = ['all', 'to-finish', 'not-started', 'in-progress', 'completed'].map(value => ({ value, label: value }));
 export const REQUIREMENT_FILTERS: FilterOption[] = ['all', 'mandatory', 'optional'].map(value => ({ value, label: value }));
+/** MAIR-1150: the origin filter of the administrator. */
+export const SOURCE_FILTERS: FilterOption[] = ['all', 'internal', 'platform'].map(value => ({ value, label: value }));
 
 /** A filter from the URL counts only when it is an enabled option; otherwise "all". */
 export const offeredFilter = (options: FilterOption[], value: string) =>

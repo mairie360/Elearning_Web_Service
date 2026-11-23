@@ -1,16 +1,15 @@
 import React from 'react';
 
-import { ElearningAdminStats, type ElearningAdminStatsData } from './components/ElearningAdminStats';
+import { ElearningAdminStats, type ElearningAdminStatsData, type ElearningLateAgent } from './components/ElearningAdminStats';
 import { ElearningCourseFormModal, type ElearningCourseFormValues } from './components/ElearningCourseFormModal';
 import { CatalogEmptyState } from './components/CatalogEmptyState';
 import { CatalogFilters } from './components/CatalogFilters';
 import { CatalogHeader } from './components/CatalogHeader';
-import { LearnerMetrics } from './components/LearnerMetrics';
+import { LearnerMetrics, type ElearningTrainingTime } from './components/LearnerMetrics';
 import { ManagedCourseCard } from './components/ManagedCourseCard';
 import { ResumeCard } from './components/ResumeCard';
 import { SelectedCourseDetails } from './components/SelectedCourseDetails';
 import {
-  buildAdminStats,
   buildCategories,
   buildCourseFromFormValues,
   buildLearnerMetrics,
@@ -22,6 +21,7 @@ import {
   requirementFilterOptions,
   resultCountLabel,
   resumeSuggestion,
+  sourceFilterOptions,
   statusFilterOptions,
 } from './catalog-model';
 import type { ElearningCourse, ElearningCourseSaveResult, ElearningFilterOption, ElearningUserRole } from './catalog-types';
@@ -34,21 +34,32 @@ export interface ElearningCatalogProps extends React.HTMLAttributes<HTMLElement>
   title?: string;
   subtitle?: string;
   courses: ElearningCourse[];
+  /** `GET /elearning/admin/stats` (MAIR-1150); absent while loading or unavailable. */
   adminStats?: ElearningAdminStatsData;
-  /** `loading` while the administrator refreshes, `unavailable` when the last catalogue read failed. */
+  /** `loading` while the administrator refreshes, `unavailable` when the last read failed. */
   adminStatsState?: 'default' | 'loading' | 'unavailable';
   onRefreshStats?: () => void;
+  /** « Relancer les n agents » of the late agents drawer. */
+  onRemindLateAgents?: (agents: ElearningLateAgent[]) => ElearningLearnerActionResult;
+  /** `GET /elearning/training-time` of the current year (MAIR-1144). */
+  trainingTime?: ElearningTrainingTime;
+  trainingTimeState?: 'default' | 'loading' | 'unavailable';
+  onTrainingTimeRetry?: () => void;
+  onDownloadCertificates?: () => ElearningLearnerActionResult;
   categories?: ElearningFilterOption[];
   statuses?: ElearningFilterOption[];
   defaultSearch?: string;
   defaultCategory?: string;
   defaultStatus?: string;
   defaultRequirement?: string;
+  /** MAIR-1150: « Origine » of the administrator (`all`, `internal`, `platform`). */
+  defaultSource?: string;
   /** Every filter change goes up (URL state); nothing reads the DOM of the filters (MAIR-897). */
   onSearchChange?: (value: string) => void;
   onCategoryChange?: (value: string) => void;
   onStatusChange?: (value: string) => void;
   onRequirementChange?: (value: string) => void;
+  onSourceChange?: (value: string) => void;
   emptyLabel?: string;
   currentUserRole?: ElearningUserRole;
   initialCourseId?: string | null;
@@ -70,16 +81,23 @@ export const ElearningCatalog = ({
   adminStats,
   adminStatsState = 'default',
   onRefreshStats,
+  onRemindLateAgents,
+  trainingTime,
+  trainingTimeState,
+  onTrainingTimeRetry,
+  onDownloadCertificates,
   categories,
   statuses = defaultStatuses,
   defaultSearch = '',
   defaultCategory = 'all',
   defaultStatus = 'all',
   defaultRequirement = 'all',
+  defaultSource = 'all',
   onSearchChange,
   onCategoryChange,
   onStatusChange,
   onRequirementChange,
+  onSourceChange,
   emptyLabel = 'Aucune formation disponible pour l’instant.',
   currentUserRole = 'user',
   initialCourseId = null,
@@ -101,6 +119,8 @@ export const ElearningCatalog = ({
   const setCategory = (value: string) => { setCategoryState(value); onCategoryChange?.(value); };
   const setStatus = (value: string) => { setStatusState(value); onStatusChange?.(value); };
   const setRequirement = (value: string) => { setRequirementState(value); onRequirementChange?.(value); };
+  const [source, setSourceState] = React.useState(defaultSource);
+  const setSource = (value: string) => { setSourceState(value); onSourceChange?.(value); };
   const [selectedCourseId, setSelectedCourseId] = React.useState<string | null>(initialCourseId);
   const [editingCourseId, setEditingCourseId] = React.useState<string | null>(null);
   const [courseFormOpen, setCourseFormOpen] = React.useState(false);
@@ -114,12 +134,13 @@ export const ElearningCatalog = ({
   const canManageCourses = currentUserRole === 'administrator';
   const categoryOptions = React.useMemo(() => categories ?? buildCategories(courses), [categories, courses]);
   const learnerMetrics = React.useMemo(() => buildLearnerMetrics(courses), [courses]);
-  const displayedAdminStats = adminStats ?? buildAdminStats(courses);
   const selectedCourseDetails = React.useMemo(() => (selectedCourse ? getCourseDetails(selectedCourse) : undefined), [selectedCourse]);
   const suggestion = React.useMemo(() => (canManageCourses ? undefined : resumeSuggestion(courses)), [canManageCourses, courses]);
   const courseFormInitialValues = React.useMemo(() => getCourseFormValues(editingCourse ?? undefined), [editingCourse]);
 
-  const filteredCourses = React.useMemo(() => filterCourses(courses, search, category, status, requirement), [category, courses, requirement, search, status]);
+  // The origin filter belongs to the administrator: an agent's list never depends on it.
+  const appliedSource = canManageCourses ? source : 'all';
+  const filteredCourses = React.useMemo(() => filterCourses(courses, search, category, status, requirement, appliedSource), [appliedSource, category, courses, requirement, search, status]);
 
   const closeCourseForm = () => {
     setCourseFormOpen(false);
@@ -159,8 +180,8 @@ export const ElearningCatalog = ({
 
   const openCourse = (course: ElearningCourse) => { setStartError(null); setSelectedCourseId(course.id); };
 
-  const filtered = Boolean(search.trim()) || category !== 'all' || status !== 'all' || requirement !== 'all';
-  const resetFilters = () => { setSearch(''); setCategory('all'); setStatus('all'); setRequirement('all'); };
+  const filtered = Boolean(search.trim()) || category !== 'all' || status !== 'all' || requirement !== 'all' || appliedSource !== 'all';
+  const resetFilters = () => { setSearch(''); setCategory('all'); setStatus('all'); setRequirement('all'); if (appliedSource !== 'all') setSource('all'); };
 
   return (
     <section className={joinClasses('flex flex-col gap-6 text-[var(--mairie-text)]', className)} {...props}>
@@ -175,11 +196,18 @@ export const ElearningCatalog = ({
           />
         ) : null}
 
-        {canManageCourses ? <ElearningAdminStats stats={displayedAdminStats} state={adminStatsState} onRefresh={onRefreshStats} /> : (
+        {canManageCourses ? (
+          <ElearningAdminStats stats={adminStats} state={adminStatsState} onRefresh={onRefreshStats}
+            source={source} onSourceChange={setSource} onRemind={onRemindLateAgents} />
+        ) : (
           <LearnerMetrics
             metrics={learnerMetrics}
             active={{ status, requirement }}
             onSelect={(filter) => { setStatus(filter.status); setRequirement(filter.requirement); }}
+            trainingTime={trainingTime}
+            trainingTimeState={trainingTimeState}
+            onTrainingTimeRetry={onTrainingTimeRetry}
+            onDownloadCertificates={onDownloadCertificates}
           />
         )}
 
@@ -191,6 +219,9 @@ export const ElearningCatalog = ({
           categories={categoryOptions}
           statuses={[{ label: 'Tous les statuts', value: 'all' }, ...statusFilterOptions]}
           requirements={requirementFilterOptions}
+          source={source}
+          sources={canManageCourses ? sourceFilterOptions : undefined}
+          onSourceChange={canManageCourses ? setSource : undefined}
           resultLabel={resultCountLabel(filteredCourses.length, filtered)}
           onSearchChange={setSearch}
           onCategoryChange={setCategory}

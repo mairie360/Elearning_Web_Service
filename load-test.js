@@ -7,13 +7,14 @@ import encoding from 'k6/encoding';
 // k6 load test of the Elearning front (Elearning_Web_Service).
 // Two scenarios run side by side against the routes the Next.js server really serves:
 //   * `reads`: the page (Next.js render behind the authentication middleware), /health, then the
-//     /elearning/catalog and /elearning/profile reads the page fetches, relayed by
-//     the same-origin proxy to BFF Elearning;
+//     /elearning/catalog, /elearning/profile and /elearning/training-time (E-learning V2, MAIR-1144)
+//     reads the page fetches, relayed by the same-origin proxy to BFF Elearning;
 //   * `writes` (MAIR-516): the course seeded by init-test.sql, POST /elearning/courses/{id}/start
 //     and the completion of its first content, POST …/contents/{contentId}/complete
 //     (-> E-learning API, idempotent upsert). Profile edits are not served by BFF Elearning
 //     (a user edits their profile in Settings), so no profile write is measured here.
-//     Course administration and ratings are left out: the pinned BFF answers 501 (MAIR-513).
+//     Course administration, ratings, reminders and attestations are left out: they change shared data
+//     (or need a completed course) that the seed does not reset between iterations.
 // Authentication goes through the accessToken cookie, like in the browser: the proxy turns it
 // into Authorization: Bearer for the BFF.
 // ---------------------------------------------------------------------------
@@ -90,6 +91,9 @@ export function reads(data) {
 
     const elearningProfile = http.get(`${BASE_URL}/elearning/profile`, dataParams);
     check(elearningProfile, { '/elearning/profile 200': (r) => r.status === 200 });
+
+    const trainingTime = http.get(`${BASE_URL}/elearning/training-time?year=${new Date().getFullYear()}`, dataParams);
+    check(trainingTime, { '/elearning/training-time 200': (r) => r.status === 200 });
   });
 
   sleep(1);

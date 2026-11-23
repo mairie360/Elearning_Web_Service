@@ -11,9 +11,11 @@ import type { ElearningCatalogResponse } from '../../lib/elearning-api';
 import { courseIdFromSearch, urlWithoutCourse } from '../../lib/course-query';
 import { CourseReviewPanel } from './components/CourseReviewPanel';
 import { CoursePlayer } from './components/CoursePlayer';
-import { pendingLearnerPort } from '../../features/elearning/learnerFeatures';
+import { elearningLearnerPort } from '../../features/elearning/learnerFeatures';
 import type { LearnerFeaturePort, ReviewDraft } from '../../features/elearning/learnerFeatures';
 import { createCatalogActions } from '../../features/elearning/catalogActions';
+import { createInsightActions, type InsightState } from '../../features/elearning/insightActions';
+import type { AdminStatsResponse, TrainingTimeResponse } from '../../lib/elearning-api';
 import { CONTENT_UNCOMPLETION_UNAVAILABLE_MESSAGE, pinnedBffCapabilities } from '../../features/elearning/bffCapabilities';
 import type { CatalogCapabilities } from '../../features/elearning/bffCapabilities';
 import { withCategoryReset, withStatusReset } from '../../features/elearning/catalogFilters';
@@ -23,7 +25,6 @@ import { catalogUrlSchema } from '../../features/elearning/catalogQuery';
 import { CatalogLoading } from './components/CatalogLoading';
 import { CatalogReadError } from './components/CatalogReadError';
 import { CatalogToasts } from './components/CatalogToasts';
-import { CourseManagementNotice } from './components/CourseManagementNotice';
 import { LogoutErrorNotice } from './components/LogoutErrorNotice';
 import { MissingCourseNotice } from './components/MissingCourseNotice';
 import {
@@ -32,6 +33,7 @@ import {
   offeredFilter,
   pageSubtitle,
   REQUIREMENT_FILTERS,
+  SOURCE_FILTERS,
   STATUS_FILTERS,
   type CatalogFeedback,
   withChapterDurations,
@@ -39,9 +41,10 @@ import {
   type ContentCompletePayload,
 } from './module-model';
 import { useResourceDownload } from './use-resource-download';
+import { saveFile } from './save-file';
 
 export function ElearningModule({
-  learnerPort = pendingLearnerPort,
+  learnerPort = elearningLearnerPort,
   capabilities = pinnedBffCapabilities,
   initialState,
   initialSearch,
@@ -98,6 +101,23 @@ export function ElearningModule({
     if (initial === undefined) void actions.loadCatalog();
   }, [actions, initial]);
 
+  // E-learning V2 (MAIR-1144, MAIR-1150): the training time of the agent, the indicators of the administrator.
+  const [trainingTime, setTrainingTime] = useState<{ value?: TrainingTimeResponse; state: InsightState }>({ state: 'loading' });
+  const [adminStats, setAdminStats] = useState<{ value?: AdminStatsResponse; state: InsightState }>({ state: 'loading' });
+  const insights = useMemo(() => createInsightActions({
+    setTrainingTime: (value, state) => setTrainingTime(current => ({ value: value ?? (state === 'loading' ? current.value : undefined), state })),
+    setAdminStats: (value, state) => setAdminStats(current => ({ value: value ?? (state === 'loading' ? current.value : undefined), state })),
+    report,
+  }, saveFile), [report]);
+  const [year] = useState(() => new Date().getFullYear());
+  const isAdmin = catalogResponse ? catalogResponse.user?.isAdmin === true : undefined;
+  // Read once the catalogue says who the caller is; a role change (another session) reads the other side.
+  useEffect(() => {
+    if (isAdmin === undefined) return;
+    if (isAdmin) void insights.loadAdminStats();
+    else void insights.loadTrainingTime(year);
+  }, [insights, isAdmin, year]);
+
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const page = document;
@@ -145,6 +165,7 @@ export function ElearningModule({
   const category = offeredFilter(categoryOptions, pageUrl.state.category);
   const statusFilter = offeredFilter(STATUS_FILTERS, pageUrl.state.status);
   const requirementFilter = offeredFilter(REQUIREMENT_FILTERS, pageUrl.state.requirement);
+  const sourceFilter = offeredFilter(SOURCE_FILTERS, pageUrl.state.source);
   const requestedCourseMissing =
     requestedCourseId !== null &&
     !!catalog &&
@@ -180,6 +201,7 @@ export function ElearningModule({
         onContentDownload={resourceDownload.download}
         canCompleteContent={learnerPort.canCompleteResource ? (course, content) => learnerPort.canCompleteResource!(course.id, content.id) : undefined}
         onRatingSubmit={capabilities.courseRating ? (course, rating) => actions.rateCourse(course.id, rating) : undefined}
+        onCertificateDownload={course => insights.downloadCourseCertificate(course.id)}
         review={review(playingCourse)}
       />
     ) : (
@@ -200,8 +222,6 @@ export function ElearningModule({
         onRetry={() => void actions.loadCatalog()}
       />
 
-      {catalog && user?.isAdmin && !capabilities.courseManagement && <CourseManagementNotice />}
-
       {requestedCourseMissing && <MissingCourseNotice onShowCatalog={clearRequestedCourse} />}
 
       {catalog && pageUrl.ready && (
@@ -211,6 +231,8 @@ export function ElearningModule({
           defaultCategory={category}
           defaultStatus={statusFilter}
           defaultRequirement={requirementFilter}
+          defaultSource={sourceFilter}
+          onSourceChange={value => pageUrl.update({ source: value })}
           onSearchChange={value => pageUrl.update({ q: value }, 'replace')}
           onCategoryChange={value => pageUrl.update({ category: value })}
           onStatusChange={value => pageUrl.update({ status: value })}
@@ -219,9 +241,14 @@ export function ElearningModule({
           onCourseClose={clearRequestedCourse}
           subtitle={pageSubtitle(user?.isAdmin)}
           courses={catalogCourses}
-          adminStats={catalog.adminStats}
-          adminStatsState={loading ? 'loading' : error ? 'unavailable' : 'default'}
-          onRefreshStats={() => void actions.loadCatalog()}
+          adminStats={adminStats.value}
+          adminStatsState={adminStats.state}
+          onRefreshStats={() => void insights.loadAdminStats()}
+          onRemindLateAgents={agents => insights.remindLateAgents(agents)}
+          trainingTime={trainingTime.value}
+          trainingTimeState={trainingTime.state}
+          onTrainingTimeRetry={() => void insights.loadTrainingTime(year)}
+          onDownloadCertificates={() => insights.downloadYearCertificates(year)}
           categories={withCategoryReset(catalog.categories)}
           statuses={withStatusReset(catalog.statuses)}
           currentUserRole={

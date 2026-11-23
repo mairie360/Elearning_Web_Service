@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { installWindow, removeWindow, type FakeWindow } from './browser';
 import { ContractMockServer, type MockReply } from './contract-mock-server';
-import { apiError, accessToken } from './elearning-fixtures';
+import { apiError, accessToken, adminStatsResponse, trainingTimeResponse } from './elearning-fixtures';
 import { setBrowserFrontUrls } from '../../src/lib/front-urls';
 import { FrontRuntime, FRONT_ORIGIN } from './front-runtime';
 import { OpenApiContract } from './openapi-contract';
@@ -29,6 +29,9 @@ export function errorReply(status: number, code: string, message: string): MockR
   assert.deepEqual(contractSnapshot.validate(contractSnapshot.schema('ErrorResponse'), body), []);
   return { status, body, outOfContract: true };
 }
+
+/** Reads the page makes on its own once the catalogue is loaded (training time, administrator indicators). */
+export const SIDE_READS = new Set(['GET /elearning/training-time', 'GET /elearning/admin/stats']);
 
 export type MockedFront = {
   bffElearning: ContractMockServer;
@@ -65,6 +68,10 @@ export function useMockedFront({ before, after, beforeEach, afterEach }: NodeTes
     runtime.accessToken = accessToken();
     process.env.ELEARNING_FRONT_URL = FRONT_ORIGIN;
     process.env.LOGIN_FRONT_URL = 'https://login.mairie.test/';
+    // E-learning V2 reads beside the catalogue (MAIR-1144, MAIR-1150): the page reads them once it knows the role.
+    // A test that is about them mocks them again; SIDE_READS lets the others leave them out of their call lists.
+    bffElearning.on('GET', '/elearning/training-time', ({ url }) => ({ body: trainingTimeResponse(Number(url.searchParams.get('year')) || undefined) }));
+    bffElearning.on('GET', '/elearning/admin/stats', { body: adminStatsResponse() });
     fakeWindow = installWindow();
     setBrowserFrontUrls({ ELEARNING_FRONT_URL: FRONT_ORIGIN, LOGIN_FRONT_URL: 'https://login.mairie.test/' });
   });
