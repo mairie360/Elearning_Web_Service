@@ -248,9 +248,8 @@ test('the first pass renders the loading state, the next one the catalogue of GE
   assert.equal(view.props('ElearningCatalog').allowRatingEdits, true);
   assert.equal(view.props('PageHeader').title, 'E-learning');
   assert.equal(view.props('PageHeader').subtitle, 'Développez vos compétences à votre rythme.');
-  assert.match(html, /<footer/);
-  assert.doesNotMatch(html, /<aside\b[^]*?<footer\b[^]*?<\/footer>[^]*?<\/aside>/);
-  assert.match(view.text(), /1\.0\.0/);
+  // MAIR-1142: no page footer (lib 2.3 base page).
+  assert.doesNotMatch(html, /<footer\b/);
 });
 
 test('an administrator sees the catalogue with the administrator role', async () => {

@@ -1,5 +1,5 @@
 "use client";
-import { subscribePageReturn } from '../../lib/page-return';
+import { subscribePageReturn } from '@mairie360/lib-components/shared';
 
 import { AccessibleShell } from "@mairie360/lib-components/shell";
 import { ToastProvider } from "@mairie360/lib-components/primitives";
@@ -147,7 +147,6 @@ export function ElearningModule({
     requestedCourseId !== null &&
     !!catalog &&
     !catalog.courses.some((course) => course.id === requestedCourseId);
-  const footer = catalogResponse?.footer;
   const user = catalogResponse?.user;
 
   return (
@@ -156,14 +155,6 @@ export function ElearningModule({
       user={user ?? { name: "" }}
       onLogout={() => void requestLogout()}
       hrefs={elearningShellHrefs()}
-      footerProps={
-        footer ? {
-          productName: footer.productName,
-          version: footer.version,
-          links: footer.links,
-          className: "shrink-0",
-        } : undefined
-      }
     >
       <ToastProvider regionLabel="Notifications de la formation" closeLabel="Fermer la notification" placement="top-end">
       <CatalogToasts feedback={feedback} onShown={feedbackShown} />

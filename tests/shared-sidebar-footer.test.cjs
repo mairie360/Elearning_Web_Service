@@ -17,6 +17,8 @@ test('sidebar information keeps copyright without creating a nested contentinfo 
     user: { name: '' },
     hrefs: { projects: 'https://projects.example/' },
     footerProps: { year: 2026 },
+    // MAIR-1092 (lib 2.3): the footer is no longer part of the base page; a shell shows it on request.
+    showFooter: true,
   }, React.createElement('p', null, 'Contenu du module')));
   const dom = new JSDOM(html);
   try {
