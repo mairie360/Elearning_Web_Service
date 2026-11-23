@@ -25,4 +25,12 @@ describe('ManagedCourseCard', () => {
     expect(onEdit).toHaveBeenCalledWith(course);
     expect(onDelete).toHaveBeenCalledWith(course);
   });
+
+  it('opens « Agents inscrits » of the course (MAIR-817)', async () => {
+    const onLearners = vi.fn(); const onOpen = vi.fn();
+    render(<ManagedCourseCard course={course} busy={false} onOpen={onOpen} onLearners={onLearners} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Agents inscrits à RGPD' }));
+    expect(onLearners).toHaveBeenCalledWith(course);
+    expect(onOpen).not.toHaveBeenCalled();
+  });
 });

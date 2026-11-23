@@ -1233,3 +1233,57 @@ test('a create refused field by field shows the message under the resource and k
   assert.equal(sent.details.chapters[0].contents[0].href, 'https://exemple.fr/guide');
   assert.equal(bffElearning.calls('/elearning/catalog').length, 1, 'a refused save reads nothing again');
 });
+
+test('the administrator enrols and unenrols agents from « Agents inscrits » of a course (MAIR-817)', async () => {
+  const learners = [f.courseLearner('42', 'Bruno', 'Petit', { status: 'in-progress', progress: 50, lastActivityAt: '2026-10-02T08:00:00' })];
+  bffElearning.on('get', '/elearning/admin/courses/{courseId}/learners', ({ pathParams }) => ({
+    body: { courseId: pathParams.courseId, learners, total: learners.length, limit: 50, offset: 0, nextOffset: null },
+  }));
+  bffElearning.on('get', '/elearning/admin/agents', ({ url }) => ({
+    body: {
+      agents: url.searchParams.get('search') === 'zz' ? [] : [f.agent('50', 'Chloé', 'Durand'), f.agent('51', 'Denis', 'Roy')],
+      limit: 20, offset: Number(url.searchParams.get('offset') ?? 0), nextOffset: url.searchParams.get('offset') ? null : 20,
+    },
+  }));
+  bffElearning.on('post', '/elearning/admin/courses/{courseId}/learners', ({ pathParams, body }) => {
+    learners.push(...body.userIds.map((id) => f.courseLearner(id, 'Chloé', 'Durand')));
+    return { body: { courseId: pathParams.courseId, enrolled: body.userIds, alreadyEnrolled: [], failed: [] } };
+  });
+  bffElearning.on('delete', '/elearning/admin/courses/{courseId}/learners/{userId}', ({ pathParams }) => {
+    learners.splice(learners.findIndex((learner) => learner.userId === pathParams.userId), 1);
+    return { body: { removed: true, ...pathParams } };
+  });
+  await renderLoadedCatalog(adminCatalog());
+
+  await view.click(props => props['aria-label'] === 'Agents inscrits à RGPD interne');
+  await view.waitFor(() => view.text().includes('1 agent inscrit'));
+  assert.match(view.text(), /Agents inscrits à « RGPD interne »/);
+  assert.match(view.text(), /Bruno Petit/);
+  assert.match(view.text(), /2 octobre 2026/);
+  assert.equal(bffElearning.calls('/elearning/admin/courses/{courseId}/learners', 'GET')[0].pathParams.courseId, '4');
+
+  await view.click('Inscrire des agents');
+  await view.waitFor(() => view.text().includes('Chloé Durand'));
+  assert.equal(bffElearning.calls('/elearning/admin/agents', 'GET')[0].url.searchParams.get('excludeCourseId'), '4');
+  await view.click('Afficher plus d’agents');
+  await view.waitFor(() => bffElearning.calls('/elearning/admin/agents', 'GET').length === 2);
+  await view.fire((props, _text, tag) => tag === 'input' && props.placeholder === 'Nom, prénom ou e-mail', 'onChange', { target: { value: 'zz' } });
+  await view.waitFor(() => view.text().includes('Aucun agent ne correspond à cette recherche.'));
+  await view.fire((props, _text, tag) => tag === 'input' && props.placeholder === 'Nom, prénom ou e-mail', 'onChange', { target: { value: '' } });
+  await view.waitFor(() => view.text().includes('Denis Roy'));
+  await view.fire((props, _text, tag) => tag === 'input' && props.type === 'checkbox' && view.hostElements('Chloé Durand').length > 0 && props.checked === false, 'onChange', { target: { checked: true } });
+  await view.waitFor(() => view.text().includes('1 agent sélectionné'));
+  await view.click('Inscrire l’agent');
+  await view.waitFor(html => toasts(html).some(toast => toast.includes('Agents inscrits')));
+  assert.deepEqual(bffElearning.calls('/elearning/admin/courses/{courseId}/learners', 'POST')[0].body, { userIds: ['50'] });
+  await view.waitFor(() => view.text().includes('2 agents inscrits'));
+
+  await view.click(props => props['aria-label'] === 'Désinscrire Bruno Petit');
+  await view.waitFor(() => view.text().includes('Désinscrire l’agent ?'));
+  await view.click((props, text, tag) => tag === 'button' && text === 'Désinscrire');
+  await view.waitFor(html => toasts(html).some(toast => toast.includes('Agent désinscrit')));
+  assert.equal(bffElearning.calls('/elearning/admin/courses/{courseId}/learners/{userId}', 'DELETE')[0].pathParams.userId, '42');
+  await view.waitFor(() => view.text().includes('1 agent inscrit'));
+  await view.click(props => props['aria-label'] === 'Fermer la liste des agents inscrits');
+  assert.doesNotMatch(view.text(), /Agents inscrits à « RGPD interne »/);
+});

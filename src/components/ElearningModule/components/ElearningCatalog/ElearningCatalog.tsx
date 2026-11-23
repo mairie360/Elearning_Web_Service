@@ -4,6 +4,7 @@ import { ElearningAdminStats, type ElearningAdminStatsData, type ElearningLateAg
 import { ElearningCourseFormModal, type ElearningCourseFormValues } from './components/ElearningCourseFormModal';
 import { CatalogEmptyState } from './components/CatalogEmptyState';
 import { CatalogFilters } from './components/CatalogFilters';
+import { CourseLearnersDrawer, type CourseLearnersPort } from './components/CourseLearnersDrawer';
 import { CatalogHeader } from './components/CatalogHeader';
 import { LearnerMetrics, type ElearningTrainingTime } from './components/LearnerMetrics';
 import { ManagedCourseCard } from './components/ManagedCourseCard';
@@ -72,6 +73,10 @@ export interface ElearningCatalogProps extends React.HTMLAttributes<HTMLElement>
   onNotice?: (title: string) => void;
   /** Opens the course screen (MAIR-1148) at the current chapter of the course. */
   onPlayCourse?: (course: ElearningCourse) => void;
+  /** MAIR-817: the enrolment of agents by the administrator (« Agents inscrits » of a course). */
+  enrolment?: CourseLearnersPort;
+  /** The learners of a course changed. */
+  onEnrolmentChanged?: () => void;
 }
 
 export const ElearningCatalog = ({
@@ -108,6 +113,8 @@ export const ElearningCatalog = ({
   onDeleteCourse,
   onPlayCourse,
   onNotice,
+  enrolment,
+  onEnrolmentChanged,
   className = '',
   ...props
 }: ElearningCatalogProps) => {
@@ -124,12 +131,14 @@ export const ElearningCatalog = ({
   const [selectedCourseId, setSelectedCourseId] = React.useState<string | null>(initialCourseId);
   const [editingCourseId, setEditingCourseId] = React.useState<string | null>(null);
   const [courseFormOpen, setCourseFormOpen] = React.useState(false);
+  const [learnersCourseId, setLearnersCourseId] = React.useState<string | null>(null);
   const [startingCourseId, setStartingCourseId] = React.useState<string | null>(null);
   const starting = startingCourseId !== null;
   const [startError, setStartError] = React.useState<string | null>(null);
   const pendingStart = React.useRef(false);
   const selectedCourse = courses.find((course) => course.id === selectedCourseId);
   const editingCourse = courses.find((course) => course.id === editingCourseId);
+  const learnersCourse = courses.find((course) => course.id === learnersCourseId);
 
   const canManageCourses = currentUserRole === 'administrator';
   const categoryOptions = React.useMemo(() => categories ?? buildCategories(courses), [categories, courses]);
@@ -238,6 +247,7 @@ export const ElearningCatalog = ({
               onOpen={openCourse}
               onEdit={canManageCourses && onUpdateCourse ? openCourseForm : undefined}
               onDelete={canManageCourses && onDeleteCourse ? onDeleteCourse : undefined}
+              onLearners={canManageCourses && enrolment ? (managed) => setLearnersCourseId(managed.id) : undefined}
             />
           ))}
         </div>
@@ -258,6 +268,15 @@ export const ElearningCatalog = ({
             setSelectedCourseId(null);
             onCourseClose?.();
           }}
+        />
+      ) : null}
+
+      {canManageCourses && enrolment && learnersCourse ? (
+        <CourseLearnersDrawer
+          course={learnersCourse}
+          port={enrolment}
+          onClose={() => setLearnersCourseId(null)}
+          onChanged={onEnrolmentChanged}
         />
       ) : null}
 

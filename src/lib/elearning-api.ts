@@ -42,6 +42,11 @@ export type AdminCourseBody = Schemas["AdminCourseCreateBody"];
 export type TrainingTimeResponse = Schemas["TrainingTimeResponse"];
 export type AdminStatsResponse = Schemas["AdminStatsResponse"];
 export type RatingSubmitResponse = Schemas["RatingSubmitResponse"];
+export type CourseLearnersResponse = Schemas["CourseLearnersResponse"];
+export type CourseLearner = Schemas["CourseLearner"];
+export type AdminAgentsResponse = Schemas["AdminAgentsResponse"];
+export type AgentIdentity = Schemas["AgentIdentity"];
+export type EnrolLearnersResponse = Schemas["EnrolLearnersResponse"];
 
 /** A PDF of the BFF with the name it gives in `Content-Disposition`, else `fallback`. */
 export interface DownloadedFile {
@@ -147,4 +152,30 @@ export function getAdminStats(init?: RequestInit) {
 /** MAIR-1150: reminds the late agents of a mandatory course (every late agent without `userIds`). */
 export async function sendReminders(courseId: string, userIds?: string[]) {
   return (await bffElearning.postElearningAdminCoursesCourseIdReminders(pathSegment(courseId, "courseId"), userIds ? { userIds } : {})).data;
+}
+
+/** MAIR-817: one page of the learners of a course, by name, with their progress (administrators). */
+export function getCourseLearners(courseId: string, page: { limit?: number; offset?: number } = {}, init?: RequestInit) {
+  return withSignal(init, (options) => bffElearning.getElearningAdminCoursesCourseIdLearners(pathSegment(courseId, "courseId"), page, options));
+}
+
+/** MAIR-817: the agents an administrator can enrol, the learners of `excludeCourseId` left out. */
+export function getEnrolableAgents(query: { search?: string; limit?: number; offset?: number; excludeCourseId?: string }, init?: RequestInit) {
+  const search = query.search?.trim();
+  return withSignal(init, (options) => bffElearning.getElearningAdminAgents({
+    ...(search ? { search } : {}),
+    ...(query.limit ? { limit: query.limit } : {}),
+    ...(query.offset ? { offset: query.offset } : {}),
+    ...(query.excludeCourseId ? { excludeCourseId: query.excludeCourseId } : {}),
+  }, options));
+}
+
+/** MAIR-817: enrols agents in a course; the outcome lists who was enrolled, enrolled already or failed. */
+export async function enrolLearners(courseId: string, userIds: string[]) {
+  return (await bffElearning.postElearningAdminCoursesCourseIdLearners(pathSegment(courseId, "courseId"), { userIds })).data;
+}
+
+/** MAIR-817: unenrols an agent from a course (their progress on it is removed). */
+export async function removeLearner(courseId: string, userId: string) {
+  return (await bffElearning.deleteElearningAdminCoursesCourseIdLearnersUserId(pathSegment(courseId, "courseId"), pathSegment(userId, "userId"))).data;
 }
