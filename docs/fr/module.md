@@ -1,5 +1,22 @@
 # Elearning_Web_Service — Présentation du module
 
+## V2 du module (epic MAIR-827)
+
+Le module suit la maquette V2 et n'utilise que des composants de `@mairie360/lib-components` 2.3 (mode clair uniquement).
+
+- **Page** : en-tête « E-learning » (sous-titre agent « Développez vos compétences à votre rythme. », administrateur « Pilotez les formations proposées aux agents de la commune. » avec « Nouvelle formation »), sans pied de page.
+- **Reprendre** : en tête de page agent, la formation en cours la plus avancée (« Reprendre où vous en étiez »), sinon la prochaine formation obligatoire non commencée (« À commencer en priorité »).
+- **Mon suivi** : formations en cours, obligatoires à terminer (prochaine échéance), terminées, disponibles. Chaque indicateur filtre la liste sur place ; un second clic retire le filtre. L'administrateur voit à la place « Indicateurs du centre de formation » avec « Actualiser ».
+- **Recherche et filtres** : recherche, Catégorie, Statut (« À terminer » regroupe non commencées et en cours), Caractère (obligatoires / facultatives), compteur de résultats ; les filtres sont gardés dans l'URL.
+- **Tuiles** : mêmes informations pour toutes les formations ; toute la tuile ouvre la fiche.
+- **Fiche** : informations de la formation et « Votre avancement » ; « Commencer », « Continuer » ou « Revoir » ouvrent l'écran de suivi.
+- **Écran de suivi** (`?play=<id>`) : écran plein sans la barre de navigation, sommaire, chapitre, « Marquer comme terminé » (chaque contenu restant du chapitre est validé l'un après l'autre), « Précédent » / « Suivant » / « Terminer ». Le retour arrière du navigateur ou « Quitter la formation » ramène au catalogue.
+- **Fin de formation** : notation par étoiles (quand le service la propose), avis écrits, retour au catalogue.
+- **Retours** : chaque action affiche un message temporaire (succès, échec, information) ; les erreurs de lecture restent affichées au-dessus du catalogue avec « Réessayer ».
+- **Liens** : seuls les liens `https://` (domaine affiché, nouvel onglet) et les chemins du site sont proposés ; le formulaire refuse les autres.
+
+Limites : le service de formation publié n'expose ni temps passé, ni attestation, ni date de dernière activité, ni origine des formations ; les éléments de maquette qui en dépendent ne sont pas affichés.
+
 ## Identité des reçus apprenant (MAIR-350)
 
 Le reçu de démarrage confirme uniquement l’identifiant non vide demandé. Le reçu

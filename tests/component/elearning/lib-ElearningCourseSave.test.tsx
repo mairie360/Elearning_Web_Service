@@ -94,7 +94,8 @@ describe.each(['create', 'update'] as const)('confirmed Elearning %s', (mode) =>
     const dialog = openAndFill(mode);
     fireEvent.submit(dialog.querySelector('form')!);
     expect(dialog).toHaveAttribute('aria-busy', 'true');
-    expect(within(dialog).getByRole('button', { name: 'Enregistrement…' })).toBeDisabled();
+    // MAIR-932 C4: the save button spins (aria-busy) while the request runs.
+    expect(within(dialog).getByRole('button', { name: new RegExp(submitLabel) })).toHaveAttribute('aria-busy', 'true');
     expect(within(dialog).getByRole('button', { name: 'Annuler' })).toBeDisabled();
     // The lib Modal keeps its close button enabled; a pending save ignores it (lib ConfirmModal rule).
     fireEvent.click(within(dialog).getByRole('button', { name: 'Fermer' }));

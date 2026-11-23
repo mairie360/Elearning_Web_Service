@@ -1,5 +1,13 @@
 # Elearning_Web_Service — Technical documentation
 
+## V2: component tree and course screen (MAIR-827)
+
+- `ElearningModule` picks the shell: `AccessibleShell` for the catalogue, `CoursePlayer` (lib 2.3 `AppShell layout="focus"`) when the URL carries `?play=<id>` (`catalogQuery.ts`). `ToastProvider` (top right) wraps both; `CatalogToasts` turns the outcomes of `catalogActions.ts` into titled toasts.
+- `ElearningCatalog`: `CatalogHeader` (PageHeader), `ResumeCard`, `LearnerMetrics` (clickable MetricCards) or `ElearningAdminStats` (Panel + RefreshButton), `CatalogFilters` (TextField + menu FilterSelect, `requirement` filter in the URL), `ManagedCourseCard` → `ElearningCourseCard`, `SelectedCourseDetails` (sheet, Modal l), `ElearningCourseFormModal` (FormSection, `validateCourseForm`, ConfirmModal before removing a chapter).
+- `CoursePlayer`: `PlayerSummary`, `PlayerChapter` → `ChapterContentItem` (links through `safeContentLink`), `CourseEndScreen` → `CourseRatingCard` (Rating).
+- DOM-free rules: `catalog-model.ts` (filters, indicators, `resumeSuggestion`, deadlines), `course-progress.ts`, `course-rating.ts`, `safe-link.ts`, `course-form-values.ts`.
+- `subscribePageReturn` and `parseFrontUrl` come from `@mairie360/lib-components/shared` (the client bundle provenance check refuses an identical local copy).
+
 ## Reader test scope — MAIR-350
 
 The HTTP/HTML runner now recursively collects elements in nested child arrays

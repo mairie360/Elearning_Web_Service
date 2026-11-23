@@ -225,6 +225,7 @@ export function ElearningModule({
           }
           onCourseAction={(course) => actions.startCourse(course.id)}
           onPlayCourse={playCourse}
+          onNotice={title => report('info', title)}
           onCreateCourse={capabilities.courseManagement ? (course) => actions.createCourse(course) : undefined}
           onUpdateCourse={capabilities.courseManagement ? (course) => actions.updateCourse(course) : undefined}
           onDeleteCourse={capabilities.courseManagement ? (course) => void actions.deleteCourse(course.id) : undefined}

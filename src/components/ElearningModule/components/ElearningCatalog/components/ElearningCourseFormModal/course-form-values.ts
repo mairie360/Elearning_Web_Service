@@ -126,3 +126,56 @@ export const removeContent = (chapters: Chapters, chapterId: string, contentId: 
 /** A link keeps an address; any other type keeps a file name. */
 export const resourcePatch = (type: ElearningCourseContentType, value: string): Partial<ElearningCourseContentItem> =>
   type === 'link' ? { href: value, fileName: undefined } : { fileName: value, href: undefined };
+
+/** MAIR-932 / MAIR-703: what the administrator must fix before the course is sent. */
+export interface CourseFormErrors {
+  title?: string;
+  description?: string;
+  duration?: string;
+  /** Unsafe address of a link resource, by content id. */
+  links: Record<string, string>;
+}
+
+const SAFE_PATH = /^\/(?!\/)[^\\]*$/;
+
+/** A link resource must be an `https:` address or a path of this site (MAIR-703). */
+export const linkError = (content: ElearningCourseContentItem) => {
+  if (content.type !== 'link') return undefined;
+  const href = content.href?.trim();
+  if (!href) return undefined;
+  if (SAFE_PATH.test(href)) return undefined;
+  try {
+    const url = new URL(href);
+    return url.protocol === 'https:' && url.hostname ? undefined : 'Saisissez une adresse sécurisée commençant par https://.';
+  } catch {
+    return 'Saisissez une adresse sécurisée commençant par https://.';
+  }
+};
+
+export const validateCourseForm = (values: ElearningCourseFormValues): CourseFormErrors => {
+  const links: Record<string, string> = {};
+  for (const chapter of values.chapters) {
+    for (const content of chapter.contents) {
+      const error = linkError(content);
+      if (error) links[content.id] = error;
+    }
+  }
+  return {
+    title: values.title.trim() ? undefined : 'Saisissez le titre de la formation.',
+    description: values.description.trim() ? undefined : 'Saisissez la description de la formation.',
+    duration: values.duration.trim() ? undefined : 'Saisissez la durée totale de la formation.',
+    links,
+  };
+};
+
+export const hasCourseFormErrors = (errors: CourseFormErrors) =>
+  Boolean(errors.title || errors.description || errors.duration || Object.keys(errors.links).length);
+
+/** Id of the first field to fix, in the order of the form. */
+export const firstErrorFieldId = (errors: CourseFormErrors) => {
+  if (errors.title) return 'elearning-course-title';
+  if (errors.description) return 'elearning-course-description';
+  if (errors.duration) return 'elearning-course-duration';
+  const content = Object.keys(errors.links)[0];
+  return content ? `content-resource-${content}` : undefined;
+};

@@ -1,4 +1,4 @@
-import { SelectField } from '@mairie360/lib-components/primitives';
+import { FormSection, SelectField } from '@mairie360/lib-components/primitives';
 
 import type { ElearningFilterOption } from '@/components/ElearningModule/components/ElearningCatalog/catalog-types';
 import {
@@ -30,12 +30,11 @@ export const authorStatusOptions = (statusOptions: ElearningFilterOption[], curr
 };
 
 export const CoursePresentationSection = ({ values, statusOptions, onStatusChange, onRequirementChange, onLevelChange }: CoursePresentationSectionProps) => (
-  <section aria-labelledby="course-presentation-heading" className="border-t border-[var(--mairie-border)] pt-5">
-    <h3 id="course-presentation-heading" className="text-base font-bold text-[var(--mairie-text)]">Présentation</h3>
-    <div className="mt-4 grid gap-4 sm:grid-cols-3">
+  <FormSection title="Présentation" description="Statut, caractère et niveau affichés sur la tuile.">
+    <div className="grid gap-4 sm:grid-cols-3">
       <SelectField id="elearning-course-status" label="Statut" placeholder={null} options={authorStatusOptions(statusOptions, values.statusValue)} value={values.statusValue} onChange={onStatusChange} />
       <SelectField id="elearning-course-requirement" label="Type de parcours" placeholder={null} options={requirementOptions} value={values.requirement} onChange={onRequirementChange} />
       <SelectField id="elearning-course-level" label="Niveau" placeholder={null} options={levelOptions} value={values.level} onChange={onLevelChange} />
     </div>
-  </section>
+  </FormSection>
 );

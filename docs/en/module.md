@@ -1,5 +1,22 @@
 # Elearning_Web_Service — Module overview
 
+## Module V2 (epic MAIR-827)
+
+The module follows the V2 mock-up and only uses components of `@mairie360/lib-components` 2.3 (light mode only).
+
+- **Page**: « E-learning » header (agent subtitle « Développez vos compétences à votre rythme. », administrator « Pilotez les formations proposées aux agents de la commune. » with « Nouvelle formation »), no page footer.
+- **Resume**: at the top of the agent's page, the most advanced course in progress (« Reprendre où vous en étiez »), else the next mandatory course not started (« À commencer en priorité »).
+- **Mon suivi**: courses in progress, mandatory to finish (next deadline), completed, available. Each indicator filters the list in place; a second click removes the filter. Administrators see « Indicateurs du centre de formation » with « Actualiser » instead.
+- **Search and filters**: search, Catégorie, Statut (« À terminer » gathers not started and in progress), Caractère (mandatory / optional), result counter; filters are kept in the URL.
+- **Tiles**: the same fields for every course; the whole tile opens the course sheet.
+- **Sheet**: the course facts and « Votre avancement »; « Commencer », « Continuer » or « Revoir » open the course screen.
+- **Course screen** (`?play=<id>`): full screen without the navigation band, table of contents, chapter, « Marquer comme terminé » (every remaining content of the chapter is completed one after the other), « Précédent » / « Suivant » / « Terminer ». The browser back button or « Quitter la formation » returns to the catalogue.
+- **End of course**: star rating (when the service offers it), written reviews, back to the catalogue.
+- **Feedback**: every action shows a toast (success, failure, information); read errors stay above the catalogue with « Réessayer ».
+- **Links**: only `https://` links (domain shown, new tab) and paths of this site are offered; the form refuses the others.
+
+Limits: the published training service exposes no time spent, certificate, date of last activity nor course origin; the mock-up parts that need them are not shown.
+
 ## Learner receipt identity (MAIR-350)
 
 A course-start receipt confirms only its requested nonblank course identifier.

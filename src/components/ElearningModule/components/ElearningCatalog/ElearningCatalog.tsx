@@ -57,6 +57,8 @@ export interface ElearningCatalogProps extends React.HTMLAttributes<HTMLElement>
   onCreateCourse?: (course: ElearningCourse, values: ElearningCourseFormValues) => ElearningCourseSaveResult;
   onUpdateCourse?: (course: ElearningCourse, values: ElearningCourseFormValues) => ElearningCourseSaveResult;
   onDeleteCourse?: (course: ElearningCourse) => void;
+  /** An information of the course form (« Chapitre supprimé »), shown as a toast by the page. */
+  onNotice?: (title: string) => void;
   /** Opens the course screen (MAIR-1148) at the current chapter of the course. */
   onPlayCourse?: (course: ElearningCourse) => void;
 }
@@ -87,6 +89,7 @@ export const ElearningCatalog = ({
   onUpdateCourse,
   onDeleteCourse,
   onPlayCourse,
+  onNotice,
   className = '',
   ...props
 }: ElearningCatalogProps) => {
@@ -233,6 +236,8 @@ export const ElearningCatalog = ({
         submitLabel={editingCourse ? 'Enregistrer' : 'Créer'}
         initialValues={courseFormInitialValues}
         statusOptions={statuses}
+        categories={categoryOptions.filter((option) => option.value !== 'all').map((option) => option.value)}
+        onChapterRemoved={() => onNotice?.('Chapitre supprimé')}
         onCancel={closeCourseForm}
         onSubmit={handleSubmitCourseForm}
       />
