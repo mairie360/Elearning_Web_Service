@@ -18,13 +18,13 @@ it('resets a filtered empty catalogue through its shared empty-state action with
   const user = userEvent.setup();
   const onCourseAction = vi.fn();
   render(<ElearningCatalog courses={[{ id: 'a', title: 'Écologie', description: 'Agir' }]}
-    emptyLabel="Aucune formation pour ces filtres" onCourseAction={onCourseAction} />);
+    emptyLabel="Aucune formation ne correspond à votre recherche." onCourseAction={onCourseAction} />);
   const search = screen.getByPlaceholderText('Rechercher une formation...');
   await user.type(search, 'budget');
-  const empty = screen.getByRole('region', { name: 'Aucune formation pour ces filtres' });
+  const empty = screen.getByRole('region', { name: 'Aucune formation ne correspond à votre recherche.' });
   await user.click(within(empty).getByRole('button', { name: 'Réinitialiser les filtres' }));
   expect(search).toHaveValue('');
   expect(screen.getByRole('heading', { name: 'Écologie' })).toBeVisible();
-  expect(screen.queryByRole('region', { name: 'Aucune formation pour ces filtres' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'Aucune formation ne correspond à votre recherche.' })).not.toBeInTheDocument();
   expect(onCourseAction).not.toHaveBeenCalled();
 });

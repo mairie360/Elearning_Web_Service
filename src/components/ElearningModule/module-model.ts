@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 
 import type { ElearningCatalog } from './components/ElearningCatalog';
 import type { ElearningCatalogResponse } from '../../lib/elearning-api';
-import { parseFrontUrl } from '../../lib/front-url';
+import { parseFrontUrl } from '@mairie360/lib-components/shared';
 import { frontUrl } from '../../lib/front-urls';
 import { settingsProfileUrl } from '../../lib/settings-profile';
 import { withCategoryReset, withStatusReset } from '../../features/elearning/catalogFilters';
@@ -60,3 +60,16 @@ export const elearningShellHrefs = () => {
     settings: settingsUrl,
   };
 };
+
+/** MAIR-920: one action outcome, shown once as a toast. */
+export interface CatalogFeedback {
+  id: number;
+  tone: 'success' | 'danger' | 'info' | 'warning';
+  title: string;
+  message?: string;
+}
+
+/** MAIR-1142: the page title is « E-learning »; its subtitle depends on the role. */
+export const PAGE_TITLE = 'E-learning';
+export const pageSubtitle = (isAdmin: boolean | undefined) =>
+  isAdmin ? 'Pilotez les formations proposées aux agents de la commune.' : 'Développez vos compétences à votre rythme.';

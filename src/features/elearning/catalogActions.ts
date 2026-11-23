@@ -22,8 +22,9 @@ export type CatalogView = {
   ) => void;
   setLoading: (loading: boolean) => void;
   setError: (message: string | null) => void;
-  setMutationError: (message: string | null) => void;
-  setMutationSuccess?: (message: string | null) => void;
+  /** MAIR-920: `title` is the toast title of the action outcome (« Impossible de commencer »…). */
+  setMutationError: (message: string | null, title?: string) => void;
+  setMutationSuccess?: (message: string | null, title?: string) => void;
 };
 
 /** Cours tel que produit par le formulaire de lib-components (`statusValue` y est une chaîne libre). */
@@ -133,13 +134,13 @@ export function createCatalogActions(
     );
   }
 
-  async function handleFailure(error: unknown, report: (message: string) => void) {
+  async function handleFailure(error: unknown, report: (message: string, title?: string) => void, title?: string) {
     if (error instanceof BffRequestError && error.status === 401) {
       await onUnauthorized();
       return;
     }
 
-    report(getErrorMessage(error));
+    report(getErrorMessage(error), title);
   }
 
   async function loadCatalog() {
@@ -162,7 +163,7 @@ export function createCatalogActions(
     }
   }
 
-  async function mutateThenReload(mutation: () => Promise<unknown>) {
+  async function mutateThenReload(mutation: () => Promise<unknown>, failureTitle?: string) {
     view.setMutationError(null);
     view.setMutationSuccess?.(null);
 
@@ -173,7 +174,7 @@ export function createCatalogActions(
       // been confirmed, so a retained form must not resend it on a refresh retry.
       return true;
     } catch (error) {
-      await handleFailure(error, view.setMutationError);
+      await handleFailure(error, view.setMutationError, failureTitle);
       return false;
     }
   }
@@ -191,12 +192,13 @@ export function createCatalogActions(
       catalogRevision += 1;
       view.setLoading(false);
       view.setCatalogResponse((current) => replaceCatalogCourse(current, course));
+      view.setMutationSuccess?.(`« ${course.title} » est ouverte.`, "Formation commencée");
       // Start returns only the confirmed course, not the official statistics.
       // Retain it even if this GET fails; retry must never repeat the start POST.
       await loadCatalog();
       return true;
     } catch (error) {
-      await handleFailure(error, view.setMutationError);
+      await handleFailure(error, view.setMutationError, "Impossible de commencer");
       return false;
     }
   }
@@ -229,7 +231,13 @@ export function createCatalogActions(
               chapters: response.chapters,
             } } : {}),
           }));
-        }),
+          if (completed) {
+            view.setMutationSuccess?.(
+              response.completed ? "Vous avez suivi tous les chapitres." : "Votre progression est enregistrée.",
+              response.completed ? "Formation terminée" : "Chapitre terminé",
+            );
+          }
+        }, "Progression non enregistrée"),
       ),
     rateCourse: (courseId: string, rating: number) =>
       runLearnerAction(`rating:${JSON.stringify([courseId, rating])}`, () =>
@@ -253,7 +261,8 @@ export function createCatalogActions(
               },
             } } : {}),
           }));
-        }),
+          view.setMutationSuccess?.(`Votre note : ${rating}/5.`, "Merci pour votre avis");
+        }, "Note non envoyée"),
       ),
     createCourse: (course: CatalogCourseInput) =>
       mutateThenReload(async () => {
@@ -264,8 +273,8 @@ export function createCatalogActions(
             ? courses.map((current) => current.id === response.course.id ? response.course : current)
             : [...courses, response.course],
         );
-        view.setMutationSuccess?.(`Formation "${response.course.title}" créée.`);
-      }),
+        view.setMutationSuccess?.(`« ${response.course.title} » est disponible dans le catalogue.`, "Formation créée");
+      }, "Formation non créée"),
     updateCourse: (course: CatalogCourseInput) =>
       mutateThenReload(async () => {
         const courseId = course.id;
@@ -274,8 +283,8 @@ export function createCatalogActions(
         // cannot rename its identity or confirm another catalogue course.
         if (!courseId.trim() || response.course.id !== courseId) throw new CourseUpdateNotConfirmedError();
         updateConfirmedCourse(courseId, () => response.course);
-        view.setMutationSuccess?.(`Formation "${response.course.title}" mise à jour.`);
-      }),
+        view.setMutationSuccess?.(`« ${response.course.title} » est à jour.`, "Formation modifiée");
+      }, "Formation non modifiée"),
     deleteCourse: (courseId: string) => {
       const pending = pendingDeletions.get(courseId);
       if (pending) return pending;
@@ -287,8 +296,8 @@ export function createCatalogActions(
           throw new Error("Course deletion was not confirmed.");
         }
         updateConfirmedCatalogCourses((courses) => courses.filter((course) => course.id !== courseId));
-        view.setMutationSuccess?.('Formation supprimée.');
-      })).finally(() => { pendingDeletions.delete(courseId); });
+        view.setMutationSuccess?.('La formation a été retirée du catalogue.', 'Formation supprimée');
+      }, 'Formation non supprimée')).finally(() => { pendingDeletions.delete(courseId); });
       pendingDeletions.set(courseId, result);
       return result;
     },

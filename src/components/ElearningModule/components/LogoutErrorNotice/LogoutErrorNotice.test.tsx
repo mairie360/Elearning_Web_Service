@@ -10,6 +10,7 @@ describe('LogoutErrorNotice', () => {
   it('announces the failure and offers the return to Login', async () => {
     const onBackToLogin = vi.fn();
     render(<LogoutErrorNotice message="Déconnexion à vérifier" onBackToLogin={onBackToLogin} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Déconnexion non confirmée');
     expect(screen.getByRole('alert')).toHaveTextContent('Déconnexion à vérifier');
     await userEvent.click(screen.getByRole('button', { name: 'Retour à la connexion' })); expect(onBackToLogin).toHaveBeenCalledTimes(1);
   });
