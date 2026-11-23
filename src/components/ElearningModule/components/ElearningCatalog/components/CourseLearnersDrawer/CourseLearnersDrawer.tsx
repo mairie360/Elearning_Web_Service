@@ -1,9 +1,9 @@
 import React from 'react';
-import { Button, ConfirmModal, DataTable, DeleteIconButton, Drawer, StatusPill, Text } from '@mairie360/lib-components/primitives';
+import { Button, ConfirmModal, Drawer } from '@mairie360/lib-components/primitives';
 
 import { AgentPicker } from './components/AgentPicker';
+import { LearnersTable } from './components/LearnersTable';
 import { agentName, appendPage, type AgentIdentity, type CourseLearner, type LearnersPage, type Page } from '@/features/elearning/enrolmentActions';
-import { frenchDate } from '../../catalog-model';
 
 /** What the drawer asks of the page (`createEnrolmentActions`, bound to the course). */
 export interface CourseLearnersPort {
@@ -21,15 +21,6 @@ export interface CourseLearnersDrawerProps {
   onChanged?: () => void;
 }
 
-const STATUS: Record<CourseLearner['status'], { label: string; tone: 'success' | 'info' | 'neutral' }> = {
-  completed: { label: 'Terminée', tone: 'success' },
-  'in-progress': { label: 'En cours', tone: 'info' },
-  'not-started': { label: 'Non commencée', tone: 'neutral' },
-};
-
-/** « 1 agent inscrit », « 12 agents inscrits ». */
-const learnersLabel = (total: number) => (total ? `${total} agent${total > 1 ? 's' : ''} inscrit${total > 1 ? 's' : ''}` : 'Aucun agent inscrit');
-
 /**
  * MAIR-817: « Agents inscrits » of a course, for the administrators: the learners and their progress, « Inscrire des
  * agents » (search among the agents who do not follow it) and « Désinscrire ».
@@ -46,6 +37,8 @@ export const CourseLearnersDrawer = ({ course, port, onClose, onChanged }: Cours
   const [removing, setRemoving] = React.useState<CourseLearner | null>(null);
   const [revision, setRevision] = React.useState(0);
   const busyRef = React.useRef(false);
+  // Bumped by every reload: a « Afficher plus » page requested before it is dropped.
+  const generationRef = React.useRef(0);
 
   React.useEffect(() => {
     const controller = new AbortController();
@@ -61,14 +54,15 @@ export const CourseLearnersDrawer = ({ course, port, onClose, onChanged }: Cours
   }, [course.id, port, revision]);
 
   /** Reads the learners again from the first page. */
-  const reload = () => { setState('loading'); setRevision((value) => value + 1); };
+  const reload = () => { generationRef.current += 1; setState('loading'); setRevision((value) => value + 1); };
 
   const more = async () => {
     if (nextOffset === null || loadingMore) return;
+    const generation = generationRef.current;
     setLoadingMore(true);
     try {
       const page = await port.loadLearners(course.id, nextOffset);
-      if (page) { setLearners((shown) => appendPage(shown, page.items)); setTotal(page.total); setNextOffset(page.nextOffset); }
+      if (page && generation === generationRef.current) { setLearners((shown) => appendPage(shown, page.items)); setTotal(page.total); setNextOffset(page.nextOffset); }
     } finally {
       setLoadingMore(false);
     }
@@ -136,35 +130,17 @@ export const CourseLearnersDrawer = ({ course, port, onClose, onChanged }: Cours
         {adding ? (
           <AgentPicker searchAgents={searchAgents} selected={selected} onSelectedChange={setSelected} disabled={busy} />
         ) : (
-          <div className="flex flex-col gap-4">
-            {state === 'default' ? <Text tone="muted" size="s">{learnersLabel(total)}</Text> : null}
-            <DataTable<CourseLearner>
-              label="Agents inscrits"
-              rows={learners}
-              rowKey={(learner) => learner.userId}
-              state={state === 'loading' ? 'loading' : state === 'error' ? 'error' : learners.length ? 'default' : 'empty'}
-              stateProps={state === 'error'
-                ? { title: 'Les agents inscrits n’ont pas pu être chargés.', onRetry: reload }
-                : state === 'loading' ? { title: 'Chargement des agents inscrits…' }
-                  : { title: 'Aucun agent ne suit encore cette formation.', description: 'Inscrivez des agents pour qu’ils la retrouvent dans leur catalogue.' }}
-              columns={[
-                { key: 'agent', header: 'Agent', kind: 'strong', cell: (learner) => agentName(learner) },
-                { key: 'status', header: 'Statut', kind: 'content', cell: (learner) => <StatusPill size="s" label={STATUS[learner.status].label} tone={STATUS[learner.status].tone} /> },
-                { key: 'progress', header: 'Progression', align: 'end', cell: (learner) => `${learner.progress} %` },
-                { key: 'lastActivityAt', header: 'Dernière activité', cell: (learner) => frenchDate(learner.lastActivityAt) ?? 'Aucune' },
-                { key: 'lastReminderAt', header: 'Dernière relance', cell: (learner) => frenchDate(learner.lastReminderAt) ?? 'Jamais' },
-                {
-                  key: 'actions', header: 'Actions', hideHeader: true, kind: 'actions',
-                  cell: (learner) => (
-                    <DeleteIconButton size="s" label={`Désinscrire ${agentName(learner)}`} disabled={busy} onClick={() => setRemoving(learner)} />
-                  ),
-                },
-              ]}
-            />
-            {state === 'default' && nextOffset !== null ? (
-              <Button variant="ghost" label="Afficher plus d’agents inscrits" loading={loadingMore} onClick={() => void more()} />
-            ) : null}
-          </div>
+          <LearnersTable
+            learners={learners}
+            total={total}
+            state={state}
+            hasMore={nextOffset !== null}
+            loadingMore={loadingMore}
+            busy={busy}
+            onMore={() => void more()}
+            onRetry={reload}
+            onRemove={setRemoving}
+          />
         )}
       </Drawer>
       <ConfirmModal

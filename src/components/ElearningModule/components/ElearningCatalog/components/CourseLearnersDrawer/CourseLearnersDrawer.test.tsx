@@ -102,4 +102,21 @@ describe('CourseLearnersDrawer', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Fermer la liste des agents inscrits' }));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('drops a « Afficher plus » page requested before the list was read again', async () => {
+    let releaseMore: (page: unknown) => void = () => {};
+    const first = { items: [learner('42', 'Alice', 'Martin')], total: 2, nextOffset: 1 };
+    const loadLearners = vi.fn((_courseId: string, offset = 0) => (offset
+      ? new Promise((resolve) => { releaseMore = resolve; })
+      : Promise.resolve(first))) as unknown as CourseLearnersPort['loadLearners'];
+    render(<CourseLearnersDrawer course={course} port={port({ loadLearners })} onClose={vi.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Afficher plus d’agents inscrits' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Désinscrire Alice Martin' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Désinscrire' }));
+    await waitFor(() => expect(loadLearners).toHaveBeenCalledTimes(3));
+    releaseMore({ items: [learner('99', 'Zoé', 'Stale')], total: 2, nextOffset: null });
+    await screen.findByText('Alice Martin');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByText('Zoé Stale')).not.toBeInTheDocument();
+  });
 });

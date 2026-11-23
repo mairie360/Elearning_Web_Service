@@ -980,24 +980,28 @@ describe('Enrolment of agents by the administrator (MAIR-817)', () => {
     }));
     const first = actions.enrol('4', ['42', '50', '51']);
     assert.equal(actions.enrol('4', ['42', '50', '51']), first);
-    assert.equal(await first, true);
-    assert.deepEqual(bffElearning.calls('/elearning/admin/courses/{courseId}/learners', 'POST')[0].body, { userIds: ['42', '50', '51'] });
-    assert.deepEqual(state.reports[0], { tone: 'success', title: 'Agents inscrits', message: '2 agents inscrits ; 1 agent déjà inscrit.' });
+    const other = actions.enrol('4', ['60']);
+    assert.notEqual(other, first, 'another selection is not the pending one');
+    assert.deepEqual(await Promise.all([first, other]), [true, true]);
+    const posts = bffElearning.calls('/elearning/admin/courses/{courseId}/learners', 'POST').map(({ body }) => body.userIds);
+    assert.deepEqual(posts.sort(), [['42', '50', '51'], ['60']]);
+    assert.ok(state.reports.some((report) => report.message === '2 agents inscrits ; 1 agent déjà inscrit.'));
+    state.reports.length = 0;
     assert.equal(await actions.enrol('4', []), false);
 
     bffElearning.on('post', '/elearning/admin/courses/{courseId}/learners', { body: { courseId: '4', enrolled: ['50'], alreadyEnrolled: [], failed: ['51', '52'] } });
     assert.equal(await actions.enrol('4', ['50', '51', '52']), false);
-    assert.deepEqual(state.reports[1], { tone: 'danger', title: 'Inscription incomplète', message: '1 agent inscrit ; 2 inscriptions impossibles.' });
+    assert.deepEqual(state.reports[0], { tone: 'danger', title: 'Inscription incomplète', message: '1 agent inscrit ; 2 inscriptions impossibles.' });
     bffElearning.on('post', '/elearning/admin/courses/{courseId}/learners', { body: { courseId: '4', enrolled: [], alreadyEnrolled: [], failed: ['51'] } });
     assert.equal(await actions.enrol('4', ['51']), false);
-    assert.equal(state.reports[2].title, 'Inscription impossible');
+    assert.equal(state.reports[1].title, 'Inscription impossible');
     bffElearning.on('post', '/elearning/admin/courses/{courseId}/learners', errorReply(404, 'NOT_FOUND', 'Course not found.'));
     assert.equal(await actions.enrol('4', ['51']), false);
-    assert.deepEqual(state.reports[3], { tone: 'danger', title: 'Inscription impossible', message: 'Cette formation n’existe plus.' });
+    assert.deepEqual(state.reports[2], { tone: 'danger', title: 'Inscription impossible', message: 'Cette formation n’existe plus.' });
     bffElearning.on('post', '/elearning/admin/courses/{courseId}/learners', errorReply(401, 'UNAUTHORIZED', 'Session'));
     assert.equal(await actions.enrol('4', ['51']), false);
     assert.equal(state.unauthorized, 1);
-    assert.equal(state.reports.length, 4);
+    assert.equal(state.reports.length, 3);
   });
 
   test('« Désinscrire » removes the learner; one already gone counts as done', async () => {

@@ -101,7 +101,7 @@ export function createEnrolmentActions(
       }
     },
     /** « Inscrire » the picked agents; `true` when every one of them is now a learner. */
-    enrol: (courseId: string, userIds: string[]) => once(`enrol:${courseId}`, async () => {
+    enrol: (courseId: string, userIds: string[]) => once(`enrol:${courseId}:${[...userIds].sort().join(',')}`, async () => {
       if (!userIds.length) return false;
       try {
         const outcome = await enrolLearners(courseId, userIds);
