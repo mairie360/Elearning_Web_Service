@@ -1,4 +1,4 @@
-import { navigateToLogin } from "../../lib/auth-session";
+import { leaveForLogin, LOGIN_UNAVAILABLE_TITLE } from "./session-expiry";
 import { BffRequestError } from "../../lib/bff-client";
 import {
   enrolLearners,
@@ -60,7 +60,7 @@ export function appendPage<T extends { userId: string }>(shown: T[], page: T[]) 
 
 export function createEnrolmentActions(
   report: EnrolmentReport,
-  onUnauthorized: () => Promise<void> = async () => { navigateToLogin(); },
+  onUnauthorized: () => Promise<void> = leaveForLogin((message) => report('danger', LOGIN_UNAVAILABLE_TITLE, message)),
 ) {
   const unauthorized = async (error: unknown) => {
     if (!(error instanceof BffRequestError) || error.status !== 401) return false;
