@@ -18,11 +18,7 @@ export interface LearnerMetricsProps {
 
 const NONE: MetricFilter = { status: 'all', requirement: 'all' };
 
-/**
- * MAIR-882 / MAIR-1144: « Mon suivi », the agent's own indicators on the lib MetricCard. Each one filters the list
- * in place. The lib MetricCard is not clickable yet (MAIR-1140): a full-size button lies over it, named after the
- * metric and pressed while its filter is applied.
- */
+/** MAIR-882 / MAIR-1144: « Mon suivi », the agent's own indicators; each MetricCard filters the list in place (MAIR-1140). */
 export const LearnerMetrics = ({ metrics, active, onSelect }: LearnerMetricsProps) => {
   const cards = [
     { label: 'Formations en cours', value: metrics.inProgress, icon: Clock3, filter: { status: 'in-progress', requirement: 'all' } },
@@ -41,16 +37,18 @@ export const LearnerMetrics = ({ metrics, active, onSelect }: LearnerMetricsProp
         {cards.map(card => {
           const pressed = card.filter !== NONE && card.filter.status === active.status && card.filter.requirement === active.requirement;
           return (
-            <div key={card.label} className={`relative rounded-[var(--mairie-radius-l)] ${pressed ? 'outline outline-2 outline-offset-2 outline-[var(--mairie-accent)]' : ''}`}>
-              <MetricCard label={card.label} value={card.value} icon={card.icon} size="m" trend="none" trendLabel={card.trendLabel} className="h-full" />
-              <button
-                type="button"
-                aria-pressed={pressed}
-                aria-label={`${card.label} : ${card.value}. ${pressed ? 'Retirer le filtre' : 'Afficher ces formations'}`}
-                className="absolute inset-0 cursor-pointer rounded-[inherit] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mairie-accent)]"
-                onClick={() => onSelect(pressed ? NONE : card.filter)}
-              />
-            </div>
+            <MetricCard
+              key={card.label}
+              label={card.label}
+              value={card.value}
+              icon={card.icon}
+              size="m"
+              trend="none"
+              trendLabel={card.trendLabel}
+              active={pressed}
+              onClick={() => onSelect(pressed ? NONE : card.filter)}
+              className="h-full"
+            />
           );
         })}
       </div>
