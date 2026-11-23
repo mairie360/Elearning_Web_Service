@@ -524,9 +524,9 @@ test('the real chapter controls retain the selected reader and server progressio
   assert.deepEqual(bffElearning.requests[1].pathParams, { courseId: course.id, contentId: '421' });
   assert.deepEqual(bffElearning.requests[1].body, { chapterId: '42', completed: true });
   // The refused refresh is reported in the catalogue, where « Réessayer » reads it again.
+  // The screen stays locked until the refused read settles: « Quitter la formation » is only enabled then.
+  await view.waitFor(() => view.hostElements((props, text, tag) => tag === 'button' && text === 'Quitter la formation' && !props.disabled).length === 1);
   await view.click('Quitter la formation');
-  // The refused read arrives after the request is counted: wait for it instead of racing it.
-  await view.waitFor(() => /Relecture du parcours refusée/.test(view.text()));
   assert.match(view.text(), /Relecture du parcours refusée/);
 });
 
