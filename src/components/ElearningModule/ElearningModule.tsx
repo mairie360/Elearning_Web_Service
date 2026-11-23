@@ -30,7 +30,8 @@ import {
   elearningShellHrefs,
   offeredFilter,
   pageSubtitle,
-  statusOptionsFor,
+  REQUIREMENT_FILTERS,
+  STATUS_FILTERS,
   type CatalogFeedback,
   withChapterDurations,
   type CatalogCourse,
@@ -140,9 +141,9 @@ export function ElearningModule({
   // library still types it as a string: present an empty duration rather than failing the type check or the reader.
   const catalogCourses = useMemo(() => (catalog ? withChapterDurations(catalog.courses) : []), [catalog]);
   const categoryOptions = categoryOptionsFor(catalog, catalogCourses);
-  const statusOptions = statusOptionsFor(catalog, catalogCourses);
   const category = offeredFilter(categoryOptions, pageUrl.state.category);
-  const statusFilter = offeredFilter(statusOptions, pageUrl.state.status);
+  const statusFilter = offeredFilter(STATUS_FILTERS, pageUrl.state.status);
+  const requirementFilter = offeredFilter(REQUIREMENT_FILTERS, pageUrl.state.requirement);
   const requestedCourseMissing =
     requestedCourseId !== null &&
     !!catalog &&
@@ -188,26 +189,18 @@ export function ElearningModule({
           defaultSearch={pageUrl.state.q}
           defaultCategory={category}
           defaultStatus={statusFilter}
-          onChangeCapture={event => {
-            // The shared catalogue owns its input state. Keep typing focused; only
-            // history navigation remounts it, while review drafts stay in this parent.
-            if (event.target instanceof HTMLInputElement && event.target.type === 'search') pageUrl.update({ q: event.target.value }, 'replace');
-          }}
-          onClickCapture={event => {
-            const option = (event.target as HTMLElement).closest<HTMLButtonElement>('button[role="option"]');
-            if (!option || option.disabled) return;
-            const field = option.parentElement?.previousElementSibling?.getAttribute('aria-label');
-            const choices = field === 'Toutes les catégories' ? categoryOptions : field === 'Tous les statuts' ? statusOptions : null;
-            const matching = choices?.filter(choice => choice.label === option.textContent?.trim() && !choice.disabled);
-            if (matching?.length === 1) pageUrl.update({ [field === 'Toutes les catégories' ? 'category' : 'status']: matching[0].value });
-          }}
+          defaultRequirement={requirementFilter}
+          onSearchChange={value => pageUrl.update({ q: value }, 'replace')}
+          onCategoryChange={value => pageUrl.update({ category: value })}
+          onStatusChange={value => pageUrl.update({ status: value })}
+          onRequirementChange={value => pageUrl.update({ requirement: value })}
           initialCourseId={requestedCourseId}
           onCourseClose={clearRequestedCourse}
           subtitle={pageSubtitle(user?.isAdmin)}
-          certificationCount={catalog.certificationCount}
           courses={catalogCourses}
-          stats={catalog.stats}
           adminStats={catalog.adminStats}
+          adminStatsState={loading ? 'loading' : error ? 'unavailable' : 'default'}
+          onRefreshStats={() => void actions.loadCatalog()}
           categories={withCategoryReset(catalog.categories)}
           statuses={withStatusReset(catalog.statuses)}
           currentUserRole={

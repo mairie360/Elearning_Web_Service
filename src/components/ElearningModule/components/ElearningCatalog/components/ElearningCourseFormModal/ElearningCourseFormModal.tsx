@@ -1,7 +1,7 @@
 import React from 'react';
 import { CancelButton, Modal, SaveButton } from '@mairie360/lib-components/primitives';
 
-import type { ElearningFilterOption } from '../ElearningFilterSelect';
+import type { ElearningFilterOption } from '../../catalog-types';
 import { CourseGeneralSection } from './components/CourseGeneralSection';
 import { CoursePresentationSection } from './components/CoursePresentationSection';
 import { CourseProgramSection } from './components/CourseProgramSection';

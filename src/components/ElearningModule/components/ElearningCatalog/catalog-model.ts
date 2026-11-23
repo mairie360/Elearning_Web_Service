@@ -1,10 +1,5 @@
-import { Award, BookOpen, Percent, Users } from 'lucide-react';
-
 import type { ElearningAdminStatsData } from './components/ElearningAdminStats';
-import type { ElearningBadgeVariant } from './components/ManagedCourseCard/components/ElearningCourseCard/components/ElearningBadge';
 import type { ElearningLearnerActionResult } from './components/SelectedCourseDetails/components/ElearningCourseDetailsModal/components/ElearningCourseRating';
-import type { ElearningFilterOption } from './components/ElearningFilterSelect';
-import type { ElearningStatCardProps } from './components/ElearningStatCard';
 import type { ElearningCourseDetails } from './course-types';
 import {
   createEmptyCourseChapter,
@@ -12,7 +7,7 @@ import {
   type ElearningCourseLevel,
   type ElearningCourseRequirement,
 } from './components/ElearningCourseFormModal';
-import type { ElearningCourse } from './catalog-types';
+import type { ElearningBadgeVariant, ElearningCourse, ElearningFilterOption } from './catalog-types';
 
 export const defaultStatuses: ElearningFilterOption[] = [
   { label: 'Tous les statuts', value: 'all' },
@@ -27,7 +22,7 @@ const statusMeta: Record<string, { label: string; variant: ElearningBadgeVariant
   completed: { label: 'Terminé', variant: 'completed' },
 };
 
-const levelMeta: Record<Exclude<ElearningCourseLevel, 'none'>, { label: string; variant: ElearningBadgeVariant }> = {
+export const levelMeta: Record<Exclude<ElearningCourseLevel, 'none'>, { label: string; variant: ElearningBadgeVariant }> = {
   beginner: { label: 'Débutant', variant: 'beginner' },
   intermediate: { label: 'Intermédiaire', variant: 'intermediate' },
   advanced: { label: 'Avancé', variant: 'advanced' },
@@ -108,25 +103,11 @@ export const buildCategories = (courses: ElearningCourse[]) => {
   ];
 };
 
-const getPercentage = (value: number, total: number) => `${total === 0 ? 0 : Math.round((value / total) * 100)}%`;
-
 const averageProgress = (courses: ElearningCourse[]) => {
   const withProgress = courses.filter(hasCourseProgress);
   return withProgress.length
     ? Math.round(withProgress.reduce((total, course) => total + getCourseProgress(course), 0) / withProgress.length)
     : 0;
-};
-
-export const buildDefaultStats = (courses: ElearningCourse[], certificationCount = 0): ElearningStatCardProps[] => {
-  const totalCourses = courses.length;
-  const participatingCourses = courses.filter((course) => inferStatusValue(course) !== 'not-started' || getCourseProgress(course) > 0).length;
-
-  return [
-    { label: 'Formations disponibles', value: totalCourses, icon: BookOpen, iconColor: 'var(--mairie-accent)' },
-    { label: 'Participation', value: getPercentage(participatingCourses, totalCourses), icon: Users, iconColor: 'var(--mairie-success-text)' },
-    { label: 'Complétion', value: `${averageProgress(courses)}%`, icon: Percent, iconColor: 'var(--mairie-purple-text)' },
-    { label: 'Certifications', value: certificationCount, icon: Award, iconColor: 'var(--mairie-warning-text)' },
-  ];
 };
 
 export const buildAdminStats = (courses: ElearningCourse[]): ElearningAdminStatsData => {
@@ -221,14 +202,101 @@ export const buildCourseFromFormValues = (values: ElearningCourseFormValues, exi
   };
 };
 
-/** Courses matching the search (title, description, instructor), the category and the status. */
-export const filterCourses = (courses: ElearningCourse[], search: string, category: string, status: string) => {
-  const normalizedSearch = normalize(search.trim());
-  return courses.filter((course) => {
-    const matchesSearch = !normalizedSearch || normalize(`${course.title} ${course.description} ${course.instructor ?? ''}`).includes(normalizedSearch);
-    return matchesSearch && (category === 'all' || course.category === category) && (status === 'all' || inferStatusValue(course) === status);
-  });
+/** MAIR-1145: status filter of the catalogue; `to-finish` gathers the courses not started and in progress. */
+export const statusFilterOptions: ElearningFilterOption[] = [
+  { label: 'À terminer', value: 'to-finish' },
+  { label: 'Non commencée', value: 'not-started' },
+  { label: 'En cours', value: 'in-progress' },
+  { label: 'Terminée', value: 'completed' },
+];
+
+/** MAIR-1145: « Caractère » filter, on the mandatory badge of the course. */
+export const requirementFilterOptions: ElearningFilterOption[] = [
+  { label: 'Obligatoires', value: 'mandatory' },
+  { label: 'Facultatives', value: 'optional' },
+];
+
+const matchesStatus = (course: ElearningCourse, status: string) => {
+  if (status === 'all') return true;
+  const value = inferStatusValue(course);
+  return status === 'to-finish' ? value !== 'completed' : value === status;
 };
+
+const matchesRequirement = (course: ElearningCourse, requirement: string) => {
+  if (requirement === 'all') return true;
+  const mandatory = getRequirement(course) === 'mandatory';
+  return requirement === 'mandatory' ? mandatory : !mandatory;
+};
+
+/** Courses matching the search (title, description, instructor), the category, the status and the requirement. */
+export const filterCourses = (courses: ElearningCourse[], search: string, category: string, status: string, requirement = 'all') => {
+  const normalizedSearch = normalize(search.trim());
+  const matching = courses.filter((course) => {
+    const matchesSearch = !normalizedSearch || normalize(`${course.title} ${course.description} ${course.instructor ?? ''}`).includes(normalizedSearch);
+    return matchesSearch && (category === 'all' || course.category === category) && matchesStatus(course, status) && matchesRequirement(course, requirement);
+  });
+  // Mandatory courses to finish are read by deadline, the nearest first (MAIR-1144).
+  if (requirement !== 'mandatory') return matching;
+  return [...matching].sort((left, right) => (deadlineTime(left.deadline) ?? Infinity) - (deadlineTime(right.deadline) ?? Infinity));
+};
+
+/** « 2 formations en cours », « 1 formation correspond à votre recherche »: the result counter of the list (MAIR-897). */
+export const resultCountLabel = (count: number, filtered: boolean) => {
+  const noun = count > 1 ? 'formations' : 'formation';
+  if (!filtered) return `${count} ${noun}`;
+  return `${count} ${noun} ${count > 1 ? 'correspondent' : 'correspond'} à votre recherche`;
+};
+
+const FRENCH_MONTHS = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
+
+/** The deadline the BFF sends is free text (« 30 juin 2026 ») or an ISO date; its time, when it can be read. */
+export const deadlineTime = (deadline?: string) => {
+  if (!deadline) return undefined;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(deadline);
+  if (iso) return Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  const french = /(\d{1,2})(?:er)?\s+([a-zà-ÿ]+)\.?\s+(\d{4})/i.exec(deadline);
+  if (!french) return undefined;
+  const month = FRENCH_MONTHS.findIndex(name => normalize(french[2]).startsWith(name.slice(0, 3)));
+  return month < 0 ? undefined : Date.UTC(Number(french[3]), month, Number(french[1]));
+};
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/** MAIR-1146: a deadline within 15 days is shown in the warning tone. */
+export const isDeadlineSoon = (deadline: string | undefined, now = Date.now()) => {
+  const time = deadlineTime(deadline);
+  return time !== undefined && time - now <= 15 * DAY;
+};
+
+/** MAIR-1144: the agent's own indicators, computed on the courses of the catalogue. */
+export interface LearnerMetrics {
+  inProgress: number;
+  mandatoryToFinish: number;
+  nextDeadline?: string;
+  completed: number;
+  available: number;
+}
+
+export const buildLearnerMetrics = (courses: ElearningCourse[]): LearnerMetrics => {
+  const mandatory = courses.filter(course => getRequirement(course) === 'mandatory' && inferStatusValue(course) !== 'completed');
+  const next = [...mandatory]
+    .filter(course => deadlineTime(course.deadline) !== undefined)
+    .sort((left, right) => deadlineTime(left.deadline)! - deadlineTime(right.deadline)!)[0];
+  return {
+    inProgress: courses.filter(course => inferStatusValue(course) === 'in-progress').length,
+    mandatoryToFinish: mandatory.length,
+    nextDeadline: next?.deadline,
+    completed: courses.filter(course => inferStatusValue(course) === 'completed').length,
+    available: courses.length,
+  };
+};
+
+/** Display of a course status (MAIR-908: info, warning, success). */
+export const statusDisplay = (statusValue: string) => (
+  statusValue === 'completed' ? { label: 'Terminée', tone: 'success' as const }
+    : statusValue === 'in-progress' ? { label: 'En cours', tone: 'warning' as const }
+      : { label: 'Non commencée', tone: 'info' as const }
+);
 
 /** Close the form once the save is confirmed; `false` (sync or async) keeps the draft open. */
 export const closeWhenSaved = (result: void | boolean | Promise<void | boolean>, close: () => void) => {
