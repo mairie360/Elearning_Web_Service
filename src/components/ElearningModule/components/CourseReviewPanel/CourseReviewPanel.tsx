@@ -1,6 +1,6 @@
 "use client";
 
-import { DataState, Skeleton, Toast } from "@mairie360/lib-components/primitives";
+import { Body, Button, Card, DataState, ErrorText, Help, Rating, SectionTitle, Skeleton, TextArea, Toast } from "@mairie360/lib-components/primitives";
 
 import { useEffect, useRef, useState } from 'react';
 import { pendingLearnerPort, validateReview } from '@/features/elearning/learnerFeatures';
@@ -28,10 +28,11 @@ export function CourseReviewPanel({ courseId, completed, draft, onDraftChange, p
     return () => { alive.current = false; controller.abort(); };
   }, [courseId, port]);
 
-  return <section className="mt-5 rounded border border-[#d8d2ca] bg-white p-4" aria-label="Avis écrits sur la formation">
-    <h3 className="font-semibold">Avis des participants</h3>
-    {readState === 'loading' ? <Skeleton label="Chargement des avis…" className="mt-3 !h-24" /> : readState === 'unavailable' ? <p className="mt-2 text-sm">Les avis écrits ne sont pas encore disponibles.</p> : reviews.length ? <ul className="mt-3 space-y-3">{reviews.map(review => <li key={review.id} className="border-b pb-3 [overflow-wrap:anywhere]"><strong>{review.author} · {review.rating}/5</strong><p className="whitespace-pre-wrap">{review.comment}</p></li>)}</ul> : <DataState state="empty" size="s" title="Aucun avis à afficher." description={null} className="mt-3" />}
-    <form className="mt-4 space-y-3" onSubmit={async event => {
+  // MAIR-928: the written reviews in a lib Card, the note on the lib Rating, no colour of its own.
+  return <Card aria-label="Avis écrits sur la formation" className="flex flex-col gap-3">
+    <SectionTitle as="h3">Avis des participants</SectionTitle>
+    {readState === 'loading' ? <Skeleton label="Chargement des avis…" className="!h-24" /> : readState === 'unavailable' ? <Body>Les avis écrits ne sont pas encore disponibles.</Body> : reviews.length ? <ul className="flex flex-col gap-3">{reviews.map(review => <li key={review.id} className="border-b border-[var(--mairie-border)] pb-3 [overflow-wrap:anywhere]"><strong>{review.author} · {review.rating}/5</strong><p className="whitespace-pre-wrap">{review.comment}</p></li>)}</ul> : <DataState state="empty" size="s" title="Aucun avis à afficher." description={null} />}
+    <form className="flex flex-col gap-3" onSubmit={async event => {
       event.preventDefault(); if (pending.current || !completed) return; setError(''); setStatus('');
       const invalid = validateReview(draft); if (invalid) { setError(invalid); return; }
       if (!port.saveReview) { setError('La publication des avis écrits n’est pas encore disponible. Votre brouillon est conservé ; aucun avis n’a été publié.'); return; }
@@ -46,10 +47,11 @@ export function CourseReviewPanel({ courseId, completed, draft, onDraftChange, p
       } catch (reason) { if (alive.current) setError(reason instanceof Error ? reason.message : 'L’avis n’a pas pu être publié. Votre brouillon est conservé.'); }
       finally { pending.current = false; if (alive.current) setBusy(false); }
     }}>
-      <h4 className="font-semibold">Votre avis</h4>{!completed ? <p className="text-sm">Terminez la formation pour publier votre avis.</p> : null}
-      <label className="block">Note<select className="mt-1 block w-full rounded border p-2" value={draft.rating} disabled={busy || !completed} onChange={event => onDraftChange({ ...draft,rating: Number(event.target.value) })}>{[1,2,3,4,5].map(value => <option value={value} key={value}>{value}/5</option>)}</select></label>
-      <label className="block">Avis écrit<textarea className="mt-1 block w-full rounded border p-2" rows={4} maxLength={5000} value={draft.comment} disabled={busy || !completed} onChange={event => onDraftChange({ ...draft,comment: event.target.value })} /></label>
-      <p className="text-xs">Brouillon conservé pendant cette visite, séparément de la note numérique.</p><button type="submit" className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy || !completed}>{busy ? 'Publication…' : 'Publier mon avis'}</button>
-    </form>{error ? <p role="alert" className="mt-3 text-sm text-red-700">{error}</p> : null}{status ? <Toast message={status} variant="success" className="mt-3" onClose={() => setStatus('')} /> : null}
-  </section>;
+      <SectionTitle as="h4">Votre avis</SectionTitle>{!completed ? <Body>Terminez la formation pour publier votre avis.</Body> : null}
+      <Rating label="Note" value={draft.rating} disabled={busy || !completed} onChange={value => onDraftChange({ ...draft, rating: value })} />
+      <TextArea label="Avis écrit" rows={4} maxLength={5000} value={draft.comment} disabled={busy || !completed} onChange={event => onDraftChange({ ...draft, comment: event.target.value })} />
+      <Help>Brouillon conservé pendant cette visite, séparément de la note numérique.</Help>
+      <div><Button type="submit" label={busy ? 'Publication…' : 'Publier mon avis'} loading={busy} disabled={busy || !completed} /></div>
+    </form>{error ? <ErrorText role="alert">{error}</ErrorText> : null}{status ? <Toast message={status} variant="success" onClose={() => setStatus('')} /> : null}
+  </Card>;
 }

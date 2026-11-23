@@ -1,4 +1,14 @@
-import type { ElearningCourseRatingProps, ElearningLearnerActionResult } from './components/SelectedCourseDetails/components/ElearningCourseDetailsModal/components/ElearningCourseRating';
+/** A learner action: `false` (or a rejected promise) when the service did not confirm it. */
+export type ElearningLearnerActionResult = void | boolean | Promise<void | boolean>;
+
+/** Rating of a finished course, as the BFF describes it. */
+export interface ElearningCourseCompletionRating {
+  title?: string;
+  initialValue?: number;
+  submitted?: boolean;
+  disabled?: boolean;
+  onSubmit?: (rating: number) => ElearningLearnerActionResult;
+}
 
 export type ElearningCourseContentType = 'video' | 'pdf' | 'document' | 'link' | 'quiz' | 'audio' | 'other';
 
@@ -60,7 +70,7 @@ export interface ElearningCourseDetails {
   ratingDistribution?: ElearningCourseRatingDistribution;
   progress?: number;
   completed?: boolean;
-  completionRating?: ElearningCourseRatingProps;
+  completionRating?: ElearningCourseCompletionRating;
   chapters: ElearningCourseChapter[];
   actionLabel?: string;
   onAction?: () => void;

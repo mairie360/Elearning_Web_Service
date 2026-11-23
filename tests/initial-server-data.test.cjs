@@ -100,26 +100,31 @@ test('only schema-owned DTO fields cross the server boundary at every nested lev
 
 test('foreground client refresh preserves the initial reader draft and refuses an incoherent replacement', async () => {
   const course = fixtures.course(); course.details.completed = true; course.details.progress = 100;
+  course.details.chapters = course.details.chapters.map(chapter => ({ ...chapter, completed: true, contents: chapter.contents.map(content => ({ ...content, completed: true })) }));
   const first = fixtures.catalogResponse([course]);
   bff.on('get', '/elearning/catalog', { body: first });
-  const element = await Home({ searchParams: Promise.resolve({ course: '4' }) });
-  const window = installWindow(); window.location.href = FRONT_ORIGIN + '/?course=4';
+  // MAIR-1149: the written review sits on the end screen of the course screen (`?play=`).
+  const element = await Home({ searchParams: Promise.resolve({ play: '4' }) });
+  const window = installWindow(); window.location.href = FRONT_ORIGIN + '/?play=4';
   const events = new EventTarget();
   window.addEventListener = events.addEventListener.bind(events); window.removeEventListener = events.removeEventListener.bind(events);
   global.document = Object.assign(new EventTarget(), { hidden: false, getElementById: () => null });
   runtime.accessToken = access; runtime.install();
   view = mount(element);
+  await view.click('Terminer');
   await view.fire((_props, _text, tag) => tag === 'textarea', 'onChange', { target: { value: 'Brouillon conservé après retour au premier plan.' } });
   assert.equal(bff.requests.length, 1);
   const updated = structuredClone(first); updated.catalog.courses[0].title = 'Formation actualisée';
   bff.on('get', '/elearning/catalog', { body: updated });
   events.dispatchEvent(new Event('focus'));
-  await view.waitFor(() => view.props('ElearningCatalog').courses[0].title === 'Formation actualisée');
+  await view.waitFor(() => view.props('CoursePlayer').course.title === 'Formation actualisée');
   assert.equal(view.hostElements((_props, _text, tag) => tag === 'textarea')[0].props.value, 'Brouillon conservé après retour au premier plan.');
   bff.on('get', '/elearning/catalog', { body: { catalog: { courses: [] } }, outOfContract: true });
   events.dispatchEvent(new Event('focus'));
-  await view.waitFor(html => html.includes('Les données des formations reçues sont incohérentes'));
-  assert.equal(view.props('ElearningCatalog').courses[0].title, 'Formation actualisée');
+  // The refusal is reported in the catalogue; the course screen keeps the last coherent data.
+  await view.waitFor(() => bff.requests.length === 3);
+  await view.settle();
+  assert.equal(view.props('CoursePlayer').course.title, 'Formation actualisée');
   assert.equal(view.hostElements((_props, _text, tag) => tag === 'textarea')[0].props.value, 'Brouillon conservé après retour au premier plan.');
 });
 

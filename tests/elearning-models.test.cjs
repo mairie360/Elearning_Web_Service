@@ -3,8 +3,8 @@ const { test } = require('node:test');
 require('./support/load-typescript.cjs');
 
 // MAIR-608: the rules pulled out of the e-learning components while splitting them.
-const progress = require('../src/components/ElearningModule/components/ElearningCatalog/components/SelectedCourseDetails/components/ElearningCourseDetailsModal/course-progress.ts');
-const rating = require('../src/components/ElearningModule/components/ElearningCatalog/components/SelectedCourseDetails/components/ElearningCourseDetailsModal/course-rating.ts');
+const progress = require('../src/components/ElearningModule/components/ElearningCatalog/course-progress.ts');
+const rating = require('../src/components/ElearningModule/components/ElearningCatalog/course-rating.ts');
 const form = require('../src/components/ElearningModule/components/ElearningCatalog/components/ElearningCourseFormModal/course-form-values.ts');
 const catalog = require('../src/components/ElearningModule/components/ElearningCatalog/catalog-model.ts');
 
@@ -150,4 +150,36 @@ test('MAIR-608 save and learner results only continue once confirmed', async () 
   assert.equal(catalog.afterLearnerAction(false, () => 'next'), false);
   assert.equal(catalog.afterLearnerAction(undefined, () => 'next'), 'next');
   assert.equal(await catalog.afterLearnerAction(Promise.resolve(true), () => 'next'), 'next');
+});
+
+test('MAIR-703 only https addresses and paths of this site become links', () => {
+  const { safeContentLink } = require('../src/components/ElearningModule/components/ElearningCatalog/safe-link.ts');
+  assert.deepEqual(safeContentLink('https://www.cnil.fr/guide'), { href: 'https://www.cnil.fr/guide', host: 'www.cnil.fr' });
+  assert.deepEqual(safeContentLink(' /documents/support.pdf '), { href: '/documents/support.pdf' });
+  // Browsers drop tabs and line breaks from URLs: these would leave the site while looking local.
+  for (const hidden of ['/\n/evil.test/x', '/\t/evil.test/x', '/\r/evil.test/x']) assert.equal(safeContentLink(hidden), undefined, JSON.stringify(hidden));
+  for (const unsafe of ['javascript:alert(1)', 'data:text/html,x', 'http://example.test/', '//evil.test/x', '/\\evil.test', 'ftp://x.test/f', '', undefined]) {
+    assert.equal(safeContentLink(unsafe), undefined, String(unsafe));
+  }
+});
+
+test('MAIR-1143 the top card resumes the most advanced course in progress, else the nearest mandatory one', () => {
+  const chapters = [{ id: 'a', title: 'A', duration: '', completed: true }, { id: 'b', title: 'B', duration: '' }];
+  const mandatory = { titleBadge: { label: 'Obligatoire', variant: 'mandatory' } };
+  const courses = [
+    { id: '1', title: 'Peu avancée', description: '', statusValue: 'in-progress', progress: 10 },
+    { id: '2', title: 'Avancée', description: '', statusValue: 'in-progress', progress: 60, details: { title: 'Avancée', description: '', chapters } },
+    { ...mandatory, id: '3', title: 'Obligatoire', description: '', deadline: '30 juin 2026' },
+  ];
+  const resume = catalog.resumeSuggestion(courses);
+  assert.deepEqual([resume.course.id, resume.kind, resume.chapterIndex, resume.chapterCount, resume.chapterTitle, resume.completedChapters, resume.progress], ['2', 'resume', 2, 2, 'B', 1, 60]);
+  const priority = catalog.resumeSuggestion([courses[2], { ...mandatory, id: '4', title: 'Plus tard', description: '', deadline: '30 août 2026' }]);
+  assert.deepEqual([priority.course.id, priority.kind, priority.chapterCount], ['3', 'priority', 0]);
+  assert.equal(catalog.resumeSuggestion([{ id: '5', title: 'Facultative', description: '' }]), undefined);
+  // A chapter without a completion flag whose required contents are done counts as done, as on the course screen.
+  const inferred = catalog.resumeSuggestion([{ id: '6', title: 'Inférée', description: '', statusValue: 'in-progress', progress: 50, details: { title: 'Inférée', description: '', chapters: [
+    { id: 'a', title: 'A', duration: '', contents: [{ id: 'a1', title: 'A1', type: 'video', completed: true }] },
+    { id: 'b', title: 'B', duration: '', contents: [{ id: 'b1', title: 'B1', type: 'quiz' }] },
+  ] } }]);
+  assert.deepEqual([inferred.chapterIndex, inferred.chapterTitle, inferred.completedChapters], [2, 'B', 1]);
 });

@@ -15,26 +15,30 @@ test.describe('enrolled agent', () => {
   test.beforeEach(async ({ page, context, baseURL }) => {
     await signInAs(context, baseURL!, users.manager);
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Centre de Formation' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'E-learning' })).toBeVisible();
   });
 
-  test('starts the course from the catalog', async ({ page }) => {
-    const card = page.getByRole('article').filter({ has: page.getByRole('heading', { name: COURSE }) });
-    await expect(card).toContainText('Non commence');
+  test('starts the course from its sheet and reaches the course screen', async ({ page }) => {
+    // MAIR-1146: the whole tile opens the sheet; MAIR-1147: « Commencer » is in the sheet footer.
+    await page.getByRole('button', { name: COURSE }).click();
+    const sheet = page.getByRole('dialog', { name: COURSE });
+    await expect(sheet).toContainText('Non commencée');
     const started = page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname.endsWith(`/courses/${COURSE_ID}/start`));
-    await card.getByRole('button', { name: 'Commencer' }).click();
+    await sheet.getByRole('button', { name: 'Commencer' }).click();
     expect((await started).ok()).toBeTruthy();
-    await expect(page.getByText('Détails et contenu du cours')).toBeVisible();
+    // MAIR-1148: the course screen replaces the application shell.
+    await expect(page.getByRole('heading', { level: 1, name: COURSE })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Quitter la formation' })).toBeVisible();
   });
 
   test('completes the content and reaches full progress', async ({ page }) => {
-    await page.getByRole('button', { name: `Ouvrir la formation ${COURSE}` }).click();
-    await expect(page.getByText('Détails et contenu du cours')).toBeVisible();
+    await page.goto(`/?play=${COURSE_ID}`);
+    await expect(page.getByRole('heading', { level: 1, name: COURSE })).toBeVisible();
 
     const completed = page.waitForResponse((r) => r.request().method() === 'POST' && /\/contents\/[^/]+\/complete$/.test(new URL(r.url()).pathname));
     await page.getByRole('button', { name: 'Marquer welcome.pdf comme terminé' }).click();
     expect((await completed).ok()).toBeTruthy();
-    await expect(page.getByText(/Progression totale\s*100\s*%/)).toBeVisible();
+    await expect(page.getByRole('progressbar', { name: /chapitres$/ })).toHaveAttribute('aria-valuenow', '100');
   });
 });
 
@@ -42,8 +46,8 @@ test.describe('agent not enrolled', () => {
   test('does not see the course in the catalog', async ({ page, context, baseURL }) => {
     await signInAs(context, baseURL!, users.member);
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Centre de Formation' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: COURSE })).toHaveCount(0);
+    await expect(page.getByRole('heading', { level: 1, name: 'E-learning' })).toBeVisible();
+    await expect(page.getByRole('button', { name: COURSE })).toHaveCount(0);
   });
 
   test('is refused when starting the course directly', async ({ request }) => {

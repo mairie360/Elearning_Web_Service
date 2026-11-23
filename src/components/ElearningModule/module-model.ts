@@ -11,7 +11,7 @@ import { withCategoryReset } from '../../features/elearning/catalogFilters';
 
 type CatalogProps = ComponentProps<typeof ElearningCatalog>;
 export type CatalogCourse = CatalogProps["courses"][number];
-export type ContentCompletePayload = Parameters<NonNullable<CatalogProps["onCourseContentComplete"]>>[1];
+export type { ElearningCourseContentCompletePayload as ContentCompletePayload } from "./components/ElearningCatalog";
 type Catalog = ElearningCatalogResponse["catalog"];
 interface FilterOption { value: string; label: string; disabled?: boolean }
 
