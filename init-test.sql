@@ -36,3 +36,8 @@ ON CONFLICT DO NOTHING;
 -- The users above carry explicit ids: move the id sequence past them, or the first account a
 -- journey creates (Administrator) collides with user 2 (MAIR-603).
 SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT MAX(id) FROM users));
+-- Same for the seeded course, module and attachment: the GDPR simulation creates courses, and the
+-- first one collided with course 1 (duplicate courses_pkey, 502).
+SELECT setval(pg_get_serial_sequence('courses', 'id'), (SELECT MAX(id) FROM courses));
+SELECT setval(pg_get_serial_sequence('course_modules', 'id'), (SELECT MAX(id) FROM course_modules));
+SELECT setval(pg_get_serial_sequence('course_attachments', 'id'), (SELECT MAX(id) FROM course_attachments));

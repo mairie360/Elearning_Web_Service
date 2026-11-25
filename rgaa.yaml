@@ -143,8 +143,8 @@ states:
     as: progress
     route: /?play=1
     steps:
-      - click: { role: button, name: Marquer welcome.pdf comme terminé }
-      - wait_for: { role: button, name: welcome.pdf terminé }
+      - click: { role: button, name: Marquer Welcome guide comme terminé }
+      - wait_for: { role: button, name: Welcome guide terminé }
 # No state for the course rating nor the administration (create, edit, delete): the pinned
 # BFF_Elearning answers 501 to them, so the front hides those controls (pinnedBffCapabilities,
 # MAIR-513). Add the states back with the BFF release that serves them.
