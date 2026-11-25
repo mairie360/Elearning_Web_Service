@@ -36,7 +36,7 @@ test.describe('enrolled agent', () => {
     await expect(page.getByRole('heading', { level: 1, name: COURSE })).toBeVisible();
 
     const completed = page.waitForResponse((r) => r.request().method() === 'POST' && /\/contents\/[^/]+\/complete$/.test(new URL(r.url()).pathname));
-    await page.getByRole('button', { name: 'Marquer welcome.pdf comme terminé' }).click();
+    await page.getByRole('button', { name: 'Marquer Welcome guide comme terminé' }).click();
     expect((await completed).ok()).toBeTruthy();
     await expect(page.getByRole('progressbar', { name: /chapitres$/ })).toHaveAttribute('aria-valuenow', '100');
   });
