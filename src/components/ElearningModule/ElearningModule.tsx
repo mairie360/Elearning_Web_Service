@@ -48,8 +48,9 @@ export function ElearningModule({
   learnerPort = elearningLearnerPort,
   capabilities = pinnedBffCapabilities,
   initialState,
+  commune,
   initialSearch,
-}: { learnerPort?: LearnerFeaturePort; capabilities?: CatalogCapabilities; initialState?: InitialCatalog; initialSearch?: string } = {}) {
+}: { learnerPort?: LearnerFeaturePort; capabilities?: CatalogCapabilities; initialState?: InitialCatalog; initialSearch?: string; commune?: string } = {}) {
   const [initial] = useState(() => {
     if (!initialState?.data) return initialState;
     try { return { ...initialState, data: parseCatalogResponse(initialState.data) }; }
@@ -213,8 +214,10 @@ export function ElearningModule({
       user={user ?? { name: "" }}
       onLogout={() => void requestLogout()}
       hrefs={elearningShellHrefs()}
+      commune={commune}
     >
-      <div className="flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
+      {/* The module area of the collapsible shell has no padding: the page gives the mockup's 24 px. */}
+      <div className="flex min-w-0 w-full flex-col gap-6 p-6">
       {logoutError && <LogoutErrorNotice message={logoutError} onBackToLogin={() => navigateToLogin({ explicit: true })} />}
       {loading && !catalog && <CatalogLoading subtitle={pageSubtitle(user?.isAdmin)} />}
 

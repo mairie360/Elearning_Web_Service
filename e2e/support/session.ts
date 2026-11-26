@@ -30,11 +30,13 @@ function signingKey() {
 }
 
 /** Seeded users of init-test.sql, by what they may do in this front. */
-export const users: Record<'manager' | 'member', SeededUser> = {
+export const users: Record<'manager' | 'member' | 'admin', SeededUser> = {
   /** "Perf Tester": enrolled in the seeded course. */
   manager: { id: process.env.E2E_MANAGER_USER_ID ?? '2', role: 'User' },
   /** "Membre Lecteur": not enrolled in any course. */
   member: { id: process.env.E2E_MEMBER_USER_ID ?? '3', role: 'User' },
+  /** "Admin Formation": administrator, enrols agents in courses. */
+  admin: { id: process.env.E2E_ADMIN_USER_ID ?? '4', role: 'Admin' },
 };
 
 function base64url(value: string | Buffer) {

@@ -53,4 +53,13 @@ describe('SelectedCourseDetails', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Revoir' }));
     expect(onPlay).toHaveBeenCalled();
   });
+
+  it('MAIR-1224 offers « Agents inscrits » to the administrator only', async () => {
+    const onLearners = vi.fn();
+    const { rerender } = render(<SelectedCourseDetails course={course} details={details} starting={false} startError={null} onClose={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'Agents inscrits' })).toBeNull();
+    rerender(<SelectedCourseDetails course={course} details={details} starting={false} startError={null} onClose={vi.fn()} onLearners={onLearners} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Agents inscrits' }));
+    expect(onLearners).toHaveBeenCalledWith(course);
+  });
 });

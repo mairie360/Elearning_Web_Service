@@ -27,6 +27,11 @@ const toFilter = (value: string) => (value === 'all' ? '' : value);
 const fromFilter = (value: string) => (value === '' ? 'all' : value);
 const choices = (options: ElearningFilterOption[]) => options.filter(option => option.value !== 'all');
 const allLabel = (options: ElearningFilterOption[], fallback: string) => options.find(option => option.value === 'all')?.label ?? fallback;
+/**
+ * The mockup shows « Toutes les catégories » while no value is chosen and « Catégorie : Numérique » once one is:
+ * the visible text is also the accessible name of the filter button.
+ */
+const filterLabel = (name: string, value: string, all: string) => (value === 'all' ? all : name);
 
 /**
  * MAIR-897 / MAIR-1145: search and filters on the lib TextField and FilterSelect (menu mode), applied in place.
@@ -40,21 +45,21 @@ export const CatalogFilters = ({
     <div className="flex flex-wrap items-end gap-3">
       <TextField
         type="search"
-        label="Rechercher une formation"
-        placeholder="Titre, description, formateur…"
+        label={<span className="sr-only">Rechercher une formation</span>}
+        placeholder="Rechercher une formation…"
         value={search}
         onChange={event => onSearchChange(event.target.value)}
         onClear={() => onSearchChange('')}
         className="w-full sm:w-[360px]"
       />
-      <FilterSelect mode="menu" label="Catégorie" allLabel={allLabel(categories, 'Toutes les catégories')} options={choices(categories)}
+      <FilterSelect mode="menu" label={filterLabel('Catégorie', category, allLabel(categories, 'Toutes les catégories'))} allLabel={allLabel(categories, 'Toutes les catégories')} options={choices(categories)}
         value={toFilter(category)} onChange={value => onCategoryChange(fromFilter(value))} />
-      <FilterSelect mode="menu" label="Statut" allLabel={allLabel(statuses, 'Tous les statuts')} options={choices(statuses)}
+      <FilterSelect mode="menu" label={filterLabel('Statut', status, allLabel(statuses, 'Tous les statuts'))} allLabel={allLabel(statuses, 'Tous les statuts')} options={choices(statuses)}
         value={toFilter(status)} onChange={value => onStatusChange(fromFilter(value))} />
-      <FilterSelect mode="menu" label="Caractère" allLabel="Obligatoires et facultatives" options={choices(requirements)}
+      <FilterSelect mode="menu" label={filterLabel('Caractère', requirement, 'Obligatoires et facultatives')} allLabel="Obligatoires et facultatives" options={choices(requirements)}
         value={toFilter(requirement)} onChange={value => onRequirementChange(fromFilter(value))} />
       {sources && onSourceChange ? (
-        <FilterSelect mode="menu" label="Origine" allLabel="Toutes les origines" options={choices(sources)}
+        <FilterSelect mode="menu" label={filterLabel('Origine', source, 'Toutes les origines')} allLabel="Toutes les origines" options={choices(sources)}
           value={toFilter(source)} onChange={value => onSourceChange(fromFilter(value))} />
       ) : null}
     </div>

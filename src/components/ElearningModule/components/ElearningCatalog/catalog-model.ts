@@ -227,11 +227,17 @@ export const filterCourses = (courses: ElearningCourse[], search: string, catego
 };
 
 /** « 2 formations en cours », « 1 formation correspond à votre recherche »: the result counter of the list (MAIR-897). */
-export const resultCountLabel = (count: number, filtered: boolean) => {
+export const resultCountLabel = (count: number, filtered: boolean, origins?: { internal: number; platform: number }) => {
   const noun = count > 1 ? 'formations' : 'formation';
-  if (!filtered) return `${count} ${noun}`;
+  if (!filtered) return origins ? `${count} ${noun} · ${origins.internal} interne${origins.internal > 1 ? 's' : ''}, ${origins.platform} de l’outil` : `${count} ${noun}`;
   return `${count} ${noun} ${count > 1 ? 'correspondent' : 'correspond'} à votre recherche`;
 };
+
+/** The administrator's counter: how many courses the commune created and how many the tool provides. */
+export const countOrigins = (courses: ElearningCourse[]) => ({
+  internal: courses.filter((course) => course.source !== 'platform').length,
+  platform: courses.filter((course) => course.source === 'platform').length,
+});
 
 const FRENCH_MONTHS = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
 

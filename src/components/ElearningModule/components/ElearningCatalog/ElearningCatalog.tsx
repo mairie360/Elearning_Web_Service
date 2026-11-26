@@ -1,4 +1,5 @@
 import React from 'react';
+import { SectionTitle } from '@mairie360/lib-components/primitives';
 
 import { ElearningAdminStats, type ElearningAdminStatsData, type ElearningLateAgent } from './components/ElearningAdminStats';
 import { ElearningCourseFormModal, type ElearningCourseFormValues } from './components/ElearningCourseFormModal';
@@ -15,6 +16,7 @@ import {
   buildCourseFromFormValues,
   buildLearnerMetrics,
   closeWhenSaved,
+  countOrigins,
   defaultStatuses,
   filterCourses,
   getCourseDetails,
@@ -132,6 +134,7 @@ export const ElearningCatalog = ({
   const [editingCourseId, setEditingCourseId] = React.useState<string | null>(null);
   const [courseFormOpen, setCourseFormOpen] = React.useState(false);
   const [learnersCourseId, setLearnersCourseId] = React.useState<string | null>(null);
+  const [enrolFromHeader, setEnrolFromHeader] = React.useState(false);
   const [startingCourseId, setStartingCourseId] = React.useState<string | null>(null);
   const starting = startingCourseId !== null;
   const [startError, setStartError] = React.useState<string | null>(null);
@@ -194,7 +197,13 @@ export const ElearningCatalog = ({
 
   return (
     <section className={joinClasses('flex flex-col gap-6 text-[var(--mairie-text)]', className)} {...props}>
-        <CatalogHeader title={title} subtitle={subtitle} onCreate={canManageCourses && onCreateCourse ? () => openCourseForm() : undefined} />
+        <CatalogHeader
+          title={title}
+          subtitle={subtitle}
+          onCreate={canManageCourses && onCreateCourse ? () => openCourseForm() : undefined}
+          onEnrol={canManageCourses && enrolment ? () => setEnrolFromHeader(true) : undefined}
+          enrolDisabled={courses.length === 0}
+        />
 
         {suggestion ? (
           <ResumeCard
@@ -220,6 +229,8 @@ export const ElearningCatalog = ({
           />
         )}
 
+        <SectionTitle as="h2">Catalogue de la commune</SectionTitle>
+
         <CatalogFilters
           search={search}
           category={category}
@@ -231,7 +242,7 @@ export const ElearningCatalog = ({
           source={source}
           sources={canManageCourses ? sourceFilterOptions : undefined}
           onSourceChange={canManageCourses ? setSource : undefined}
-          resultLabel={resultCountLabel(filteredCourses.length, filtered)}
+          resultLabel={resultCountLabel(filteredCourses.length, filtered, canManageCourses ? countOrigins(courses) : undefined)}
           onSearchChange={setSearch}
           onCategoryChange={setCategory}
           onStatusChange={setStatus}
@@ -264,6 +275,7 @@ export const ElearningCatalog = ({
           startError={startError}
           onStart={(course) => void handleStartCourse(course)}
           onPlay={onPlayCourse ? (course) => { setSelectedCourseId(null); onPlayCourse(course); } : undefined}
+          onLearners={canManageCourses && enrolment ? (course) => { setSelectedCourseId(null); setLearnersCourseId(course.id); } : undefined}
           onClose={() => {
             setSelectedCourseId(null);
             onCourseClose?.();
@@ -276,6 +288,15 @@ export const ElearningCatalog = ({
           course={learnersCourse}
           port={enrolment}
           onClose={() => setLearnersCourseId(null)}
+          onChanged={onEnrolmentChanged}
+        />
+      ) : null}
+
+      {canManageCourses && enrolment && enrolFromHeader && courses.length > 0 ? (
+        <CourseLearnersDrawer
+          courses={courses.map((course) => ({ id: course.id, title: course.title }))}
+          port={enrolment}
+          onClose={() => setEnrolFromHeader(false)}
           onChanged={onEnrolmentChanged}
         />
       ) : null}

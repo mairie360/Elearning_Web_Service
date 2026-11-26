@@ -21,10 +21,10 @@ describe('CatalogFilters', () => {
     render(<CatalogFilters {...handlers} />);
     fireEvent.change(screen.getByLabelText('Rechercher une formation'), { target: { value: 'RGPD' } });
     expect(handlers.onSearchChange).toHaveBeenCalledWith('RGPD');
-    await userEvent.click(screen.getByRole('button', { name: /Statut/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Tous les statuts/ }));
     await userEvent.click(screen.getByRole('menuitemradio', { name: 'En cours' }));
     expect(handlers.onStatusChange).toHaveBeenCalledWith('in-progress');
-    await userEvent.click(screen.getByRole('button', { name: /Caractère/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Obligatoires et facultatives/ }));
     await userEvent.click(screen.getByRole('menuitemradio', { name: 'Obligatoires' }));
     expect(handlers.onRequirementChange).toHaveBeenCalledWith('mandatory');
   });

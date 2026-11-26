@@ -63,3 +63,28 @@ test('without a session, the catalog is not served', async ({ request }) => {
   const response = await request.get('/', { maxRedirects: 0 });
   expect(response.status()).toBe(307);
 });
+
+// MAIR-1224: the administrator enrols an agent from the page header (course chosen first), then reads
+// the learners back from the course sheet. Last in the file: it enrols user 3, whom the journeys above
+// expect not enrolled.
+test.describe('administrator', () => {
+  test('enrols an agent from the header and reads the learners back from the course sheet', async ({ page, context, baseURL }) => {
+    await signInAs(context, baseURL!, users.admin);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1, name: 'E-learning' })).toBeVisible();
+    await page.getByRole('button', { name: 'Inscrire des agents' }).click();
+    const drawer = page.getByRole('dialog', { name: 'Inscrire des agents' });
+    await drawer.getByRole('combobox', { name: /Formation/ }).selectOption({ label: COURSE });
+    await drawer.getByRole('checkbox', { name: /Membre Lecteur/ }).check();
+    const enrolled = page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname.endsWith(`/admin/courses/${COURSE_ID}/learners`));
+    await drawer.getByRole('button', { name: 'Inscrire l’agent' }).click();
+    expect((await enrolled).ok()).toBeTruthy();
+    await expect(drawer).toBeHidden();
+
+    // The tile also carries « Agents inscrits à … » and the edit actions: match the tile name exactly.
+    await page.getByRole('button', { name: COURSE, exact: true }).click();
+    await page.getByRole('dialog', { name: COURSE }).getByRole('button', { name: 'Agents inscrits', exact: true }).click();
+    const learners = page.getByRole('dialog', { name: `Agents inscrits à « ${COURSE} »` });
+    await expect(learners).toContainText('Membre Lecteur');
+  });
+});

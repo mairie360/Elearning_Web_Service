@@ -1,3 +1,4 @@
+import { Users } from 'lucide-react';
 import { Alert, Body, Button, DescriptionList, Modal, Rating, StatusPill, Tag, Text } from '@mairie360/lib-components/primitives';
 
 import { CourseChapterOutline } from './components/CourseChapterOutline';
@@ -19,6 +20,8 @@ export interface SelectedCourseDetailsProps {
   onStart?: (course: ElearningCourse) => void;
   /** « Continuer » / « Revoir »: open the course screen at its current chapter. */
   onPlay?: (course: ElearningCourse) => void;
+  /** Administrators: « Agents inscrits » opens the learners of the course. */
+  onLearners?: (course: ElearningCourse) => void;
 }
 
 const primaryAction = (statusValue: string) => (
@@ -31,7 +34,7 @@ const primaryAction = (statusValue: string) => (
  * MAIR-1147: the course sheet presents the course and the agent's progress; reading happens on the course screen.
  * Base facts on the left (trainer, duration, average rating, deadline, chapters), « Votre avancement » on the right.
  */
-export const SelectedCourseDetails = ({ course, details, starting, startError, onClose, onStart, onPlay }: SelectedCourseDetailsProps) => {
+export const SelectedCourseDetails = ({ course, details, starting, startError, onClose, onStart, onPlay, onLearners }: SelectedCourseDetailsProps) => {
   const chapters = normalizeChaptersForProgress(details.chapters);
   const statusValue = inferStatusValue(course);
   const mandatory = getRequirement(course) === 'mandatory';
@@ -61,6 +64,11 @@ export const SelectedCourseDetails = ({ course, details, starting, startError, o
       )}
     >
       <div className="flex flex-col gap-5">
+        {onLearners ? (
+          <div>
+            <Button variant="outline" tone="neutral" icon={Users} label="Agents inscrits" disabled={starting} onClick={() => onLearners(course)} />
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <StatusPill size="s" label={mandatory ? 'Obligatoire' : 'Facultative'} tone={mandatory ? 'danger' : 'neutral'} />
           {course.levelBadge ? <Tag size="s" label={course.levelBadge.label} /> : null}
