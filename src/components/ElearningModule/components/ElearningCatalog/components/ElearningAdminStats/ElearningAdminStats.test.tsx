@@ -13,7 +13,7 @@ describe('ElearningAdminStats', () => {
   it('renders the indicators of the instance in a Panel with « Actualiser »', async () => {
     const onRefresh = vi.fn();
     render(<ElearningAdminStats stats={stats} onRefresh={onRefresh} />);
-    expect(screen.getByRole('heading', { name: 'Indicateurs du centre de formation' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Indicateurs de la commune' })).toBeVisible();
     expect(screen.getByText('créées par la commune · 2 obligatoires')).toBeVisible();
     expect(screen.getByText('fournies par Mairie360')).toBeVisible();
     expect(screen.getByText('79,2 %')).toBeVisible();

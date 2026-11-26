@@ -119,4 +119,24 @@ describe('CourseLearnersDrawer', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.queryByText('Zoé Stale')).not.toBeInTheDocument();
   });
+
+  it('MAIR-1224 from the header: the course is chosen first, the agents are searched for it, and the drawer closes once they are enrolled', async () => {
+    const enrolment = port();
+    const onClose = vi.fn();
+    const onChanged = vi.fn();
+    render(<CourseLearnersDrawer courses={[course, { id: '9', title: 'Cybersécurité' }]} port={enrolment} onClose={onClose} onChanged={onChanged} />);
+    const drawer = screen.getByRole('dialog', { name: 'Inscrire des agents' });
+    const select = within(drawer).getByRole('combobox', { name: /Formation/ });
+    expect(select).toHaveValue('4');
+    expect(within(drawer).getByText('Les agents déjà inscrits ne sont pas proposés.')).toBeVisible();
+    expect(enrolment.loadLearners).not.toHaveBeenCalled();
+    await userEvent.selectOptions(select, '9');
+    await waitFor(() => expect(enrolment.searchAgents).toHaveBeenCalledWith('9', '', 0, expect.anything()));
+    await userEvent.click(await within(drawer).findByRole('checkbox', { name: /Chloé Durand/ }));
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Inscrire l’agent' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(enrolment.enrol).toHaveBeenCalledWith('9', ['50']);
+    expect(onChanged).toHaveBeenCalledTimes(1);
+    expect(within(drawer).queryByRole('button', { name: 'Retour aux inscrits' })).toBeNull();
+  });
 });

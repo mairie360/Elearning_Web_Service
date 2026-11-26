@@ -151,6 +151,7 @@ Values below are local examples or explicitly described behavior, not production
 | `BFF_ELEARNING_BASE_URL` → `ELEARNING_BFF_URL` → `NEXT_PUBLIC_BFF_ELEARNING_BASE_URL` | http://localhost:4006 | Left-to-right proxy precedence; configure an HTTP(S) URL explicitly. Missing or invalid configuration returns an uncached 503 without contacting an upstream. |
 | `BFF_CONTRACT_DIR` | ../BFF_Elearning/contracts | BFF contract directory for synchronization and checking scripts. |
 | `COOKIE_DOMAIN` | — | Domain of the `accessToken` cookie cleared by the middleware (expired session, `/logout`); keep it consistent with Login. |
+| `COMMUNE_NAME` | — | Commune named in the shared header, read at request time (a leading « Mairie de » is dropped); without it the block is hidden. |
 | `ADMINISTRATION_FRONT_URL` | — | Navigation destination; see the source file that reads it. Variables injected by `next.config.ts` or prefixed `NEXT_PUBLIC_` are public and consumed at build time. |
 | `CALENDAR_FRONT_URL` | — | Navigation destination; see the source file that reads it. Variables injected by `next.config.ts` or prefixed `NEXT_PUBLIC_` are public and consumed at build time. |
 | `ELEARNING_FRONT_URL` | — | Navigation destination; see the source file that reads it. Variables injected by `next.config.ts` or prefixed `NEXT_PUBLIC_` are public and consumed at build time. |

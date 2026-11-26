@@ -14,4 +14,15 @@ describe('CatalogHeader', () => {
     rerender(<CatalogHeader title="Centre" subtitle="Compétences" onCreate={onCreate} />);
     await userEvent.click(screen.getByRole('button', { name: 'Nouvelle formation' })); expect(onCreate).toHaveBeenCalledTimes(1);
   });
+
+  it('MAIR-1224 shows « Inscrire des agents » before « Nouvelle formation », disabled while the catalogue is empty', async () => {
+    const onEnrol = vi.fn();
+    const { rerender } = render(<CatalogHeader title="E-learning" subtitle="Pilotez" onCreate={vi.fn()} onEnrol={onEnrol} enrolDisabled />);
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.map((button) => button.textContent)).toEqual(['Inscrire des agents', 'Nouvelle formation']);
+    expect(screen.getByRole('button', { name: 'Inscrire des agents' })).toBeDisabled();
+    rerender(<CatalogHeader title="E-learning" subtitle="Pilotez" onCreate={vi.fn()} onEnrol={onEnrol} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Inscrire des agents' }));
+    expect(onEnrol).toHaveBeenCalledTimes(1);
+  });
 });

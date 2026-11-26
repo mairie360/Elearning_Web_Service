@@ -33,6 +33,13 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO user_roles (user_id, role_id)
 SELECT 3, r.id FROM roles r WHERE lower(r.name) = 'user'
 ON CONFLICT DO NOTHING;
+-- Administrator of the e2e enrolment journey: enrols user 3 in the seeded course from the page header.
+INSERT INTO users (id, first_name, last_name, email, password, status)
+VALUES (4, 'Admin', 'Formation', 'admin-formation@mairie360.fr', '$argon2id$v=19$m=19456,t=2,p=1$/iKF9PbiDRDs4EKPjlIIhg$UKx9vfwwps250mEP/bYp63CXbEnQGULeUAhDq+az9Aw', 'active')
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO user_roles (user_id, role_id)
+SELECT 4, r.id FROM roles r WHERE lower(r.name) = 'admin'
+ON CONFLICT DO NOTHING;
 -- The users above carry explicit ids: move the id sequence past them, or the first account a
 -- journey creates (Administrator) collides with user 2 (MAIR-603).
 SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT MAX(id) FROM users));

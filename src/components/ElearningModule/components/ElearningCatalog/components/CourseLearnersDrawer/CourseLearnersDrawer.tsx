@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, ConfirmModal, Drawer } from '@mairie360/lib-components/primitives';
+import { Button, ConfirmModal, Drawer, SelectField } from '@mairie360/lib-components/primitives';
 
 import { AgentPicker } from './components/AgentPicker';
 import { LearnersTable } from './components/LearnersTable';
@@ -14,7 +14,13 @@ export interface CourseLearnersPort {
 }
 
 export interface CourseLearnersDrawerProps {
-  course: { id: string; title: string };
+  /** The course whose learners are shown (« Agents inscrits » of a tile or of the course sheet). */
+  course?: { id: string; title: string };
+  /**
+   * « Inscrire des agents » of the page header: the drawer opens on the enrolment form, the course chosen first
+   * among these, and closes once the agents are enrolled.
+   */
+  courses?: { id: string; title: string }[];
   port: CourseLearnersPort;
   onClose: () => void;
   /** The learners changed: the page reads the indicators again. */
@@ -25,13 +31,16 @@ export interface CourseLearnersDrawerProps {
  * MAIR-817: « Agents inscrits » of a course, for the administrators: the learners and their progress, « Inscrire des
  * agents » (search among the agents who do not follow it) and « Désinscrire ».
  */
-export const CourseLearnersDrawer = ({ course, port, onClose, onChanged }: CourseLearnersDrawerProps) => {
+export const CourseLearnersDrawer = ({ course: fixedCourse, courses, port, onClose, onChanged }: CourseLearnersDrawerProps) => {
+  const fromHeader = !fixedCourse;
+  const [chosenId, setChosenId] = React.useState(() => courses?.[0]?.id ?? '');
+  const course = fixedCourse ?? courses?.find((choice) => choice.id === chosenId) ?? { id: '', title: '' };
   const [learners, setLearners] = React.useState<CourseLearner[]>([]);
   const [total, setTotal] = React.useState(0);
   const [nextOffset, setNextOffset] = React.useState<number | null>(null);
   const [state, setState] = React.useState<'loading' | 'default' | 'error'>('loading');
   const [loadingMore, setLoadingMore] = React.useState(false);
-  const [adding, setAdding] = React.useState(false);
+  const [adding, setAdding] = React.useState(fromHeader);
   const [selected, setSelected] = React.useState<string[]>([]);
   const [busy, setBusy] = React.useState(false);
   const [removing, setRemoving] = React.useState<CourseLearner | null>(null);
@@ -41,6 +50,8 @@ export const CourseLearnersDrawer = ({ course, port, onClose, onChanged }: Cours
   const generationRef = React.useRef(0);
 
   React.useEffect(() => {
+    // From the header the drawer only enrols: it never lists the learners.
+    if (fromHeader) return undefined;
     const controller = new AbortController();
     port.loadLearners(course.id, 0, { signal: controller.signal }).then((page) => {
       if (controller.signal.aborted) return;
@@ -51,7 +62,7 @@ export const CourseLearnersDrawer = ({ course, port, onClose, onChanged }: Cours
       setState('default');
     }, () => { /* Closed or read again meanwhile. */ });
     return () => controller.abort();
-  }, [course.id, port, revision]);
+  }, [course.id, fromHeader, port, revision]);
 
   /** Reads the learners again from the first page. */
   const reload = () => { generationRef.current += 1; setState('loading'); setRevision((value) => value + 1); };
@@ -87,7 +98,11 @@ export const CourseLearnersDrawer = ({ course, port, onClose, onChanged }: Cours
 
   const enrol = async () => {
     if (!selected.length) return;
-    if (await run(() => port.enrol(course.id, selected))) { setSelected([]); setAdding(false); }
+    if (await run(() => port.enrol(course.id, selected))) {
+      setSelected([]);
+      if (fromHeader) onClose();
+      else setAdding(false);
+    }
   };
 
   const remove = async () => {
@@ -105,7 +120,11 @@ export const CourseLearnersDrawer = ({ course, port, onClose, onChanged }: Cours
 
   const footer = adding ? (
     <div className="flex flex-wrap justify-end gap-2">
-      <Button variant="outline" tone="neutral" label="Retour aux inscrits" disabled={busy} onClick={() => { setSelected([]); setAdding(false); }} />
+      {fromHeader ? (
+        <Button variant="outline" tone="neutral" label="Annuler" disabled={busy} onClick={close} />
+      ) : (
+        <Button variant="outline" tone="neutral" label="Retour aux inscrits" disabled={busy} onClick={() => { setSelected([]); setAdding(false); }} />
+      )}
       <Button
         label={selected.length > 1 ? `Inscrire les ${selected.length} agents` : 'Inscrire l’agent'}
         disabled={!selected.length}
@@ -122,13 +141,27 @@ export const CourseLearnersDrawer = ({ course, port, onClose, onChanged }: Cours
       <Drawer
         open
         size="l"
-        title={adding ? `Inscrire des agents à « ${course.title} »` : `Agents inscrits à « ${course.title} »`}
-        closeLabel="Fermer la liste des agents inscrits"
+        title={fromHeader ? 'Inscrire des agents' : adding ? `Inscrire des agents à « ${course.title} »` : `Agents inscrits à « ${course.title} »`}
+        closeLabel={fromHeader ? 'Fermer l’inscription des agents' : 'Fermer la liste des agents inscrits'}
         onClose={close}
         footer={footer}
       >
         {adding ? (
-          <AgentPicker searchAgents={searchAgents} selected={selected} onSelectedChange={setSelected} disabled={busy} />
+          <div className="flex flex-col gap-4">
+            {fromHeader ? (
+              <SelectField
+                label="Formation"
+                options={(courses ?? []).map((choice) => ({ value: choice.id, label: choice.title }))}
+                value={chosenId}
+                placeholder={null}
+                hint="Les agents déjà inscrits ne sont pas proposés."
+                disabled={busy}
+                onChange={(value) => { setSelected([]); setChosenId(value); }}
+              />
+            ) : null}
+            {/* A new course means a new list of agents who do not follow it yet. */}
+            <AgentPicker key={course.id} searchAgents={searchAgents} selected={selected} onSelectedChange={setSelected} disabled={busy} />
+          </div>
         ) : (
           <LearnersTable
             learners={learners}

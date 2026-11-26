@@ -36,8 +36,8 @@ export const ElearningAdminStats = ({ stats, state = 'default', onRefresh, sourc
 
   return (
     <Panel
-      title="Indicateurs du centre de formation"
-      description="Formations, participation des agents et échéances obligatoires de la commune."
+      title="Indicateurs de la commune"
+      description="Toutes formations et tous agents confondus."
       state={shown}
       stateProps={shown === 'unavailable' ? { title: 'Indicateurs temporairement indisponibles.', onRetry: onRefresh } : undefined}
       action={onRefresh ? <RefreshButton size="s" label="Actualiser" loading={state === 'loading'} onClick={onRefresh} /> : undefined}

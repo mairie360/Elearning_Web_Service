@@ -161,8 +161,9 @@ export const CoursePlayer = ({ course, onExit, onContentComplete, onContentDownl
     );
   }
 
+  // RGAA 12.6: the chapter actions and « Chapitre terminé » sit in a named landmark, not loose after the main area.
   const footer = (
-    <div className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3">
+    <div role="region" aria-label="Actions du chapitre" className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3">
       <Button variant="outline" tone="neutral" label="Précédent" disabled={index === 0 || busy} onClick={() => setCurrentId(chapters[index - 1]?.id)} />
       {chapter.completed ? <StatusPill dot tone="success" label="Chapitre terminé" /> : (
         <Button tone="success" label="Marquer comme terminé" loading={busy && !downloadingId} disabled={!onContentComplete || busy || remaining.length === 0} onClick={completeChapter} />

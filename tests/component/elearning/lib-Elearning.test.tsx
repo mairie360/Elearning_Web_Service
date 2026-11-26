@@ -84,7 +84,7 @@ describe('Elearning components', () => {
     expect(screen.getByRole('button', { name: 'Gestion des archives numériques' })).toBeInTheDocument();
     expect(screen.getByText('2 formations')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /Catégorie/ }));
+    await user.click(screen.getByRole('button', { name: /Toutes les catégories/ }));
     await user.click(screen.getByRole('menuitemradio', { name: 'Sécurité' }));
 
     expect(screen.getByRole('button', { name: 'Sécurité au travail' })).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe('Elearning components', () => {
     render(<ElearningCatalog courses={courses} />);
 
     expect(screen.queryByRole('button', { name: 'Nouvelle formation' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Indicateurs du centre de formation' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Indicateurs de la commune' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Modifier Sécurité au travail/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Supprimer Sécurité au travail/ })).not.toBeInTheDocument();
   });
@@ -120,7 +120,7 @@ describe('Elearning components', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { name: 'Indicateurs du centre de formation' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Indicateurs de la commune' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Nouvelle formation' }));
     let dialog = screen.getByRole('dialog', { name: 'Nouvelle formation' });
