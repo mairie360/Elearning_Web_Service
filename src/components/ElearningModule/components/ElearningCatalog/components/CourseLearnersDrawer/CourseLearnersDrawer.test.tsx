@@ -139,4 +139,40 @@ describe('CourseLearnersDrawer', () => {
     expect(onChanged).toHaveBeenCalledTimes(1);
     expect(within(drawer).queryByRole('button', { name: 'Retour aux inscrits' })).toBeNull();
   });
+  it('MAIR-1224 from the header: a course dropped by a catalogue reload falls back to the first one listed, never enrolling for it', async () => {
+    const enrolment = port();
+    const props = { port: enrolment, onClose: vi.fn() };
+    const { rerender } = render(<CourseLearnersDrawer {...props} courses={[course, { id: '9', title: 'Cybersécurité' }]} />);
+    const drawer = screen.getByRole('dialog', { name: 'Inscrire des agents' });
+    await userEvent.selectOptions(within(drawer).getByRole('combobox', { name: /Formation/ }), '9');
+    await userEvent.click(await within(drawer).findByRole('checkbox', { name: /Chloé Durand/ }));
+    expect(within(drawer).getByText('1 agent sélectionné')).toBeVisible();
+    rerender(<CourseLearnersDrawer {...props} courses={[course]} />);
+    expect(within(drawer).getByRole('combobox', { name: /Formation/ })).toHaveValue('4');
+    expect(within(drawer).queryByText('1 agent sélectionné')).toBeNull();
+    await waitFor(() => expect(enrolment.searchAgents).toHaveBeenLastCalledWith('4', '', 0, expect.anything()));
+    await userEvent.click(await within(drawer).findByRole('checkbox', { name: /Chloé Durand/ }));
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Inscrire l’agent' }));
+    await waitFor(() => expect(enrolment.enrol).toHaveBeenCalledWith('4', ['50']));
+    expect(enrolment.enrol).not.toHaveBeenCalledWith('9', expect.anything());
+  });
+
+  it('MAIR-1224 after a partial enrolment the agents are searched again and the selection starts from none', async () => {
+    const searchAgents = vi.fn()
+      .mockResolvedValueOnce({ items: [{ userId: '50', name: 'Chloé Durand', firstName: 'Chloé', lastName: 'Durand' }, { userId: '51', name: 'David Leroy', firstName: 'David', lastName: 'Leroy' }], nextOffset: null })
+      .mockResolvedValue({ items: [{ userId: '51', name: 'David Leroy', firstName: 'David', lastName: 'Leroy' }], nextOffset: null });
+    const enrolment = port({ searchAgents, enrol: vi.fn(async () => false) });
+    const onClose = vi.fn();
+    render(<CourseLearnersDrawer courses={[course]} port={enrolment} onClose={onClose} />);
+    const drawer = screen.getByRole('dialog', { name: 'Inscrire des agents' });
+    await userEvent.click(await within(drawer).findByRole('checkbox', { name: /Chloé Durand/ }));
+    await userEvent.click(within(drawer).getByRole('checkbox', { name: /David Leroy/ }));
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Inscrire les 2 agents' }));
+    expect(enrolment.enrol).toHaveBeenCalledWith('4', ['50', '51']);
+    await waitFor(() => expect(searchAgents).toHaveBeenCalledTimes(2));
+    expect(await within(drawer).findByRole('checkbox', { name: /David Leroy/ })).not.toBeChecked();
+    expect(within(drawer).queryByRole('checkbox', { name: /Chloé Durand/ })).toBeNull();
+    expect(within(drawer).queryByText(/sélectionné/)).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

@@ -34,14 +34,21 @@ export interface CourseLearnersDrawerProps {
 export const CourseLearnersDrawer = ({ course: fixedCourse, courses, port, onClose, onChanged }: CourseLearnersDrawerProps) => {
   const fromHeader = !fixedCourse;
   const [chosenId, setChosenId] = React.useState(() => courses?.[0]?.id ?? '');
-  const course = fixedCourse ?? courses?.find((choice) => choice.id === chosenId) ?? { id: '', title: '' };
+  // A course dropped by a catalogue reload falls back to the first one still listed.
+  const course = fixedCourse ?? courses?.find((choice) => choice.id === chosenId) ?? courses?.[0] ?? { id: '', title: '' };
   const [learners, setLearners] = React.useState<CourseLearner[]>([]);
   const [total, setTotal] = React.useState(0);
   const [nextOffset, setNextOffset] = React.useState<number | null>(null);
   const [state, setState] = React.useState<'loading' | 'default' | 'error'>('loading');
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [adding, setAdding] = React.useState(fromHeader);
-  const [selected, setSelected] = React.useState<string[]>([]);
+  // Bumped by every enrolment attempt: the picker reads the agents again, so the ones just enrolled leave it.
+  const [attempt, setAttempt] = React.useState(0);
+  const pickerKey = `${course.id}:${attempt}`;
+  // The ticks belong to one course and one attempt: another course or a new attempt starts from none.
+  const [selection, setSelection] = React.useState<{ key: string; ids: string[] }>({ key: pickerKey, ids: [] });
+  const selected = selection.key === pickerKey ? selection.ids : [];
+  const setSelected = (ids: string[]) => setSelection({ key: pickerKey, ids });
   const [busy, setBusy] = React.useState(false);
   const [removing, setRemoving] = React.useState<CourseLearner | null>(null);
   const [revision, setRevision] = React.useState(0);
@@ -97,9 +104,10 @@ export const CourseLearnersDrawer = ({ course: fixedCourse, courses, port, onClo
   };
 
   const enrol = async () => {
-    if (!selected.length) return;
-    if (await run(() => port.enrol(course.id, selected))) {
-      setSelected([]);
+    if (!selected.length || !course.id) return;
+    const done = await run(() => port.enrol(course.id, selected));
+    setAttempt((value) => value + 1);
+    if (done) {
       if (fromHeader) onClose();
       else setAdding(false);
     }
@@ -127,7 +135,7 @@ export const CourseLearnersDrawer = ({ course: fixedCourse, courses, port, onClo
       )}
       <Button
         label={selected.length > 1 ? `Inscrire les ${selected.length} agents` : 'Inscrire l’agent'}
-        disabled={!selected.length}
+        disabled={!selected.length || !course.id}
         loading={busy}
         onClick={() => void enrol()}
       />
@@ -152,15 +160,15 @@ export const CourseLearnersDrawer = ({ course: fixedCourse, courses, port, onClo
               <SelectField
                 label="Formation"
                 options={(courses ?? []).map((choice) => ({ value: choice.id, label: choice.title }))}
-                value={chosenId}
+                value={course.id}
                 placeholder={null}
                 hint="Les agents déjà inscrits ne sont pas proposés."
                 disabled={busy}
-                onChange={(value) => { setSelected([]); setChosenId(value); }}
+                onChange={setChosenId}
               />
             ) : null}
-            {/* A new course means a new list of agents who do not follow it yet. */}
-            <AgentPicker key={course.id} searchAgents={searchAgents} selected={selected} onSelectedChange={setSelected} disabled={busy} />
+            {/* A new course or a new attempt means a new list of agents who do not follow it yet. */}
+            <AgentPicker key={pickerKey} searchAgents={searchAgents} selected={selected} onSelectedChange={setSelected} disabled={busy} />
           </div>
         ) : (
           <LearnersTable
