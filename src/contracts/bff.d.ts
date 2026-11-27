@@ -83,6 +83,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search every module
+         * @description Searches the agents, projects and tasks, events, conversations and messages, and courses the caller may see, through the business APIs. A module whose API cannot answer is listed in `unavailable`.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Searched text, 2 to 100 characters once trimmed, without control characters */
+                    q: string;
+                    /** @description Most results per module (default 8) */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Results grouped by module, and the modules that could not answer */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GlobalSearchResponse"];
+                    };
+                };
+                /** @description Invalid `q` or `limit` */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Missing or invalid session */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description An upstream API rate limit is reached: retry after the Retry-After header (seconds) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Unexpected server error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description An upstream API is unreachable, failed or answered an unusable body */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description JWT_PUBLIC_KEY is not configured */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/elearning/admin/courses": {
         parameters: {
             query?: never;
@@ -1911,7 +2009,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description Part of the `first last` name, `last first` name or e-mail of the agent, case ignored (trimmed, 1 to 100 characters). */
+                    /** @description Part of the `first last` name, `last first` name or e-mail of the agent, case ignored (trimmed, 1 to 100 characters, no control character). */
                     search?: string;
                     /** @description Agents to return, 1 to 200 (default 50) */
                     limit?: number;
@@ -3540,14 +3638,7 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /** @example catalog */
-                        source?: string;
-                    };
-                };
-            };
+            requestBody?: never;
             responses: {
                 /** @description Course to start or resume */
                 200: {
@@ -5613,7 +5704,7 @@ export interface components {
         };
         AdminAgentsQuery: {
             /**
-             * @description Part of the `first last` name, `last first` name or e-mail of the agent, case ignored (trimmed, 1 to 100 characters).
+             * @description Part of the `first last` name, `last first` name or e-mail of the agent, case ignored (trimmed, 1 to 100 characters, no control character).
              * @example martin
              */
             search?: string;
@@ -6404,11 +6495,6 @@ export interface components {
             /** @description Always `true` */
             submitted: boolean;
         };
-        /** @description Context to start or resume a formation */
-        StartCourseBody: {
-            /** @example catalog */
-            source?: string;
-        };
         /** @description Response to start or resume a formation */
         CourseActionResponse: {
             /** @description Formation shown in the catalogue */
@@ -6662,6 +6748,22 @@ export interface components {
             core_api: "Connected" | "Unreachable";
             /** @enum {string} */
             elearning_api: "Connected" | "Unreachable";
+        };
+        GlobalSearchResponse: {
+            groups: {
+                /** @enum {string} */
+                module: "agents" | "projects" | "calendar" | "messages" | "elearning";
+                items: {
+                    /** @enum {string} */
+                    kind: "agent" | "project" | "task" | "event" | "conversation" | "message" | "course";
+                    id: number;
+                    title: string;
+                    excerpt: string | null;
+                    parent_id: number | null;
+                    updated_at: string;
+                }[];
+            }[];
+            unavailable: ("agents" | "projects" | "calendar" | "messages" | "elearning")[];
         };
     };
     responses: never;

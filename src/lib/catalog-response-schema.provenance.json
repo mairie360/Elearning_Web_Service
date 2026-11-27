@@ -1,6 +1,6 @@
 {
   "source": "contracts/openapi.json",
-  "sourceSha256": "2bb5a77479585ba0a80c67e7de34b47ce1ac88d6787657cc4305b19e8606e269",
+  "sourceSha256": "289764383e1d7fdbe071dbafa1a8c5ec09a13edeafc5f2765126a99467aff379",
   "schema": "ElearningCatalogResponse",
   "retainedKeywords": [
     "type",

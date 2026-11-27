@@ -45,6 +45,7 @@ const CONSUMED = [
   'GET /elearning/admin/agents',
   'POST /elearning/admin/courses/{courseId}/learners',
   'DELETE /elearning/admin/courses/{courseId}/learners/{userId}',
+  'GET /search',
 ];
 
 after(() => {
@@ -402,8 +403,8 @@ describe('catalog actions against the contract-driven BFF E-learning', () => {
 
     assert.deepEqual(operations(), ['POST /elearning/courses/{courseId}/start', 'GET /elearning/catalog']);
     assert.deepEqual(bffElearning.requests[0].pathParams, { courseId: '4' });
-    assert.deepEqual(bffElearning.requests[0].body, {});
-    assert.equal(bffElearning.requests[0].headers['content-type'], 'application/json');
+    // The published contract declares no body on the start operation: none is sent.
+    assert.equal(bffElearning.requests[0].body, undefined);
     assert.deepEqual(state.catalogResponse.catalog.courses.map((course) => [course.id, course.statusValue]), [['4', 'in-progress'], ['accueil', 'not-started']]);
     assert.equal(state.mutationError, null);
     assert.deepEqual(state.catalogResponse, updated, 'statistics are supplied by the server, not counted from visible courses');
@@ -1076,5 +1077,36 @@ describe('A 401 whose redirect to Login cannot start is told to the agent', () =
     } finally {
       location.assign = assign;
     }
+  });
+});
+
+// The global search of the shared header calls the same-origin `GET /search`, which the contract proxy
+// forwards to BFF_Elearning with the session; the library source parses the answer.
+describe('MAIR-1230 global search of the shared header through the contract proxy', () => {
+  const { createBffSearchSource } = require('@mairie360/lib-components/shell');
+  const answer = {
+    groups: [{ module: 'elearning', items: [{ kind: 'course', id: 4, title: 'Sécurité incendie', excerpt: 'Évacuation', parent_id: null, updated_at: '2026-11-20T10:00:00Z' }] }],
+    unavailable: ['projects'],
+  };
+
+  test('GET /search reaches BFF_Elearning with the term, the limit and the cookie session', async () => {
+    bffElearning.on('get', '/search', { body: answer });
+
+    const result = await createBffSearchSource({ limit: 5 })('  sécu  ', new AbortController().signal);
+
+    assert.deepEqual(result, answer);
+    assert.deepEqual(operations(), ['GET /search']);
+    assert.equal(bffElearning.requests[0].url.searchParams.get('q'), 'sécu');
+    assert.equal(bffElearning.requests[0].url.searchParams.get('limit'), '5');
+    assert.deepEqual(bffElearning.requests[0].undeclaredQuery, []);
+    assert.equal(bffElearning.requests[0].headers.authorization, `Bearer ${runtime.accessToken}`);
+    assert.deepEqual(runtime.upstreamCalls.map(({ route }) => route), ['src/app/[...path]/route.ts']);
+  });
+
+  test('an error answer of GET /search (error envelope) rejects the search instead of showing results', async () => {
+    bffElearning.on('get', '/search', errorReply(502, 'BAD_GATEWAY', 'An upstream API is unreachable'));
+
+    await assert.rejects(createBffSearchSource()('sécu', new AbortController().signal), /status 502/);
+    assert.deepEqual(operations(), ['GET /search']);
   });
 });
