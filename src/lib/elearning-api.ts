@@ -84,7 +84,7 @@ export function getProfile(init?: RequestInit) {
 }
 
 export async function startCourse(courseId: string) {
-  return (await bffElearning.postElearningCoursesCourseIdStart(pathSegment(courseId, "courseId"), {})).data;
+  return (await bffElearning.postElearningCoursesCourseIdStart(pathSegment(courseId, "courseId"))).data;
 }
 
 export async function completeCourseContent(

@@ -1387,3 +1387,61 @@ test('MAIR-1224 the shared header names the commune of the deployment', async ()
   await renderLoadedCatalog(adminCatalog(), Page);
   assert.equal(view.props('AccessibleShell').commune, 'Saint-André');
 });
+
+// The shared header searches every module through BFF_Elearning and links a course to `?course=<id>`.
+const searchAnswer = (id) => ({
+  groups: [{ module: 'elearning', items: [{ kind: 'course', id, title: 'Sécurité incendie (recherche)', excerpt: 'Évacuation des locaux', parent_id: null, updated_at: '2026-11-20T10:00:00Z' }] }],
+  unavailable: ['projects'],
+});
+const searchField = (props, _text, tag) => tag === 'input' && props.role === 'combobox';
+
+test('MAIR-1230 typing in the header search lists the matching courses, choosing one opens its details', async () => {
+  await renderLoadedCatalog(f.catalogResponse([f.course('4', { title: 'Sécurité incendie' })]));
+  bffElearning.on('get', '/search', { body: searchAnswer(4) });
+
+  await view.fire(searchField, 'onChange', { target: { value: 'sécu' } });
+  await view.waitFor((html) => html.includes('Sécurité incendie (recherche)'));
+
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'GET /search']);
+  assert.equal(requests()[1].url.searchParams.get('q'), 'sécu');
+  const dom = new JSDOM(view.html);
+  try {
+    const option = [...dom.window.document.querySelectorAll('[role="option"]')].find((node) => node.textContent.includes('Sécurité incendie (recherche)'));
+    assert.ok(option, 'the course result is an option of the list');
+    assert.equal(new URL(option.dataset.href).searchParams.get('course'), '4');
+    assert.match(dom.window.document.body.textContent, /Projets ne répond pas/);
+  } finally { dom.window.close(); }
+
+  // Choosing the result navigates to the e-learning page with `?course=4`, which opens the course sheet.
+  const location = front.window().location;
+  const assign = location.assign;
+  let target;
+  location.assign = (href) => { target = String(href); };
+  try {
+    await view.click((props) => typeof props['data-href'] === 'string' && props['data-href'].includes('course=4'));
+  } finally { location.assign = assign; }
+  assert.equal(new URL(target).searchParams.get('course'), '4');
+  view.unmount();
+
+  front.window().location.href = target;
+  await renderLoadedCatalog(f.catalogResponse([f.course('4', { title: 'Sécurité incendie' })]));
+  assert.equal(view.props('ElearningCatalog').initialCourseId, '4');
+  assert.match(view.html, /role="dialog"/);
+  assert.match(view.text(), /Sécurité incendie/);
+});
+
+test('MAIR-1230 opening a course result shows its details, an unknown course id the missing-course notice', async () => {
+  front.window().location.href = 'http://localhost:5006/?course=4';
+  await renderLoadedCatalog(f.catalogResponse([f.course('4', { title: 'Sécurité incendie' })]));
+  assert.equal(view.props('ElearningCatalog').initialCourseId, '4');
+  assert.match(view.html, /role="dialog"/);
+  assert.match(view.text(), /Sécurité incendie/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog']);
+  view.unmount();
+
+  front.window().location.href = 'http://localhost:5006/?course=999';
+  await renderLoadedCatalog(f.catalogResponse([f.course('4', { title: 'Sécurité incendie' })]));
+  assert.doesNotMatch(view.html, /role="dialog"/);
+  assert.match(view.text(), /Cette formation n’est plus disponible/);
+  assert.deepEqual(operations(), ['GET /elearning/catalog', 'GET /elearning/catalog'], 'one catalogue read per page load, no request loop');
+});

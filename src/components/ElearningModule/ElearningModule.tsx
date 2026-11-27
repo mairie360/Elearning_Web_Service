@@ -2,6 +2,7 @@
 import { subscribePageReturn } from '@mairie360/lib-components/shared';
 
 import { AccessibleShell } from "@mairie360/lib-components/shell";
+import { createBffSearchSource } from "@mairie360/lib-components/shell";
 import { ToastProvider } from "@mairie360/lib-components/primitives";
 
 import { ElearningCatalog } from './components/ElearningCatalog';
@@ -43,6 +44,12 @@ import {
 } from './module-model';
 import { useResourceDownload } from './use-resource-download';
 import { saveFile } from './save-file';
+
+/**
+ * Global search of the shared header: the same-origin `GET /search`, which the contract proxy forwards to
+ * BFF_Elearning. Created once so the header does not restart its debounced search on every render.
+ */
+const globalSearchSource = createBffSearchSource();
 
 export function ElearningModule({
   learnerPort = elearningLearnerPort,
@@ -215,6 +222,7 @@ export function ElearningModule({
       onLogout={() => void requestLogout()}
       hrefs={elearningShellHrefs()}
       commune={commune}
+      searchSource={globalSearchSource}
     >
       {/* The module area of the collapsible shell has no padding: the page gives the mockup's 24 px. */}
       <div className="flex min-w-0 w-full flex-col gap-6 p-6">

@@ -4,6 +4,7 @@
 
 The module follows the V2 mock-up and only uses components of `@mairie360/lib-components` 2.3 (light mode only).
 
+- **Global search**: the field of the shared header searches every module (agents, projects and tasks, events, conversations and messages, courses) through BFF_Elearning `GET /search` and lists the results by module; a module that does not answer is named under the list. A course result opens the e-learning page with `?course=<id>`, which opens the sheet of that course; an id absent from the catalogue shows « Cette formation n’est plus disponible ».
 - **Page**: « E-learning » header (agent subtitle « Développez vos compétences à votre rythme. », administrator « Pilotez les formations proposées aux agents de la commune. » with « Nouvelle formation »), no page footer.
 - **Resume**: at the top of the agent's page, the course in progress the agent touched last (« Reprendre où vous en étiez », with « Dernière activité hier »), else the next mandatory course not started, nearest deadline first (« À commencer en priorité »).
 - **Mon suivi**: courses in progress, mandatory to finish (next deadline), « Terminées en <year> » (completion dates of the year) and « Temps de formation en <year> » with the yearly goal. The first three filter the list in place (a second click removes the filter); the training time opens the « Mon temps de formation » drawer (time per course, status, total) with « Télécharger mes attestations » (one PDF for the year; « Aucune attestation pour cette année » when nothing was completed).
