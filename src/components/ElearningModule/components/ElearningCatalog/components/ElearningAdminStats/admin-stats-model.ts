@@ -47,3 +47,10 @@ export const formatPercent = (value: number) => `${(Math.round(value * 10) / 10)
 
 /** « 1 agent », « 3 agents ». */
 export const agentsLabel = (count: number) => `${count} agent${count > 1 ? 's' : ''}`;
+
+/** « 312 agents inscrits sur 401 ». */
+export const participantsLabel = (participants: number, agents: number) =>
+  `${participants} agent${participants > 1 ? 's' : ''} inscrit${participants > 1 ? 's' : ''} sur ${agents}`;
+
+/** « mis à jour à 9 h 12 ». */
+export const updatedAtLabel = (date: Date) => `mis à jour à ${date.getHours()} h ${String(date.getMinutes()).padStart(2, '0')}`;

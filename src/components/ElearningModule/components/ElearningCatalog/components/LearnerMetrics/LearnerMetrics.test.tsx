@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { trainingTimeResponse } from '@tests/support/elearning-fixtures';
@@ -41,5 +41,24 @@ describe('LearnerMetrics', () => {
     expect(screen.getByRole('dialog', { name: 'Mon temps de formation' })).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: 'Fermer mon temps de formation' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+  it('MAIR-1257 each agent indicator names where it leads, and the training time shows its share of the goal', () => {
+    render(<LearnerMetrics metrics={metrics} active={{ status: 'all', requirement: 'all' }} onSelect={vi.fn()} trainingTime={trainingTime} trainingTimeState="default" />);
+    const links = [
+      [/Formations en cours/, 'Voir mes formations en cours'],
+      [/Obligatoires à terminer/, 'Voir les obligatoires'],
+      [/Terminées en 2026/, 'Voir mes formations terminées'],
+      [/Temps de formation en 2026/, 'Voir mon historique'],
+    ] as const;
+    for (const [label, link] of links) expect(within(screen.getByRole('button', { name: label })).getByText(link)).toBeVisible();
+    expect(screen.getByText('reprenez là où vous vous êtes arrêté')).toBeVisible();
+    // 2 h 15 of a 10 h goal.
+    expect(screen.getByRole('button', { name: /Temps de formation/ }).querySelector('[data-gauge]')).toHaveAttribute('data-gauge', '23');
+  });
+
+  it('MAIR-1257 says when nothing is started and no deadline is coming', () => {
+    render(<LearnerMetrics metrics={{ ...metrics, inProgress: 0, nextDeadline: undefined }} active={{ status: 'all', requirement: 'all' }} onSelect={vi.fn()} />);
+    expect(screen.getByText('aucune formation commencée')).toBeVisible();
+    expect(screen.getByText('aucune échéance à venir')).toBeVisible();
   });
 });

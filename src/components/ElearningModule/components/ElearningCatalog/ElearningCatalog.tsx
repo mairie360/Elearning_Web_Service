@@ -134,7 +134,6 @@ export const ElearningCatalog = ({
   const [editingCourseId, setEditingCourseId] = React.useState<string | null>(null);
   const [courseFormOpen, setCourseFormOpen] = React.useState(false);
   const [learnersCourseId, setLearnersCourseId] = React.useState<string | null>(null);
-  const [enrolFromHeader, setEnrolFromHeader] = React.useState(false);
   const [startingCourseId, setStartingCourseId] = React.useState<string | null>(null);
   const starting = startingCourseId !== null;
   const [startError, setStartError] = React.useState<string | null>(null);
@@ -147,7 +146,8 @@ export const ElearningCatalog = ({
   const categoryOptions = React.useMemo(() => categories ?? buildCategories(courses), [categories, courses]);
   const learnerMetrics = React.useMemo(() => buildLearnerMetrics(courses), [courses]);
   const selectedCourseDetails = React.useMemo(() => (selectedCourse ? getCourseDetails(selectedCourse) : undefined), [selectedCourse]);
-  const suggestion = React.useMemo(() => (canManageCourses ? undefined : resumeSuggestion(courses)), [canManageCourses, courses]);
+  // « Reprendre où vous en étiez » is shown to every role: an administrator follows courses too.
+  const suggestion = React.useMemo(() => resumeSuggestion(courses), [courses]);
   const courseFormInitialValues = React.useMemo(() => getCourseFormValues(editingCourse ?? undefined), [editingCourse]);
 
   // The origin filter belongs to the administrator: an agent's list never depends on it.
@@ -201,8 +201,6 @@ export const ElearningCatalog = ({
           title={title}
           subtitle={subtitle}
           onCreate={canManageCourses && onCreateCourse ? () => openCourseForm() : undefined}
-          onEnrol={canManageCourses && enrolment ? () => setEnrolFromHeader(true) : undefined}
-          enrolDisabled={courses.length === 0}
         />
 
         {suggestion ? (
@@ -288,15 +286,6 @@ export const ElearningCatalog = ({
           course={learnersCourse}
           port={enrolment}
           onClose={() => setLearnersCourseId(null)}
-          onChanged={onEnrolmentChanged}
-        />
-      ) : null}
-
-      {canManageCourses && enrolment && enrolFromHeader && courses.length > 0 ? (
-        <CourseLearnersDrawer
-          courses={courses.map((course) => ({ id: course.id, title: course.title }))}
-          port={enrolment}
-          onClose={() => setEnrolFromHeader(false)}
           onChanged={onEnrolmentChanged}
         />
       ) : null}

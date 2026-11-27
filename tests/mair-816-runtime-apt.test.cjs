@@ -21,3 +21,13 @@ test('MAIR-816 the runtime image upgrades apt past CVE-2026-109518', () => {
   assert.doesNotMatch(stage, /apt-get (update|install)/);
   assert.match(stage, /dpkg-query -W -f='\$\{Version\}' apt\)" ge '2\.6\.2'/);
 });
+
+// The release-dev Trivy gate also refuses the libpam of the base (CVE-2025-6020, HIGH, fixed in 1.5.2-6+deb12u3), as in
+// the other fronts: the runtime stage upgrades the libpam packages and checks the fixed version.
+test('MAIR-1257 the runtime image upgrades libpam past CVE-2025-6020', () => {
+  const stage = runtimeBase();
+  for (const name of ['libpam0g', 'libpam-modules', 'libpam-modules-bin', 'libpam-runtime']) {
+    assert.match(stage, new RegExp(`--no-install-recommends [^&]*\\b${name}\\b`), name);
+  }
+  assert.match(stage, /dpkg-query -W -f='\$\{Version\}' libpam-modules\)" ge '1\.5\.2-6\+deb12u3'/);
+});
