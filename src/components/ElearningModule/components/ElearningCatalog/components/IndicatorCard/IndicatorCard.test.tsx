@@ -26,4 +26,13 @@ describe('IndicatorCard', () => {
     expect(card).toHaveAttribute('data-alert', 'true');
     expect(card.querySelector('[data-gauge]')).toHaveAttribute('data-gauge', '100');
   });
+
+  it('MAIR-1257 puts its icon on the 28 px training chip of the artifact', () => {
+    const { container } = render(<IndicatorCard label="Formations suivies" value="4" icon={Users} linkLabel="Voir la liste" />);
+    const chip = container.querySelector('[data-m360-component~="IconChip"]') as HTMLElement;
+    expect(chip).toHaveAttribute('data-size', 's');
+    expect(chip.style.width).toBe('28px');
+    expect(chip.style.height).toBe('28px');
+    expect(chip.style.background).toBe('var(--mairie-module-training)');
+  });
 });

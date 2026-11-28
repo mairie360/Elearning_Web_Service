@@ -40,7 +40,8 @@ export const IndicatorCard = ({ label, value, icon, caption, gauge, linkLabel, a
     >
       <span className="flex w-full items-center justify-between gap-2">
         <BodySmall as="span" tone="muted">{label}</BodySmall>
-        <IconChip icon={icon} tone="module" color="training" />
+        {/* MAIR-1257 (artifact `.metric .accent`): 28 px chip. */}
+        <IconChip icon={icon} tone="module" color="training" size="s" />
       </span>
       <Metric as="span" tone={alert ? 'danger' : 'default'}>{value}</Metric>
       {caption ? <Caption as="span" tone="muted">{caption}</Caption> : null}
