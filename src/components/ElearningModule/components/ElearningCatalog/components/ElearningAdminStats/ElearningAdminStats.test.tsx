@@ -18,7 +18,9 @@ describe('ElearningAdminStats', () => {
     expect(screen.getByText('fournies par Mairie360, à jour avec l’outil')).toBeVisible();
     expect(screen.getByText('79,2 %')).toBeVisible();
     expect(screen.getByText('61,4 %')).toBeVisible();
-    expect(screen.getByText('agents ayant dépassé une échéance')).toBeVisible();
+    // MAIR-1257: the caption counts enrolments, the unit of `lateMandatory`.
+    expect(screen.getByText('inscriptions ayant dépassé leur échéance')).toBeVisible();
+    expect(screen.queryByText(/agents ayant dépassé/)).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Actualiser' }));
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });

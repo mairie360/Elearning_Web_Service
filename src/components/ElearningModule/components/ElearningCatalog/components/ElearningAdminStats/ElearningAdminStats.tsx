@@ -64,8 +64,9 @@ export const ElearningAdminStats = ({ stats, state = 'default', onRefresh, sourc
             <IndicatorCard label="Complétion moyenne" value={formatPercent(stats.averageCompletion)} icon={ChartNoAxesCombined}
               caption="toutes formations confondues" gauge={stats.averageCompletion} linkLabel="Détail par formation"
               aria-haspopup="dialog" onClick={() => setDrawer('completion')} />
+            {/* MAIR-1257: `lateMandatory` counts overdue enrolments (an agent can have several), so the caption names enrolments. */}
             <IndicatorCard label="Obligatoires en retard" value={stats.lateMandatory} icon={Clock3}
-              caption="agents ayant dépassé une échéance" alert={stats.lateMandatory > 0} linkLabel="Voir les agents"
+              caption="inscriptions ayant dépassé leur échéance" alert={stats.lateMandatory > 0} linkLabel="Voir les agents"
               aria-haspopup="dialog" onClick={() => setDrawer('late')} />
           </div>
           <ParticipationDrawer open={drawer === 'participation'} services={stats.byService} participationRate={stats.participationRate} onClose={() => setDrawer(null)} />
