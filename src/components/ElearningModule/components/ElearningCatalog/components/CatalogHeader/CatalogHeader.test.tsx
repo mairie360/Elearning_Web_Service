@@ -20,4 +20,9 @@ describe('CatalogHeader', () => {
     expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual(['Nouvelle formation']);
     expect(screen.queryByRole('button', { name: 'Inscrire des agents' })).toBeNull();
   });
+
+  it('MAIR-1257 shows the 26 px page title of the artifact', () => {
+    render(<CatalogHeader title="E-learning" subtitle="Catalogue" />);
+    expect(screen.getByRole('heading', { level: 1, name: 'E-learning' })).toHaveAttribute('data-title-size', 'l');
+  });
 });

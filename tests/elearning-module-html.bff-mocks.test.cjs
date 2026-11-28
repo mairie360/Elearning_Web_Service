@@ -840,7 +840,8 @@ test('desktop and mobile navigation expose only active modules and keep Settings
     await view.act(() => view.props('Header').setSidebarOpen(true));
     const mobile = view.props('Sidebar');
     assert.deepEqual(mobile.items.map(item => item.id),
-      ['dashboard', 'projects', 'messages', 'training', 'calendar', 'admin', 'settings']);
+    // MAIR-1260 (lib 2.9.0): the artifact order of the shared navigation.
+      ['dashboard', 'projects', 'calendar', 'messages', 'training', 'admin', 'settings']);
     assert.equal(mobile.items.find(item => item.id === 'admin').adminOnly, true);
     assert.equal(mobile.isAdmin, isAdmin);
     assert.equal(mobile.activeItem, 'training');
@@ -1388,7 +1389,8 @@ test('MAIR-1224 the catalogue and the indicators carry the mockup titles, counte
   for (const label of ['Indicateurs de la commune', 'Toutes formations et tous agents confondus · mis à jour à ', 'Catalogue de la commune', '2 formations · 1 interne, 1 de l’outil']) assert.ok(text.includes(label), label);
   assert.doesNotMatch(text, /Indicateurs du centre/);
   const filters = view.find('FilterSelect').map(({ props }) => props.label);
-  assert.deepEqual(filters, ['Toutes les catégories', 'Tous les statuts', 'Obligatoires et facultatives', 'Toutes les origines']);
+  // MAIR-1257: the artifact order, « Origine » (administrators) before « Caractère ».
+  assert.deepEqual(filters, ['Toutes les catégories', 'Tous les statuts', 'Toutes les origines', 'Obligatoires et facultatives']);
   assert.match(view.html, /type="search"[^>]*placeholder="Rechercher une formation…"|placeholder="Rechercher une formation…"[^>]*type="search"/);
   // The visible label is gone, the accessible name stays.
   assert.match(view.html, /class="sr-only">Rechercher une formation</);
