@@ -267,6 +267,15 @@ export const frenchDate = (value?: string | null) => {
   return formatDateTime(text, 'dateOnly', ISO_DAY.test(text) ? 'UTC' : undefined) ?? text;
 };
 
+/** « 15 déc. »: the short day of a course tile (Figma F1), read like `frenchDate`; other text is shown as it came. */
+export const shortFrenchDate = (value?: string | null) => {
+  if (!value?.trim()) return undefined;
+  const text = value.trim();
+  const date = /^\d{4}-\d{2}-\d{2}/.test(text) ? parseDateValue(text) : null;
+  if (!date) return text;
+  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', ...(ISO_DAY.test(text) ? { timeZone: 'UTC' } : {}) }).format(date);
+};
+
 /** « aujourd’hui », « hier », « il y a 3 jours », then the date (« le 12 mars 2026 ») past a week (MAIR-1143). */
 export const lastActivityLabel = (value?: string | null, now = new Date()) => {
   const date = parseDateValue(value);

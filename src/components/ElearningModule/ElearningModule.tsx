@@ -224,8 +224,8 @@ export function ElearningModule({
       commune={commune}
       searchSource={globalSearchSource}
     >
-      {/* The module area of the collapsible shell has no padding: the page gives the mockup's 24 px. */}
-      <div className="flex min-w-0 w-full flex-col gap-6 p-6">
+      {/* The module area of the collapsible shell has no padding: the page gives the mockup's 24 px, in a centred column. */}
+      <div className="mx-auto flex min-w-0 w-full max-w-[1240px] flex-col gap-6 p-6">
       {logoutError && <LogoutErrorNotice message={logoutError} onBackToLogin={() => navigateToLogin({ explicit: true })} />}
       {loading && !catalog && <CatalogLoading subtitle={pageSubtitle(user?.isAdmin)} />}
 

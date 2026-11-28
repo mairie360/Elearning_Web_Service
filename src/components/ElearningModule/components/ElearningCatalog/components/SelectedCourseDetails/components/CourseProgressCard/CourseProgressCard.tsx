@@ -18,7 +18,8 @@ export const CourseProgressCard = ({ statusValue, progress, chapters, next, dead
   const status = statusDisplay(statusValue);
   const done = chapters.filter(chapter => chapter.completed).length;
   return (
-    <Card title="Votre avancement" className="flex flex-col gap-3">
+    <Card title="Votre avancement">
+      <div className="flex flex-col gap-3 px-6 pb-5 pt-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <StatusPill size="s" dot label={status.label} tone={status.tone} />
         <Text size="s" tone="muted">{done} / {chapters.length} chapitres</Text>
@@ -37,6 +38,7 @@ export const CourseProgressCard = ({ statusValue, progress, chapters, next, dead
         <Text size="s" tone="muted">{deadline ? `À terminer avant le ${frenchDate(deadline)}` : 'Sans échéance'}</Text>
       )}
       {unrated ? <Alert tone="info" title="Formation non notée" description="Donnez votre avis depuis l’écran de fin de la formation." /> : null}
+      </div>
     </Card>
   );
 };

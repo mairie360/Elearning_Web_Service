@@ -15,14 +15,14 @@ describe('CatalogHeader', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Nouvelle formation' })); expect(onCreate).toHaveBeenCalledTimes(1);
   });
 
-  it('MAIR-1224 shows « Inscrire des agents » before « Nouvelle formation », disabled while the catalogue is empty', async () => {
-    const onEnrol = vi.fn();
-    const { rerender } = render(<CatalogHeader title="E-learning" subtitle="Pilotez" onCreate={vi.fn()} onEnrol={onEnrol} enrolDisabled />);
-    const buttons = screen.getAllByRole('button');
-    expect(buttons.map((button) => button.textContent)).toEqual(['Inscrire des agents', 'Nouvelle formation']);
-    expect(screen.getByRole('button', { name: 'Inscrire des agents' })).toBeDisabled();
-    rerender(<CatalogHeader title="E-learning" subtitle="Pilotez" onCreate={vi.fn()} onEnrol={onEnrol} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Inscrire des agents' }));
-    expect(onEnrol).toHaveBeenCalledTimes(1);
+  it('MAIR-1257 the administrator header holds « Nouvelle formation » only, no « Inscrire des agents »', () => {
+    render(<CatalogHeader title="E-learning" subtitle="Pilotez" onCreate={vi.fn()} />);
+    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual(['Nouvelle formation']);
+    expect(screen.queryByRole('button', { name: 'Inscrire des agents' })).toBeNull();
+  });
+
+  it('MAIR-1257 shows the 26 px page title of the artifact', () => {
+    render(<CatalogHeader title="E-learning" subtitle="Catalogue" />);
+    expect(screen.getByRole('heading', { level: 1, name: 'E-learning' })).toHaveAttribute('data-title-size', 'l');
   });
 });

@@ -120,51 +120,16 @@ describe('CourseLearnersDrawer', () => {
     expect(screen.queryByText('Zoé Stale')).not.toBeInTheDocument();
   });
 
-  it('MAIR-1224 from the header: the course is chosen first, the agents are searched for it, and the drawer closes once they are enrolled', async () => {
-    const enrolment = port();
-    const onClose = vi.fn();
-    const onChanged = vi.fn();
-    render(<CourseLearnersDrawer courses={[course, { id: '9', title: 'Cybersécurité' }]} port={enrolment} onClose={onClose} onChanged={onChanged} />);
-    const drawer = screen.getByRole('dialog', { name: 'Inscrire des agents' });
-    const select = within(drawer).getByRole('combobox', { name: /Formation/ });
-    expect(select).toHaveValue('4');
-    expect(within(drawer).getByText('Les agents déjà inscrits ne sont pas proposés.')).toBeVisible();
-    expect(enrolment.loadLearners).not.toHaveBeenCalled();
-    await userEvent.selectOptions(select, '9');
-    await waitFor(() => expect(enrolment.searchAgents).toHaveBeenCalledWith('9', '', 0, expect.anything()));
-    await userEvent.click(await within(drawer).findByRole('checkbox', { name: /Chloé Durand/ }));
-    await userEvent.click(within(drawer).getByRole('button', { name: 'Inscrire l’agent' }));
-    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
-    expect(enrolment.enrol).toHaveBeenCalledWith('9', ['50']);
-    expect(onChanged).toHaveBeenCalledTimes(1);
-    expect(within(drawer).queryByRole('button', { name: 'Retour aux inscrits' })).toBeNull();
-  });
-  it('MAIR-1224 from the header: a course dropped by a catalogue reload falls back to the first one listed, never enrolling for it', async () => {
-    const enrolment = port();
-    const props = { port: enrolment, onClose: vi.fn() };
-    const { rerender } = render(<CourseLearnersDrawer {...props} courses={[course, { id: '9', title: 'Cybersécurité' }]} />);
-    const drawer = screen.getByRole('dialog', { name: 'Inscrire des agents' });
-    await userEvent.selectOptions(within(drawer).getByRole('combobox', { name: /Formation/ }), '9');
-    await userEvent.click(await within(drawer).findByRole('checkbox', { name: /Chloé Durand/ }));
-    expect(within(drawer).getByText('1 agent sélectionné')).toBeVisible();
-    rerender(<CourseLearnersDrawer {...props} courses={[course]} />);
-    expect(within(drawer).getByRole('combobox', { name: /Formation/ })).toHaveValue('4');
-    expect(within(drawer).queryByText('1 agent sélectionné')).toBeNull();
-    await waitFor(() => expect(enrolment.searchAgents).toHaveBeenLastCalledWith('4', '', 0, expect.anything()));
-    await userEvent.click(await within(drawer).findByRole('checkbox', { name: /Chloé Durand/ }));
-    await userEvent.click(within(drawer).getByRole('button', { name: 'Inscrire l’agent' }));
-    await waitFor(() => expect(enrolment.enrol).toHaveBeenCalledWith('4', ['50']));
-    expect(enrolment.enrol).not.toHaveBeenCalledWith('9', expect.anything());
-  });
-
   it('MAIR-1224 after a partial enrolment the agents are searched again and the selection starts from none', async () => {
     const searchAgents = vi.fn()
       .mockResolvedValueOnce({ items: [{ userId: '50', name: 'Chloé Durand', firstName: 'Chloé', lastName: 'Durand' }, { userId: '51', name: 'David Leroy', firstName: 'David', lastName: 'Leroy' }], nextOffset: null })
       .mockResolvedValue({ items: [{ userId: '51', name: 'David Leroy', firstName: 'David', lastName: 'Leroy' }], nextOffset: null });
     const enrolment = port({ searchAgents, enrol: vi.fn(async () => false) });
     const onClose = vi.fn();
-    render(<CourseLearnersDrawer courses={[course]} port={enrolment} onClose={onClose} />);
-    const drawer = screen.getByRole('dialog', { name: 'Inscrire des agents' });
+    render(<CourseLearnersDrawer course={course} port={enrolment} onClose={onClose} />);
+    await screen.findByText('Alice Martin');
+    await userEvent.click(screen.getByRole('button', { name: 'Inscrire des agents' }));
+    const drawer = screen.getByRole('dialog', { name: 'Inscrire des agents à « RGPD »' });
     await userEvent.click(await within(drawer).findByRole('checkbox', { name: /Chloé Durand/ }));
     await userEvent.click(within(drawer).getByRole('checkbox', { name: /David Leroy/ }));
     await userEvent.click(within(drawer).getByRole('button', { name: 'Inscrire les 2 agents' }));

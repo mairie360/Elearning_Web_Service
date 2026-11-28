@@ -27,4 +27,10 @@ describe('ResumeCard', () => {
     expect(screen.getByText('À commencer en priorité')).toBeVisible();
     expect(screen.getByRole('button', { name: /Commencer/ })).toHaveAttribute('aria-busy', 'true');
   });
+  // MAIR-1257 (design-match): padded card and dark media tile, as on the Figma F1 frame.
+  it('MAIR-1257 pads the card and draws the media tile dark', () => {
+    const { container } = render(<ResumeCard suggestion={{ course: { id: '1', title: 'RGPD', description: '' }, kind: 'start', chapterIndex: 1, chapterCount: 2, completedChapters: 0, progress: 0 } as never} busy={false} onResume={() => {}} onShowDetails={() => {}} />);
+    expect(container.querySelector('section')).toHaveClass('p-5');
+    expect(container.querySelector('section > div')).toHaveClass('bg-[var(--mairie-text)]');
+  });
 });

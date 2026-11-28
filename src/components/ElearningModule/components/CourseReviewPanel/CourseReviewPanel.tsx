@@ -29,7 +29,7 @@ export function CourseReviewPanel({ courseId, completed, draft, onDraftChange, p
   }, [courseId, port]);
 
   // MAIR-928: the written reviews in a lib Card, the note on the lib Rating, no colour of its own.
-  return <Card aria-label="Avis écrits sur la formation" className="flex flex-col gap-3">
+  return <Card aria-label="Avis écrits sur la formation" className="flex flex-col gap-3 p-5">
     <SectionTitle as="h3">Avis des participants</SectionTitle>
     {readState === 'loading' ? <Skeleton label="Chargement des avis…" className="!h-24" /> : readState === 'unavailable' ? <Body>Les avis écrits ne sont pas encore disponibles.</Body> : reviews.length ? <ul className="flex flex-col gap-3">{reviews.map(review => <li key={review.id} className="border-b border-[var(--mairie-border)] pb-3 [overflow-wrap:anywhere]"><strong>{review.author} · {review.rating}/5</strong><p className="whitespace-pre-wrap">{review.comment}</p></li>)}</ul> : <DataState state="empty" size="s" title="Aucun avis à afficher." description={null} />}
     <form className="flex flex-col gap-3" onSubmit={async event => {

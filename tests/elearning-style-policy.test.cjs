@@ -36,3 +36,24 @@ test('MAIR-934 no colour of its own in the e-learning components: every colour i
     assert.doesNotMatch(text, /\b(?:text|bg|border)-(?:red|green|blue|gray|white|black)(?:-\d+)?\b/, `${file} holds a Tailwind palette colour`);
   }
 });
+
+// MAIR-1257 (design-match): the lib Card draws no inner padding (only its title has one), so every Card of the
+// module must pad its content, or the text touches the border as in the first build of the redesigned catalogue.
+test('MAIR-1257 every lib Card of the module pads its content', () => {
+  const { readdirSync, statSync } = require('node:fs');
+  const walk = dir => readdirSync(dir).flatMap(name => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? walk(path) : [path];
+  });
+  const files = walk(join(__dirname, '../src/components')).filter(path => /\.tsx$/.test(path) && !/\.test\.tsx$/.test(path));
+  let cards = 0;
+  for (const file of files) {
+    const text = readFileSync(file, 'utf8');
+    for (const match of text.matchAll(/<Card\b[^>]*>([\s\S]{0,200})/g)) {
+      cards += 1;
+      const padded = /className="[^"]*\bp-\d/.test(match[0].split('>')[0]) || /^\s*<div className="[^"]*\bpx-\d[^"]*\bpb-\d/.test(match[1]);
+      assert.ok(padded, `${file}: a Card without inner padding`);
+    }
+  }
+  assert.ok(cards >= 5, 'the module renders its cards with the lib Card');
+});

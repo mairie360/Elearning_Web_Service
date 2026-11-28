@@ -1,8 +1,9 @@
 import React from 'react';
 import { CircleCheckBig, Clock3, Hourglass, TriangleAlert } from 'lucide-react';
-import { MetricCard, Overline } from '@mairie360/lib-components/primitives';
+import { Overline } from '@mairie360/lib-components/primitives';
 
 import { TrainingTimeDrawer } from './components/TrainingTimeDrawer';
+import { IndicatorCard } from '../IndicatorCard';
 import { formatDurationSeconds, type LearnerMetrics as Metrics } from '../../catalog-model';
 import type { ElearningLearnerActionResult } from '../../course-types';
 import type { ElearningTrainingTime } from './training-time-model';
@@ -35,22 +36,30 @@ const timeValue = (trainingTime: ElearningTrainingTime | undefined, state: strin
 
 /**
  * MAIR-882 / MAIR-1144: « Mon suivi », the agent's own indicators. The first three filter the list in place
- * (MAIR-1140); the training time opens « Mon temps de formation » in a Drawer.
+ * (MAIR-1140); the training time opens « Mon temps de formation » in a Drawer. Each card names where it leads.
  */
 export const LearnerMetrics = ({
   metrics, active, onSelect, trainingTime, trainingTimeState = 'loading', onTrainingTimeRetry, onDownloadCertificates,
 }: LearnerMetricsProps) => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const cards = [
-    { label: 'Formations en cours', value: metrics.inProgress, icon: Clock3, filter: { status: 'in-progress', requirement: 'all' } },
     {
-      label: 'Obligatoires à terminer', value: metrics.mandatoryToFinish, icon: TriangleAlert,
-      trendLabel: metrics.nextDeadline ? `Prochaine échéance : ${metrics.nextDeadline}` : undefined,
+      label: 'Formations en cours', value: metrics.inProgress, icon: Clock3, linkLabel: 'Voir mes formations en cours',
+      caption: metrics.inProgress ? 'reprenez là où vous vous êtes arrêté' : 'aucune formation commencée',
+      filter: { status: 'in-progress', requirement: 'all' },
+    },
+    {
+      label: 'Obligatoires à terminer', value: metrics.mandatoryToFinish, icon: TriangleAlert, linkLabel: 'Voir les obligatoires',
+      caption: metrics.nextDeadline ? `Prochaine échéance : ${metrics.nextDeadline}` : 'aucune échéance à venir',
       filter: { status: 'to-finish', requirement: 'mandatory' },
     },
-    { label: `Terminées en ${metrics.year}`, value: metrics.completedInYear, icon: CircleCheckBig, filter: { status: 'completed', requirement: 'all' } },
+    {
+      label: `Terminées en ${metrics.year}`, value: metrics.completedInYear, icon: CircleCheckBig, linkLabel: 'Voir mes formations terminées',
+      caption: undefined, filter: { status: 'completed', requirement: 'all' },
+    },
   ];
   const goal = trainingTime ? `objectif annuel : ${formatDurationSeconds(trainingTime.goalMinutes * 60)}` : trainingTimeState === 'unavailable' ? 'temporairement indisponible' : undefined;
+  const goalShare = trainingTime && trainingTime.goalMinutes > 0 ? (100 * trainingTime.timeSpentSeconds) / (trainingTime.goalMinutes * 60) : undefined;
   return (
     <section aria-labelledby="elearning-learner-metrics" className="flex flex-col gap-3">
       <Overline as="h2" id="elearning-learner-metrics">Mon suivi</Overline>
@@ -58,30 +67,27 @@ export const LearnerMetrics = ({
         {cards.map(card => {
           const pressed = card.filter.status === active.status && card.filter.requirement === active.requirement;
           return (
-            <MetricCard
+            <IndicatorCard
               key={card.label}
               label={card.label}
               value={card.value}
               icon={card.icon}
-              size="m"
-              trend="none"
-              trendLabel={card.trendLabel}
+              caption={card.caption}
+              linkLabel={card.linkLabel}
               active={pressed}
               onClick={() => onSelect(pressed ? NONE : card.filter)}
-              className="h-full"
             />
           );
         })}
-        <MetricCard
+        <IndicatorCard
           label={`Temps de formation en ${metrics.year}`}
           value={timeValue(trainingTime, trainingTimeState)}
           icon={Hourglass}
-          size="m"
-          trend="none"
-          trendLabel={goal}
+          caption={goal}
+          gauge={goalShare}
+          linkLabel="Voir mon historique"
           onClick={() => setDrawerOpen(true)}
           aria-haspopup="dialog"
-          className="h-full"
         />
       </div>
       <TrainingTimeDrawer

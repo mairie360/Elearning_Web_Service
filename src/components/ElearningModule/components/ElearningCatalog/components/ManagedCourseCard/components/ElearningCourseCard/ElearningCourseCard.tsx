@@ -2,7 +2,7 @@ import { BookOpen } from 'lucide-react';
 import { Caption, Card, Icon, ProgressMeter, StatusPill, Text } from '@mairie360/lib-components/primitives';
 
 import type { ElearningCourse } from '../../../../catalog-types';
-import { frenchDate, getCourseProgress, getRequirement, inferStatusValue, isDeadlineSoon, statusDisplay } from '../../../../catalog-model';
+import { getCourseProgress, getRequirement, inferStatusValue, isDeadlineSoon, shortFrenchDate, statusDisplay } from '../../../../catalog-model';
 
 export interface ElearningCourseCardProps {
   course: ElearningCourse;
@@ -21,8 +21,8 @@ const facts = (course: ElearningCourse) => [
 ].filter(Boolean).join(' · ');
 
 const deadlineLine = (course: ElearningCourse, completed: boolean) => {
-  if (completed) return 'Formation terminée';
-  return course.deadline ? `Avant le ${frenchDate(course.deadline)}` : 'Sans échéance';
+  if (completed) return course.completedAt ? `Terminée le ${shortFrenchDate(course.completedAt)}` : 'Formation terminée';
+  return course.deadline ? `Avant le ${shortFrenchDate(course.deadline)}` : 'Sans échéance';
 };
 
 /**
@@ -37,9 +37,9 @@ export const ElearningCourseCard = ({ course, onOpen, busy = false, actions }: E
   const completed = statusValue === 'completed';
   const soon = !completed && isDeadlineSoon(course.deadline);
   return (
-    <Card className="relative flex h-full flex-col gap-3 transition-shadow hover:shadow-md focus-within:shadow-md" aria-busy={busy || undefined} data-course-id={course.id}>
+    <Card className="relative flex h-full flex-col gap-3 p-5 transition-shadow hover:shadow-md focus-within:shadow-md" aria-busy={busy || undefined} data-course-id={course.id}>
       <div className="flex items-center justify-between gap-2">
-        <Caption className="inline-flex min-w-0 items-center gap-1.5">
+        <Caption className="inline-flex min-w-0 items-center gap-1.5 uppercase tracking-wide">
           <Icon icon={BookOpen} size="s" />
           <span className="truncate">{course.category ?? 'Formation'}</span>
         </Caption>

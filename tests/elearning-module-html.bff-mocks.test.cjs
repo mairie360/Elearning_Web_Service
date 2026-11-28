@@ -840,7 +840,8 @@ test('desktop and mobile navigation expose only active modules and keep Settings
     await view.act(() => view.props('Header').setSidebarOpen(true));
     const mobile = view.props('Sidebar');
     assert.deepEqual(mobile.items.map(item => item.id),
-      ['dashboard', 'projects', 'messages', 'training', 'calendar', 'admin', 'settings']);
+    // MAIR-1260 (lib 2.9.0): the artifact order of the shared navigation.
+      ['dashboard', 'projects', 'calendar', 'messages', 'training', 'admin', 'settings']);
     assert.equal(mobile.items.find(item => item.id === 'admin').adminOnly, true);
     assert.equal(mobile.isAdmin, isAdmin);
     assert.equal(mobile.activeItem, 'training');
@@ -1154,7 +1155,7 @@ test('the administrator reads the indicators of the instance and filters the ori
   await renderLoadedCatalog(adminCatalog());
   await view.waitFor(() => view.props('ElearningAdminStats').state === 'default');
   const text = view.text();
-  for (const figure of ['Formations internes', 'créées par la commune · 2 obligatoires', 'Formations de l’outil', 'fournies par Mairie360', '79,2 %', '61,4 %', 'Obligatoires en retard']) {
+  for (const figure of ['Formations internes', 'créées par la commune · dont 2 obligatoires', 'Formations de l’outil', 'fournies par Mairie360', '79,2 %', '61,4 %', 'Obligatoires en retard']) {
     assert.ok(text.includes(figure), figure);
   }
   assert.equal(bffElearning.calls('/elearning/training-time').length, 0, 'an administrator page reads no training time');
@@ -1268,7 +1269,7 @@ test('the administrator enrols and unenrols agents from « Agents inscrits » of
   assert.match(view.text(), /2 octobre 2026/);
   assert.equal(bffElearning.calls('/elearning/admin/courses/{courseId}/learners', 'GET')[0].pathParams.courseId, '4');
 
-  // The drawer's own « Inscrire des agents » (the page header has one too, which opens the header entry).
+  // The drawer's own « Inscrire des agents ».
   const drawerEnrol = view.hostElements((props, text, tag) => tag === 'button' && text === 'Inscrire des agents').at(-1).props;
   await view.click(props => props === drawerEnrol);
   await view.waitFor(() => view.text().includes('Chloé Durand'));
@@ -1296,8 +1297,8 @@ test('the administrator enrols and unenrols agents from « Agents inscrits » of
   assert.doesNotMatch(view.text(), /Agents inscrits à « RGPD interne »/);
 });
 
-// MAIR-1224: the enrolment of agents is reachable from the page header (the course chosen first) and from the
-// course sheet; the catalogue and the indicators follow the mockup; RGAA 11.9 and 12.6.
+// MAIR-1224: the enrolment of agents is reachable from the course sheet; the catalogue and the indicators follow
+// the mockup; RGAA 11.9 and 12.6.
 function enrolmentMocks() {
   const enrolled = [];
   bffElearning.on('get', '/elearning/admin/courses/{courseId}/learners', ({ pathParams }) => ({
@@ -1310,54 +1311,86 @@ function enrolmentMocks() {
   });
 }
 
-test('MAIR-1224 the administrator enrols an agent from the header, choosing the course first, then reads the learners back', async () => {
+test('MAIR-1224 an agent has no enrolment entry', async () => {
+  await renderLoadedCatalog(f.catalogResponse([f.course('4', { title: 'RGPD interne' })]));
+  assert.equal(view.hostElements((props, text, tag) => tag === 'button' && text === 'Inscrire des agents').length, 0);
+  await view.act(() => view.props('ManagedCourseCard').onOpen(view.props('ManagedCourseCard').course));
+  assert.equal(view.hostElements((props, text, tag) => tag === 'button' && text === 'Agents inscrits').length, 0);
+});
+
+// The administrator's page matches its artifact: no « Inscrire des agents » in the header, « Reprendre où
+// vous en étiez » above the indicators, each indicator names where it leads, content in a centred column.
+const adminFollowingCatalog = () => f.catalogResponse([
+  f.course('4', { title: 'RGPD interne', source: 'internal', statusValue: 'in-progress', progress: 40, lastActivityAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() }),
+  f.course('9', { title: 'Prise en main de l’outil', source: 'platform' }),
+], f.currentUser({ isAdmin: true, role: 'Admin' }));
+
+test('MAIR-1257 an administrator opens E-learning, sees « Reprendre » above the indicators, then follows an indicator link', async () => {
+  await renderLoadedCatalog(adminFollowingCatalog());
+  await view.waitFor(() => view.props('ElearningAdminStats').state === 'default');
+  const text = view.text();
+
+  // Header: « Nouvelle formation » only.
+  assert.equal(view.hostElements((props, label, tag) => tag === 'button' && label === 'Inscrire des agents').length, 0);
+  assert.equal(view.hostElements((props, label, tag) => tag === 'button' && label === 'Nouvelle formation').length, 1);
+  // « Reprendre où vous en étiez » for the administrator too, above the indicators.
+  assert.equal(view.props('ResumeCard').suggestion.course.id, '4');
+  assert.ok(text.indexOf('Reprendre où vous en étiez') >= 0, 'the resume card is shown');
+  assert.ok(text.indexOf('Reprendre où vous en étiez') < text.indexOf('Indicateurs de la commune'), 'the resume card comes before the indicators');
+  assert.match(text, /Dernière activité hier/);
+  // The indicators: the time of the last read and the link of each card.
+  assert.match(text, /Toutes formations et tous agents confondus · mis à jour à \d{1,2} h \d{2}/);
+  for (const link of ['Voir la liste', 'Détail par service', 'Détail par formation', 'Voir les agents']) assert.ok(text.includes(link), link);
+  assert.ok(text.includes('38 agents inscrits sur 48'));
+  assert.equal(view.hostElements(metricCard('Obligatoires en retard'))[0].props['data-alert'], true);
+  // The page content is a centred column.
+  assert.match(view.html, /class="[^"]*\bmx-auto\b[^"]*\bmax-w-\[1240px\][^"]*"/);
+
+  // « Voir la liste » of the internal courses filters the catalogue in place.
+  await view.click(metricCard('Formations internes'));
+  assert.equal(view.props('CatalogFilters').source, 'internal');
+  assert.deepEqual(view.find('ManagedCourseCard').map(({ props }) => props.course.title), ['RGPD interne']);
+  // « Détail par service » opens the participation by service.
+  await view.click(metricCard('Taux de participation'));
+  assert.match(view.text(), /Participation par service/);
+  assert.match(view.text(), /État civil/);
+  await view.click(props => props['aria-label'] === 'Fermer la participation par service');
+
+  // « Reprendre » opens the course screen of the course in progress.
+  await view.click((props, label, tag) => tag === 'button' && label === 'Reprendre');
+  await view.waitFor(() => view.find('CoursePlayer').length === 1);
+  assert.equal(view.props('CoursePlayer').course.id, '4');
+});
+
+test('MAIR-1257 without the header entry, the administrator still enrols an agent from the course sheet and reads the learners back', async () => {
   enrolmentMocks();
   await renderLoadedCatalog(adminCatalog());
-  await view.click((props, text, tag) => tag === 'button' && text === 'Inscrire des agents');
-  await view.waitFor(() => view.text().includes('Les agents déjà inscrits ne sont pas proposés.'));
-  // « Formation » comes first, among the courses of the catalogue.
-  assert.match(view.html, />Formation<\/label>/);
-  assert.match(view.html, /<option value="4"[^>]*>RGPD interne<\/option><option value="9"[^>]*>Prise en main de l’outil<\/option>/);
-  assert.match(view.html, /Inscrire des agents<\/h2>/);
-  await view.fire((props, _text, tag) => tag === 'select', 'onChange', { target: { value: '9' } });
-  await view.waitFor(() => view.text().includes('Chloé Durand') && bffElearning.calls('/elearning/admin/agents', 'GET').some(call => call.url.searchParams.get('excludeCourseId') === '9'));
+  assert.equal(view.hostElements((props, label, tag) => tag === 'button' && label === 'Inscrire des agents').length, 0);
+  const card = () => view.find('ManagedCourseCard').find(({ props }) => props.course.id === '9');
+  await view.act(() => card().props.onOpen(card().props.course));
+  await view.click((props, label, tag) => tag === 'button' && label === 'Agents inscrits');
+  await view.waitFor(() => view.text().includes('Agents inscrits à « Prise en main de l’outil »') && view.text().includes('Aucun agent'));
+  await view.click((props, label, tag) => tag === 'button' && label === 'Inscrire des agents');
+  await view.waitFor(() => view.text().includes('Chloé Durand'));
+  assert.equal(bffElearning.calls('/elearning/admin/agents', 'GET')[0].url.searchParams.get('excludeCourseId'), '9');
   await view.fire((props, _text, tag) => tag === 'input' && props.type === 'checkbox' && props.checked === false, 'onChange', { target: { checked: true } });
   await view.waitFor(() => view.text().includes('1 agent sélectionné'));
   await view.click('Inscrire l’agent');
   await view.waitFor(html => toasts(html).some(toast => toast.includes('Agents inscrits')));
-  const post = bffElearning.calls('/elearning/admin/courses/{courseId}/learners', 'POST')[0];
-  assert.equal(post.pathParams.courseId, '9');
-  assert.deepEqual(post.body, { userIds: ['50'] });
-  await view.waitFor(() => !view.text().includes('Les agents déjà inscrits ne sont pas proposés.'));
-
-  // Read back from the course sheet: « Agents inscrits » lists the agent just enrolled.
-  await view.act(() => view.find('ManagedCourseCard').find(({ props }) => props.course.id === '9').props.onOpen(view.find('ManagedCourseCard').find(({ props }) => props.course.id === '9').props.course));
-  await view.click((props, text, tag) => tag === 'button' && text === 'Agents inscrits');
-  await view.waitFor(() => view.text().includes('Agents inscrits à « Prise en main de l’outil »') && view.text().includes('1 agent inscrit'));
-  assert.ok(bffElearning.calls('/elearning/admin/courses/{courseId}/learners', 'GET').some(call => call.pathParams.courseId === '9'));
-});
-
-test('MAIR-1224 an agent has no enrolment entry, and an empty catalogue disables the header one', async () => {
-  await renderLoadedCatalog(f.catalogResponse([f.course('4', { title: 'RGPD interne' })]));
-  assert.equal(view.hostElements((props, text, tag) => tag === 'button' && text === 'Inscrire des agents').length, 0);
-  assert.equal(view.props('CatalogHeader').onEnrol, undefined);
-  await view.act(() => view.props('ManagedCourseCard').onOpen(view.props('ManagedCourseCard').course));
-  assert.equal(view.hostElements((props, text, tag) => tag === 'button' && text === 'Agents inscrits').length, 0);
-
-  view.unmount?.();
-  await renderLoadedCatalog(f.catalogResponse([], f.currentUser({ isAdmin: true, role: 'Admin' })));
-  assert.equal(view.props('CatalogHeader').enrolDisabled, true);
-  assert.equal(view.hostElements((props, text, tag) => tag === 'button' && text === 'Inscrire des agents')[0].props.disabled, true);
+  assert.deepEqual(bffElearning.calls('/elearning/admin/courses/{courseId}/learners', 'POST')[0].body, { userIds: ['50'] });
+  // The learners are read again: the agent just enrolled is listed.
+  await view.waitFor(() => view.text().includes('Chloé Durand') && !view.text().includes('chargement'));
 });
 
 test('MAIR-1224 the catalogue and the indicators carry the mockup titles, counter and filter labels', async () => {
   await renderLoadedCatalog(adminCatalog());
   await view.waitFor(() => view.props('ElearningAdminStats').state === 'default');
   const text = view.text();
-  for (const label of ['Indicateurs de la commune', 'Toutes formations et tous agents confondus.', 'Catalogue de la commune', '2 formations · 1 interne, 1 de l’outil']) assert.ok(text.includes(label), label);
+  for (const label of ['Indicateurs de la commune', 'Toutes formations et tous agents confondus · mis à jour à ', 'Catalogue de la commune', '2 formations · 1 interne, 1 de l’outil']) assert.ok(text.includes(label), label);
   assert.doesNotMatch(text, /Indicateurs du centre/);
   const filters = view.find('FilterSelect').map(({ props }) => props.label);
-  assert.deepEqual(filters, ['Toutes les catégories', 'Tous les statuts', 'Obligatoires et facultatives', 'Toutes les origines']);
+  // MAIR-1257: the artifact order, « Origine » (administrators) before « Caractère ».
+  assert.deepEqual(filters, ['Toutes les catégories', 'Tous les statuts', 'Toutes les origines', 'Obligatoires et facultatives']);
   assert.match(view.html, /type="search"[^>]*placeholder="Rechercher une formation…"|placeholder="Rechercher une formation…"[^>]*type="search"/);
   // The visible label is gone, the accessible name stays.
   assert.match(view.html, /class="sr-only">Rechercher une formation</);
