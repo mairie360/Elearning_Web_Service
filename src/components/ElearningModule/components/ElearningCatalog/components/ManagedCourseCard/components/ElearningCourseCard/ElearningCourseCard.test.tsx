@@ -33,4 +33,14 @@ describe('ElearningCourseCard', () => {
     expect(screen.getByText('Formation terminée')).toBeVisible();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
+  // MAIR-1257 (design-match): the tile of the Figma F1 frame — inner padding, short days, uppercase category.
+  it('MAIR-1257 pads the tile and shows short days like the mockup', () => {
+    const { container, rerender } = render(<ElearningCourseCard course={{ id: '2', title: 'Accueil du public', description: '', category: 'Relation usager', deadline: '2026-12-15', statusValue: 'in-progress', progress: 20 }} />);
+    expect(container.querySelector('section')).toHaveClass('p-5');
+    expect(screen.getByText('Avant le 15 déc.')).toBeVisible();
+    expect(screen.getByText('Relation usager').parentElement).toHaveClass('uppercase');
+    rerender(<ElearningCourseCard course={{ id: '2', title: 'Accueil du public', description: '', statusValue: 'completed', progress: 100, completedAt: '2026-11-08T09:00:00Z' }} />);
+    expect(screen.getByText('Terminée le 8 nov.')).toBeVisible();
+    expect(screen.queryByText('Formation terminée')).not.toBeInTheDocument();
+  });
 });

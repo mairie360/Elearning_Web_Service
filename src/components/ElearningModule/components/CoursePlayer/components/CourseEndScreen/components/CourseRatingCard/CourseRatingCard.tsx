@@ -36,7 +36,8 @@ export const CourseRatingCard = ({ initialValue, submitted = false, onSubmit }: 
   };
 
   return (
-    <Card title="Notez cette formation" className="flex flex-col gap-3">
+    <Card title="Notez cette formation">
+      <div className="flex flex-col gap-3 px-6 pb-5 pt-3">
       {confirmed ? (
         <Body role="status">Merci pour votre avis · Votre note : {confirmed}/5</Body>
       ) : (
@@ -46,6 +47,7 @@ export const CourseRatingCard = ({ initialValue, submitted = false, onSubmit }: 
           <div><Button label="Envoyer la note" disabled={!value} loading={sending} onClick={() => void send()} /></div>
         </>
       )}
+      </div>
     </Card>
   );
 };

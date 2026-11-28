@@ -22,8 +22,8 @@ export const ResumeCard = ({ suggestion, busy, onResume, onShowDetails }: Resume
   const { course, kind, chapterIndex, chapterCount, chapterTitle, completedChapters, progress, lastActivity } = suggestion;
   const resume = kind === 'resume';
   return (
-    <Card aria-labelledby="elearning-resume-title" className="flex flex-col gap-4 md:flex-row md:items-center">
-      <div className="flex min-h-24 items-center justify-center rounded-[var(--mairie-radius-m)] bg-[var(--mairie-accent-surface)] p-4 text-[var(--mairie-accent)] md:w-48 md:self-stretch">
+    <Card aria-labelledby="elearning-resume-title" className="flex flex-col gap-4 p-5 md:flex-row md:items-center">
+      <div className="flex min-h-24 items-center justify-center rounded-[var(--mairie-radius-m)] bg-[var(--mairie-text)] p-4 text-[var(--mairie-surface)] md:w-48 md:self-stretch">
         <Icon icon={CirclePlay} size="xl" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
